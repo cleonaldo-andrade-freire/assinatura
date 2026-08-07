@@ -1,4 +1,4 @@
-# Guia de implementação — Anamnese via WhatsApp com assinatura caseira
+# ![alt text](image.png) — Anamnese via WhatsApp com assinatura caseira
 
 Arquitetura completa (você já tem as partes 1 e 2):
 
@@ -23,7 +23,7 @@ Paciente (WhatsApp)
                               │
                               ▼
                     7. n8n › Webhook "obter-anamnese/:token"  (GET, chamado pela página)
-                    8. n8n › Webhook "assinatura"              (POST, recebe o PDF assinado)
+                    8. n8n › Webhook "assinatura"              (POST, recebe o PDF assinado)![alt text](image-1.png)
                        calcula hash, salva o PDF, registra o log, avisa a clínica
 ```
 
