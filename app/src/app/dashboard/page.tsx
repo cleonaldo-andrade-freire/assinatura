@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
-import { CancelConversationButton } from "@/components/CancelConversationButton";
+import { ConversationRowActions } from "@/components/ConversationRowActions";
 import type { Conversation } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -47,11 +47,17 @@ export default async function DashboardPage({
       supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
       supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
       supabase.from("signatures").select("id, anamnesis_id").eq("clinic_id", clinic.id),
-      supabase.from("conversations").select("*").eq("clinic_id", clinic.id).eq("status", "active").order("created_at", { ascending: false }),
+      supabase
+        .from("conversations")
+        .select("*")
+        .eq("clinic_id", clinic.id)
+        .in("status", ["active", "abandoned"])
+        .order("created_at", { ascending: false }),
     ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
   const conversations = (activeConversations as Conversation[]) ?? [];
+  const activeConversationCount = conversations.filter((c) => c.status === "active").length;
   const pendingCount = (totalCount ?? 0) - (signedCount ?? 0);
 
   function pageHref(p: number) {
@@ -87,7 +93,7 @@ export default async function DashboardPage({
           <div className={styles.statLabel}>Pendentes</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{conversations.length}</div>
+          <div className={styles.statValue}>{activeConversationCount}</div>
           <div className={styles.statLabel}>Em andamento</div>
         </div>
       </div>
@@ -101,6 +107,7 @@ export default async function DashboardPage({
             <thead>
               <tr>
                 <th>Paciente</th>
+                <th>Status</th>
                 <th>Progresso</th>
                 <th>Última resposta</th>
                 <th>Atividade</th>
@@ -115,6 +122,13 @@ export default async function DashboardPage({
                 return (
                   <tr key={c.id}>
                     <td>{c.patient_name}</td>
+                    <td>
+                      {c.status === "abandoned" ? (
+                        <span className={`${styles.statusDot} ${styles.statusDanger}`}>Cancelada</span>
+                      ) : (
+                        <span className={`${styles.statusDot} ${styles.statusWarn}`}>Aguardando</span>
+                      )}
+                    </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 140 }}>
                         <div
@@ -144,7 +158,7 @@ export default async function DashboardPage({
                       {new Date(c.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                     </td>
                     <td>
-                      <CancelConversationButton clinicId={clinic.id} conversationId={c.id} />
+                      <ConversationRowActions clinicId={clinic.id} conversationId={c.id} status={c.status} />
                     </td>
                   </tr>
                 );
