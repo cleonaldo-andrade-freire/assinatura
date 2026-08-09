@@ -92,9 +92,11 @@ export async function setInstanceWebhook(instanceName: string, webhookUrl: strin
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: key },
       body: JSON.stringify({
-        enabled: true,
-        url: webhookUrl,
-        events: ["MESSAGES_UPSERT"],
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          events: ["MESSAGES_UPSERT"],
+        },
       }),
     });
     if (!res.ok) {
