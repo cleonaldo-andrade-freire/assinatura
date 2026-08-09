@@ -18,7 +18,9 @@ export function ConversationRowActions({
 }) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
@@ -34,6 +36,21 @@ export function ConversationRowActions({
       router.refresh();
     } finally {
       setCancelLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/conversations/${conversationId}`, { method: "DELETE" });
+      if (!res.ok) {
+        push("Falha ao excluir. Tenta de novo.");
+        return;
+      }
+      setDeleteConfirmOpen(false);
+      router.refresh();
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -74,6 +91,16 @@ export function ConversationRowActions({
             Cancelar
           </button>
         )}
+        {status === "abandoned" && (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            className={`${styles.btn} ${styles.btnGhost}`}
+            style={{ padding: "6px 12px", fontSize: 13, color: "var(--danger)" }}
+          >
+            Excluir
+          </button>
+        )}
       </div>
 
       <ConfirmDialog
@@ -86,6 +113,17 @@ export function ConversationRowActions({
         loading={cancelLoading}
         onConfirm={handleCancel}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Excluir anamnese cancelada"
+        message="Isso apaga o registro de vez, incluindo as respostas que o paciente já tinha dado. Não dá pra desfazer."
+        confirmLabel="Excluir definitivamente"
+        cancelLabel="Voltar"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
