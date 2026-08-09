@@ -1,0 +1,173 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 32, 29, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+  animation: overlayIn 0.15s ease-out;
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), 0 20px 48px rgba(30, 43, 39, 0.18);
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+  animation: dialogIn 0.15s ease-out;
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dialogTitle {
+  margin: 0 0 8px;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dialogMessage {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dialogBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+
+.dialogBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dialogBtnGhost {
+  composes: dialogBtn;
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+
+.dialogBtnGhost:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.dialogBtnPrimary {
+  composes: dialogBtn;
+  background: var(--brand);
+  color: #fff;
+}
+
+.dialogBtnPrimary:hover:not(:disabled) {
+  background: var(--brand-deep);
+}
+
+.dialogBtnDanger {
+  composes: dialogBtn;
+  background: var(--danger);
+  color: #fff;
+}
+
+.dialogBtnDanger:hover:not(:disabled) {
+  background: #97302f;
+}
+
+.toastStack {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 360px;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow), 0 12px 28px rgba(30, 43, 39, 0.16);
+  font-size: 13.5px;
+  line-height: 1.4;
+  animation: toastIn 0.18s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toastError {
+  background: var(--danger-tint);
+  color: #7a2a2a;
+  border: 1px solid #e9c6c6;
+}
+
+.toastSuccess {
+  background: var(--brand-tint);
+  color: var(--brand-deep);
+  border: 1px solid #cfe3da;
+}
+
+.toastClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0;
+}
+
+.toastClose:hover {
+  opacity: 1;
+}

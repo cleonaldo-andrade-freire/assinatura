@@ -1,6 +1,6 @@
 # Anamnese SaaS — app
 
-Painel multi-clínica + API que substitui os webhooks do n8n para clínicas novas. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (EasyPanel).
+Painel multi-clínica + API que substitui os webhooks do n8n para clínicas novas. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (Vercel).
 
 ## Configurando o Supabase (uma vez)
 
@@ -49,5 +49,15 @@ A resposta traz um `token` — abra `http://localhost:3000/assinatura?token=<tok
 
 ## Duas formas de uma clínica funcionar
 
-1. **Motor de conversa próprio (padrão pra clínicas novas)**: a clínica cadastra os modelos de anamnese em `/dashboard/templates` e conecta o próprio WhatsApp sozinha em `/dashboard/whatsapp` (QR Code, self-service — usa `EVOLUTION_ADMIN_BASE_URL`/`EVOLUTION_ADMIN_API_KEY`). Sem Typebot.
-2. **Typebot (fluxo legado, só a instância da Dra. Ewerjane)**: uma instância do Typebot montada manualmente, com o bloco de Webhook final chamando `POST /api/clinics/{clinicId}/anamnesis` com o header `X-Api-Key`. Continua funcionando sem mudanças, mas não é o caminho recomendado pra clínicas novas.
+1. **Motor de conversa próprio (padrão, inclusive já em uso pela ER Odontologia)**: a clínica cadastra os modelos de anamnese em `/dashboard/templates` e conecta o próprio WhatsApp sozinha em `/dashboard/whatsapp` (QR Code, self-service — usa `EVOLUTION_ADMIN_BASE_URL`/`EVOLUTION_ADMIN_API_KEY`). Sem Typebot. Uma anamnese em andamento pode ser cancelada a qualquer momento na seção "Em andamento" do `/dashboard` (marca como `abandoned`, não apaga o histórico).
+2. **Typebot (fluxo legado)**: uma instância do Typebot montada manualmente, com o bloco de Webhook final chamando `POST /api/clinics/{clinicId}/anamnesis` com o header `X-Api-Key`. Continua funcionando pra qualquer clínica que ainda esteja configurada assim, mas não é o caminho recomendado pra clínicas novas.
+
+## Componentes de UI compartilhados (`src/components/ui/`)
+
+`ConfirmDialog` (modal de confirmação) e `ToastStack`/`useToasts` (mensagens de erro/sucesso) substituem os `confirm()`/`alert()` nativos do navegador em toda ação destrutiva do painel (cancelar assinatura, cancelar anamnese). Use esses componentes em vez de `confirm()`/`alert()` ao adicionar novas ações desse tipo.
+
+## Integração com a Evolution API — pontos não óbvios
+
+- `POST /webhook/set/{instance}` espera o payload **aninhado**: `{"webhook": {"enabled": true, "url": ..., "events": [...]}}`. Algumas versões da documentação mostram um formato achatado (`{"enabled": true, "url": ...}`) que retorna 400 nessa instância — ver `lib/evolutionAdmin.ts`.
+- `setInstanceWebhook` (que registra essa URL) só é chamado no momento de **conectar/escanear o QR** (`/api/clinics/[clinicId]/whatsapp/connect`). Trocar `NEXT_PUBLIC_APP_URL` depois de uma clínica já estar conectada **não** atualiza o webhook sozinho — é preciso reconectar o WhatsApp ou chamar `setInstanceWebhook` manualmente com a URL nova.
+- A rota `/api/webhooks/evolution/[instanceName]` loga (via `console.log`) cada caso em que ignora uma mensagem recebida (payload não reconhecido, clínica não encontrada, nenhuma conversa ativa pro telefone) — útil pra depurar pelos logs de produção quando uma resposta não avança a conversa.

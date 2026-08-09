@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { CancelConversationButton } from "@/components/CancelConversationButton";
 import type { Conversation } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -101,19 +102,53 @@ export default async function DashboardPage({
               <tr>
                 <th>Paciente</th>
                 <th>Progresso</th>
-                <th>Iniciada em</th>
+                <th>Última resposta</th>
+                <th>Atividade</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {conversations.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.patient_name}</td>
-                  <td>
-                    {c.current_index}/{c.questions.length} perguntas
-                  </td>
-                  <td>{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
-                </tr>
-              ))}
+              {conversations.map((c) => {
+                const total = c.questions.length;
+                const pct = total > 0 ? Math.round((c.current_index / total) * 100) : 0;
+                const lastAnswer = c.answers[c.answers.length - 1];
+                return (
+                  <tr key={c.id}>
+                    <td>{c.patient_name}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 140 }}>
+                        <div
+                          style={{
+                            flex: 1,
+                            height: 6,
+                            borderRadius: 999,
+                            background: "var(--surface-sunken)",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div style={{ width: `${pct}%`, height: "100%", background: "var(--brand)" }} />
+                        </div>
+                        <span style={{ fontSize: 12.5, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
+                          {c.current_index}/{total}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ maxWidth: 220, color: "var(--ink-soft)", fontSize: 13 }}>
+                      {lastAnswer ? (
+                        <span title={`${lastAnswer.question}: ${lastAnswer.answer}`}>{lastAnswer.answer}</span>
+                      ) : (
+                        "Sem resposta ainda"
+                      )}
+                    </td>
+                    <td style={{ color: "var(--ink-soft)", fontSize: 13 }}>
+                      {new Date(c.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                    </td>
+                    <td>
+                      <CancelConversationButton clinicId={clinic.id} conversationId={c.id} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

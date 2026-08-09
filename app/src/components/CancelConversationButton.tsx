@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import styles from "@/components/admin/admin.module.css";
+import styles from "@/styles/shell.module.css";
 
-export function CancelClinicButton({ clinicId, disabled }: { clinicId: string; disabled?: boolean }) {
+export function CancelConversationButton({ clinicId, conversationId }: { clinicId: string; conversationId: string }) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,9 +15,9 @@ export function CancelClinicButton({ clinicId, disabled }: { clinicId: string; d
   async function handleCancel() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/clinics/${clinicId}/cancel`, { method: "POST" });
+      const res = await fetch(`/api/clinics/${clinicId}/conversations/${conversationId}`, { method: "PATCH" });
       if (!res.ok) {
-        push("Falha ao cancelar a assinatura. Tenta de novo.");
+        push("Falha ao cancelar a anamnese. Tenta de novo.");
         return;
       }
       setConfirmOpen(false);
@@ -32,17 +32,17 @@ export function CancelClinicButton({ clinicId, disabled }: { clinicId: string; d
       <button
         type="button"
         onClick={() => setConfirmOpen(true)}
-        disabled={disabled}
-        className={`${styles.btn} ${styles.btnDanger}`}
+        className={`${styles.btn} ${styles.btnGhost}`}
+        style={{ padding: "6px 12px", fontSize: 13 }}
       >
-        Cancelar assinatura
+        Cancelar
       </button>
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Cancelar assinatura da clínica"
-        message="O acesso dessa clínica ao painel é bloqueado imediatamente. Essa ação pode ser revertida depois, reativando a assinatura."
-        confirmLabel="Cancelar assinatura"
+        title="Cancelar anamnese em andamento"
+        message="O paciente para de receber as próximas perguntas dessa anamnese. O histórico até aqui fica salvo, e você pode iniciar uma nova a qualquer momento."
+        confirmLabel="Cancelar anamnese"
         cancelLabel="Voltar"
         danger
         loading={loading}
