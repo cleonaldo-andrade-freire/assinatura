@@ -16,6 +16,11 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   const inbound = parseInboundMessage(payload);
 
   if (!inbound || inbound.fromMe || !inbound.text) {
+    console.log(
+      `[evolution-webhook] instance=${params.instanceName} ignorado: inbound=${
+        inbound ? JSON.stringify({ fromMe: inbound.fromMe, hasText: !!inbound.text }) : "não parseou o payload"
+      }`
+    );
     return NextResponse.json({ ok: true });
   }
 
@@ -27,6 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .eq("evolution_instance_name", params.instanceName)
     .maybeSingle();
   if (!clinic) {
+    console.log(`[evolution-webhook] instance=${params.instanceName} ignorado: nenhuma clínica com esse evolution_instance_name`);
     return NextResponse.json({ ok: true });
   }
 
@@ -42,8 +48,15 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
 
   if (!conversation) {
     // Nenhuma anamnese em andamento pra esse número — não é uma resposta que esperávamos.
+    console.log(
+      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: nenhuma conversa ativa para o telefone ${inbound.phone}`
+    );
     return NextResponse.json({ ok: true });
   }
+
+  console.log(
+    `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} conversation=${conversation.id} processando resposta`
+  );
 
   const typedConversation = conversation as Conversation;
   const result = advanceConversation(
