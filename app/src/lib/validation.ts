@@ -101,6 +101,29 @@ export function toE164BR(localFormatted: string): string {
   return d.startsWith("55") ? d : `55${d}`;
 }
 
+/**
+ * Números de celular brasileiros têm um "9" extra antes do número de 8 dígitos
+ * (ex.: 55 79 9 9861-6410), mas o WhatsApp/Baileys às vezes entrega o remoteJid
+ * sem esse dígito (55 79 9861-6410). Como o mesmo paciente pode chegar em qualquer
+ * uma das duas formas dependendo do evento, geramos as duas variantes possíveis
+ * pra comparar/buscar, em vez de depender de igualdade exata de string.
+ */
+export function brPhoneVariants(phoneWithDDI: string): string[] {
+  const d = phoneWithDDI.replace(/\D/g, "");
+  if (!d.startsWith("55") || d.length < 12) return [d];
+
+  const ddd = d.slice(2, 4);
+  const rest = d.slice(4);
+
+  if (rest.length === 9 && rest.startsWith("9")) {
+    return [d, `55${ddd}${rest.slice(1)}`];
+  }
+  if (rest.length === 8) {
+    return [d, `55${ddd}9${rest}`];
+  }
+  return [d];
+}
+
 /** Formato exato do uuid v4 (`gen_random_uuid()` no Postgres) usado pros tokens de anamnese. */
 const TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

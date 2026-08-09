@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseInboundMessage, sendText } from "@/lib/evolution";
 import { advanceConversation, formatQuestionPrompt } from "@/lib/conversationEngine";
 import { createAnamnesis } from "@/lib/anamnesis";
+import { brPhoneVariants } from "@/lib/validation";
 import type { Conversation, Question } from "@/lib/database.types";
 
 /**
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .from("conversations")
     .select("*")
     .eq("clinic_id", clinic.id)
-    .eq("patient_phone", inbound.phone)
+    .in("patient_phone", brPhoneVariants(inbound.phone))
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(1)

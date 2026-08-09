@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  brPhoneVariants,
   formatBRPhoneLocal,
   formatCNPJ,
   formatCPF,
@@ -124,5 +125,20 @@ describe("isValidToken", () => {
     expect(isValidToken("../../etc/passwd")).toBe(false);
     expect(isValidToken("not-a-uuid")).toBe(false);
     expect(isValidToken("")).toBe(false);
+  });
+});
+
+describe("brPhoneVariants", () => {
+  it("a partir do número com o 9º dígito, gera também a variante sem ele", () => {
+    expect(brPhoneVariants("5579998616410")).toEqual(["5579998616410", "557998616410"]);
+  });
+
+  it("a partir do número sem o 9º dígito, gera também a variante com ele", () => {
+    expect(brPhoneVariants("557998616410")).toEqual(["557998616410", "5579998616410"]);
+  });
+
+  it("não mexe em números fora do padrão 55 + DDD + 8 ou 9 dígitos", () => {
+    expect(brPhoneVariants("12345")).toEqual(["12345"]);
+    expect(brPhoneVariants("551199861641099")).toEqual(["551199861641099"]);
   });
 });
