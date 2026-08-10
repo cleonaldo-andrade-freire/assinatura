@@ -115,6 +115,7 @@ export interface PlanRecord {
   name: string;
   monthly_price: number;
   monthly_limit: number;
+  overage_price: number;
   features: string[];
   display_order: number;
   active: boolean;

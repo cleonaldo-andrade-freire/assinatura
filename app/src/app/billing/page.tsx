@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentClinic } from "@/lib/auth";
-import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, OVERAGE_PRICE, type AsaasPayment } from "@/lib/asaas";
+import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { countMonthlyAnamneses, countTotalAnamneses } from "@/lib/usage";
@@ -138,8 +138,8 @@ export default async function BillingPage() {
           <div className={styles.panelBody}>
             <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: "0 0 4px" }}>
               Você já passou {overageCount} anamnese{overageCount === 1 ? "" : "s"} do limite do plano
-              ({limit}/mês) — R$ {OVERAGE_PRICE.toFixed(2).replace(".", ",")} por anamnese extra, somado direto na
-              sua próxima fatura (não gera cobrança separada).
+              ({limit}/mês) — R$ {(currentPlan?.overage_price ?? 0).toFixed(2).replace(".", ",")} por anamnese extra,
+              somado direto na sua próxima fatura (não gera cobrança separada).
             </p>
             {charges.length > 0 && (
               <p style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, margin: "8px 0 0" }}>

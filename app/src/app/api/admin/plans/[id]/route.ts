@@ -7,6 +7,7 @@ const bodySchema = z.object({
   name: z.string().min(1).optional(),
   monthly_price: z.number().positive().optional(),
   monthly_limit: z.number().int().positive().optional(),
+  overage_price: z.number().positive().optional(),
   features: z.array(z.string()).optional(),
   display_order: z.number().int().optional(),
   featured: z.boolean().optional(),

@@ -1,5 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { OVERAGE_PRICE, createAsaasCharge, getPendingInvoice, updateAsaasPaymentValue } from "@/lib/asaas";
+import { createAsaasCharge, getPendingInvoice, updateAsaasPaymentValue } from "@/lib/asaas";
 import { effectivePlanValue, getPlanById } from "@/lib/plans";
 import type { Clinic, PlanRecord } from "@/lib/database.types";
 
@@ -60,7 +60,7 @@ export async function chargeOverageIfNeeded(
   const units = overageUnits(used, plan);
   if (units <= 0) return;
 
-  const overageTotal = Math.round(units * OVERAGE_PRICE * 100) / 100;
+  const overageTotal = Math.round(units * plan.overage_price * 100) / 100;
   const planValue = effectivePlanValue(clinic, plan, clinic.billing_cycle);
 
   try {
@@ -76,7 +76,7 @@ export async function chargeOverageIfNeeded(
         clinic_id: clinic.id,
         anamnesis_id: anamnesisId,
         asaas_payment_id: pending.id,
-        amount: OVERAGE_PRICE,
+        amount: plan.overage_price,
       });
       return;
     }
@@ -84,14 +84,14 @@ export async function chargeOverageIfNeeded(
     // Plano B: sem fatura pendente pra atualizar — cobrança avulsa isolada.
     const charge = await createAsaasCharge({
       customerId: clinic.asaas_customer_id,
-      value: OVERAGE_PRICE,
+      value: plan.overage_price,
       description: `Anamnese excedente do plano — ${clinic.name}`,
     });
     await supabase.from("usage_charges").insert({
       clinic_id: clinic.id,
       anamnesis_id: anamnesisId,
       asaas_payment_id: charge.id,
-      amount: OVERAGE_PRICE,
+      amount: plan.overage_price,
     });
   } catch (err) {
     console.error("Falha ao cobrar anamnese excedente:", err);

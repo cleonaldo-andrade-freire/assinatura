@@ -1,9 +1,6 @@
 import type { BillingCycle, PlanRecord } from "@/lib/database.types";
 import { planValueFor } from "@/lib/plans";
 
-/** Valor cobrado por anamnese além do limite do plano, igual pra todos os planos. */
-export const OVERAGE_PRICE = 1.9;
-
 function baseUrl(): string {
   return process.env.ASAAS_BASE_URL || "https://sandbox.asaas.com/api/v3";
 }

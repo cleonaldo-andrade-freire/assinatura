@@ -13,6 +13,7 @@ export function PlanForm({ plan }: { plan?: PlanRecord }) {
   const [name, setName] = useState(plan?.name ?? "");
   const [monthlyPrice, setMonthlyPrice] = useState(plan ? String(plan.monthly_price) : "");
   const [monthlyLimit, setMonthlyLimit] = useState(plan ? String(plan.monthly_limit) : "");
+  const [overagePrice, setOveragePrice] = useState(plan ? String(plan.overage_price) : "");
   const [features, setFeatures] = useState(plan?.features.join("\n") ?? "");
   const [displayOrder, setDisplayOrder] = useState(plan ? String(plan.display_order) : "0");
   const [featured, setFeatured] = useState(plan?.featured ?? false);
@@ -20,6 +21,14 @@ export function PlanForm({ plan }: { plan?: PlanRecord }) {
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function calcSuggestedOveragePrice() {
+    const price = Number(monthlyPrice.replace(",", "."));
+    const limit = Number(monthlyLimit);
+    if (!price || !limit) return;
+    const suggested = Math.round((price / limit) * 1.15 * 100) / 100;
+    setOveragePrice(String(suggested));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +39,7 @@ export function PlanForm({ plan }: { plan?: PlanRecord }) {
         name,
         monthly_price: Number(monthlyPrice.replace(",", ".")),
         monthly_limit: Number(monthlyLimit),
+        overage_price: Number(overagePrice.replace(",", ".")),
         features: features
           .split("\n")
           .map((f) => f.trim())
@@ -130,6 +140,35 @@ export function PlanForm({ plan }: { plan?: PlanRecord }) {
                 required
               />
             </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="overage_price">
+              Preço da anamnese excedente (R$)
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                id="overage_price"
+                type="text"
+                inputMode="decimal"
+                className={styles.input}
+                value={overagePrice}
+                onChange={(e) => setOveragePrice(e.target.value)}
+                placeholder="2,29"
+                required
+              />
+              <button
+                type="button"
+                onClick={calcSuggestedOveragePrice}
+                className={`${styles.btn} ${styles.btnGhost}`}
+                style={{ flex: "none" }}
+              >
+                Calcular
+              </button>
+            </div>
+            <span className={styles.hint}>
+              &quot;Calcular&quot; sugere (preço mensal ÷ limite) × 1,15 — pode ajustar manualmente depois.
+            </span>
           </div>
 
           <div className={styles.field}>

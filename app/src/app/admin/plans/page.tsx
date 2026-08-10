@@ -33,6 +33,7 @@ export default async function AdminPlansPage() {
                 <th>Nome</th>
                 <th>Preço/mês</th>
                 <th>Limite</th>
+                <th>Excedente</th>
                 <th>Ordem</th>
                 <th>Status</th>
                 <th></th>
@@ -49,6 +50,7 @@ export default async function AdminPlansPage() {
                   </td>
                   <td>R$ {p.monthly_price.toFixed(2).replace(".", ",")}</td>
                   <td>{p.monthly_limit} anamneses</td>
+                  <td>R$ {p.overage_price.toFixed(2).replace(".", ",")}</td>
                   <td>{p.display_order}</td>
                   <td>
                     {p.active ? (
