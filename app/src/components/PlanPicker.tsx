@@ -14,10 +14,12 @@ export function PlanPicker({
   clinicId,
   currentPlan,
   pendingPlan,
+  isTrialing,
 }: {
   clinicId: string;
   currentPlan: Plan;
   pendingPlan: Plan | null;
+  isTrialing: boolean;
 }) {
   const router = useRouter();
   const [target, setTarget] = useState<Plan | null>(null);
@@ -38,8 +40,10 @@ export function PlanPicker({
         push(data.message || "Falha ao trocar de plano. Tenta de novo.");
         return;
       }
-      if (plan === currentPlan) {
+      if (plan === currentPlan && !isTrialing) {
         push("Troca de plano cancelada.", "success");
+      } else if (isTrialing) {
+        push(`Plano ${PLAN_LABEL[plan]} ativado — falta só confirmar o pagamento da primeira fatura.`, "success");
       } else {
         push(`Troca pra ${PLAN_LABEL[plan]} agendada pra próxima cobrança.`, "success");
       }
@@ -125,10 +129,12 @@ export function PlanPicker({
         title={target ? `Mudar para o plano ${PLAN_LABEL[target]}` : ""}
         message={
           target
-            ? `${targetIsUpgrade ? "O valor novo" : "O valor menor"} só entra na sua próxima cobrança — nada muda nem é cobrado agora. O novo limite de anamneses (${PLAN_MONTHLY_LIMIT[target]}/mês) também só passa a valer nessa data.`
+            ? isTrialing
+              ? `Isso já gera a primeira fatura do plano ${PLAN_LABEL[target]}, com vencimento hoje. Assim que o pagamento for confirmado, o limite de ${PLAN_MONTHLY_LIMIT[target]} anamneses/mês passa a valer.`
+              : `${targetIsUpgrade ? "O valor novo" : "O valor menor"} só entra na sua próxima cobrança — nada muda nem é cobrado agora. O novo limite de anamneses (${PLAN_MONTHLY_LIMIT[target]}/mês) também só passa a valer nessa data.`
             : ""
         }
-        confirmLabel="Agendar troca"
+        confirmLabel={isTrialing ? "Confirmar plano" : "Agendar troca"}
         cancelLabel="Cancelar"
         loading={loading}
         onConfirm={() => target && submitPlan(target)}

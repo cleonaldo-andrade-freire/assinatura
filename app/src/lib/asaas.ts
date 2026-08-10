@@ -99,20 +99,27 @@ export interface AsaasSubscription {
   nextDueDate: string;
 }
 
-/** Dias de trial gratuito antes da primeira cobrança real. */
-export const TRIAL_DAYS = 14;
-
-function addDays(date: Date, days: number): string {
+export function addDays(date: Date, days: number): string {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10); // YYYY-MM-DD, formato esperado pelo Asaas
 }
 
+/**
+ * O trial não tem mais prazo em dias — só termina quando a clínica usa as
+ * `TRIAL_ANAMNESIS_LIMIT` anamneses grátis (ver lib/billing.ts) ou escolhe um
+ * plano antes disso. Por isso a assinatura no Asaas só é criada nesse momento
+ * (`nextDueDate` = hoje por padrão, cobrança imediata), não no cadastro da
+ * clínica — sem `nextDueDate` não teria como criar a assinatura (campo
+ * obrigatório do Asaas), mas nada agenda uma cobrança automática enquanto a
+ * clínica ainda não escolheu nada.
+ */
 export async function createAsaasSubscription(input: {
   customerId: string;
   plan: Plan;
   cycle: BillingCycle;
   description: string;
+  nextDueDate?: string;
 }): Promise<AsaasSubscription> {
   return asaasFetch<AsaasSubscription>("/subscriptions", {
     method: "POST",
@@ -122,9 +129,7 @@ export async function createAsaasSubscription(input: {
       cycle: input.cycle === "yearly" ? "YEARLY" : "MONTHLY",
       value: planValueFor(input.plan, input.cycle),
       description: input.description,
-      // Primeira cobrança só depois do trial — implementa o período de graça
-      // usando o próprio agendamento do Asaas, sem precisar de job/cron nosso.
-      nextDueDate: addDays(new Date(), TRIAL_DAYS),
+      nextDueDate: input.nextDueDate ?? addDays(new Date(), 0),
     }),
   });
 }

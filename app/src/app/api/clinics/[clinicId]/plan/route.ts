@@ -2,19 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { updateAsaasSubscription } from "@/lib/asaas";
+import { addDays, createAsaasSubscription, planValueFor, updateAsaasSubscription, updateAsaasSubscriptionFields } from "@/lib/asaas";
 
 const bodySchema = z.object({
   plan: z.enum(["starter", "basic", "standard", "plus", "pro", "enterprise"]),
 });
 
 /**
- * Self-service: a própria clínica troca de plano pelo /billing. O Asaas já passa
- * a cobrar o valor novo a partir da próxima fatura, mas o plano (e o limite de
- * uso) só muda de fato no nosso sistema quando essa fatura é confirmada —
- * guardamos como "pending_plan" até lá (ver /api/webhooks/asaas, que finaliza
- * a troca no evento de pagamento confirmado). Pedir o mesmo plano que já está
- * ativo cancela uma troca pendente, revertendo o valor no Asaas.
+ * Self-service: a própria clínica troca de plano pelo /billing.
+ *
+ * Em trial (sem cobrança agendada até aqui — ver POST /api/admin/clinics),
+ * escolher um plano vale NA HORA: cria a assinatura no Asaas se ainda não
+ * existir (ou atualiza valor + data de vencimento pra hoje, se já existir de
+ * uma clínica antiga), e já grava o `plan` novo direto — sem prorateio a
+ * calcular, porque não tinha assinatura rodando antes. O acesso continua
+ * dependendo do pagamento confirmar (`subscription_status` só vira "active"
+ * no webhook do Asaas), então o limite de anamneses do trial segue valendo
+ * até lá.
+ *
+ * Fora do trial, o Asaas já cobra o valor novo a partir da próxima fatura,
+ * mas o `plan` no nosso banco só muda de fato quando essa fatura é
+ * confirmada — fica guardado em `pending_plan` até lá (ver
+ * /api/webhooks/asaas). Pedir o mesmo plano que já está ativo cancela uma
+ * troca pendente, revertendo o valor no Asaas.
  */
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string } }) {
   const clinic = await getCurrentClinic();
@@ -28,6 +38,45 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   }
   const newPlan = parsed.data.plan;
   const supabase = createSupabaseAdminClient();
+
+  if (clinic.subscription_status === "trialing") {
+    if (!clinic.asaas_customer_id) {
+      return NextResponse.json({ error: "asaas_customer_missing" }, { status: 400 });
+    }
+
+    try {
+      let subscriptionId = clinic.asaas_subscription_id;
+      if (!subscriptionId) {
+        const subscription = await createAsaasSubscription({
+          customerId: clinic.asaas_customer_id,
+          plan: newPlan,
+          cycle: clinic.billing_cycle,
+          description: `Assinatura ${newPlan} — ${clinic.name}`,
+        });
+        subscriptionId = subscription.id;
+      } else {
+        await updateAsaasSubscriptionFields({
+          subscriptionId,
+          value: planValueFor(newPlan, clinic.billing_cycle),
+          nextDueDate: addDays(new Date(), 0),
+        });
+      }
+
+      const { error } = await supabase
+        .from("clinics")
+        .update({ plan: newPlan, asaas_subscription_id: subscriptionId })
+        .eq("id", clinic.id);
+      if (error) {
+        return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, plan: newPlan, immediate: true });
+    } catch (err) {
+      return NextResponse.json(
+        { error: "asaas_error", message: err instanceof Error ? err.message : String(err) },
+        { status: 502 }
+      );
+    }
+  }
 
   if (newPlan === clinic.plan) {
     if (!clinic.pending_plan) {

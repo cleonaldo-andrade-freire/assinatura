@@ -16,7 +16,7 @@ export function ClinicBillingAdjustments({
   clinic,
 }: {
   clinicId: string;
-  clinic: Pick<Clinic, "subscription_status" | "trial_ends_at" | "plan" | "custom_monthly_price">;
+  clinic: Pick<Clinic, "subscription_status" | "trial_ends_at" | "plan" | "custom_monthly_price" | "asaas_subscription_id">;
 }) {
   const router = useRouter();
   const [trialDate, setTrialDate] = useState(toDateInputValue(clinic.trial_ends_at));
@@ -82,8 +82,13 @@ export function ClinicBillingAdjustments({
         />
         {clinic.subscription_status !== "trialing" ? (
           <span className={styles.hint}>Só dá pra estender enquanto a clínica ainda está em trial.</span>
-        ) : (
+        ) : clinic.asaas_subscription_id ? (
           <span className={styles.hint}>Também empurra a próxima cobrança no Asaas pra essa data.</span>
+        ) : (
+          <span className={styles.hint}>
+            O trial hoje só termina pelo limite de anamneses — essa data é só uma referência (não há assinatura
+            criada no Asaas ainda pra sincronizar).
+          </span>
         )}
         <button
           type="submit"

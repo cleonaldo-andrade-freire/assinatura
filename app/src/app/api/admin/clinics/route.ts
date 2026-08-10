@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createAsaasCustomer, createAsaasSubscription } from "@/lib/asaas";
+import { createAsaasCustomer } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isAdminRequestAuthorized } from "@/lib/adminSession";
 
@@ -18,9 +18,12 @@ const bodySchema = z.object({
 });
 
 /**
- * Cria uma clínica nova: usuário no Supabase Auth + registro local + cliente e
- * assinatura no Asaas. Aceita tanto o header X-Admin-Key (uso via curl/script)
- * quanto a sessão de admin do navegador (formulário em /admin/clinics/new).
+ * Cria uma clínica nova: usuário no Supabase Auth + registro local + cliente
+ * no Asaas (sem assinatura ainda — o trial não tem prazo, só o limite de
+ * TRIAL_ANAMNESIS_LIMIT anamneses; a assinatura só é criada quando a clínica
+ * escolhe um plano em /billing, com cobrança imediata). Aceita tanto o header
+ * X-Admin-Key (uso via curl/script) quanto a sessão de admin do navegador
+ * (formulário em /admin/clinics/new).
  */
 export async function POST(req: NextRequest) {
   const authorized = await isAdminRequestAuthorized(req.headers.get("x-admin-key"));
@@ -42,7 +45,6 @@ export async function POST(req: NextRequest) {
   }
 
   let asaasCustomerId: string | undefined;
-  let asaasSubscriptionId: string | undefined;
   try {
     const customer = await createAsaasCustomer({
       name: input.clinicName,
@@ -50,14 +52,6 @@ export async function POST(req: NextRequest) {
       email: input.ownerEmail,
     });
     asaasCustomerId = customer.id;
-
-    const subscription = await createAsaasSubscription({
-      customerId: customer.id,
-      plan: input.plan,
-      cycle: input.billingCycle,
-      description: `Assinatura ${input.plan} — ${input.clinicName}`,
-    });
-    asaasSubscriptionId = subscription.id;
   } catch (err) {
     return NextResponse.json(
       { error: "asaas_error", message: err instanceof Error ? err.message : String(err) },
@@ -77,9 +71,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
   const { data: clinic, error: clinicError } = await supabase
     .from("clinics")
     .insert({
@@ -88,9 +79,7 @@ export async function POST(req: NextRequest) {
       plan: input.plan,
       billing_cycle: input.billingCycle,
       asaas_customer_id: asaasCustomerId,
-      asaas_subscription_id: asaasSubscriptionId,
       subscription_status: "trialing",
-      trial_ends_at: trialEndsAt.toISOString(),
     })
     .select("id, name, slug, api_key, trial_ends_at")
     .single();

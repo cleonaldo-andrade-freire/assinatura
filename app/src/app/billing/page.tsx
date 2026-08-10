@@ -189,7 +189,7 @@ export default async function BillingPage() {
           <p className={styles.panelHeaderTitle}>Trocar de plano</p>
         </div>
         <div className={styles.panelBody}>
-          <PlanPicker clinicId={clinic.id} currentPlan={clinic.plan} pendingPlan={clinic.pending_plan} />
+          <PlanPicker clinicId={clinic.id} currentPlan={clinic.plan} pendingPlan={clinic.pending_plan} isTrialing={isTrialing} />
         </div>
       </div>
     </ClinicShell>
