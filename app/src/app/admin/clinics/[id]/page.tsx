@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { asaasCustomerDashboardUrl, listPayments, PAYMENT_STATUS_LABEL, PLAN_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CancelClinicButton } from "@/components/CancelClinicButton";
+import { ClinicBillingAdjustments } from "@/components/ClinicBillingAdjustments";
 import { LogoUpload } from "@/components/LogoUpload";
 import { WhatsappConfigForm } from "@/components/WhatsappConfigForm";
 import { formatBRDate } from "@/lib/date";
@@ -130,6 +131,15 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
               <span className={styles.defValueMono}>{typedClinic.api_key}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Ajustes de cobrança</p>
+        </div>
+        <div className={styles.panelBody}>
+          <ClinicBillingAdjustments clinicId={typedClinic.id} clinic={typedClinic} />
         </div>
       </div>
 

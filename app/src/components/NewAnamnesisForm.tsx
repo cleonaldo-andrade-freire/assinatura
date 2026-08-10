@@ -12,12 +12,14 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
   const [patientPhone, setPatientPhone] = useState("");
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [billingBlocked, setBillingBlocked] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setBillingBlocked(false);
     setSending(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/conversations`, {
@@ -31,7 +33,17 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || data.error || "Falha ao iniciar a anamnese.");
+        if (data.error === "trial_limit_reached" || data.error === "subscription_inactive") {
+          setBillingBlocked(true);
+          setError(
+            data.message ||
+              (data.error === "trial_limit_reached"
+                ? "O período de teste cobre até 3 anamneses."
+                : "Assinatura inativa.")
+          );
+        } else {
+          setError(data.message || data.error || "Falha ao iniciar a anamnese.");
+        }
         return;
       }
       setSent(true);
@@ -71,7 +83,7 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
               marginBottom: 18,
             }}
           >
-            {error}
+            {error} {billingBlocked && <a href="/billing">Ver planos e assinar →</a>}
           </div>
         )}
         {sent && (

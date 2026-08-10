@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canAcceptAnamnesis } from "@/lib/billing";
 import { safeEqual } from "@/lib/safeEqual";
 import { createAnamnesis } from "@/lib/anamnesis";
-import { chargeOverageIfNeeded } from "@/lib/usage";
+import { chargeOverageIfNeeded, countTotalAnamneses } from "@/lib/usage";
 
 const answerSchema = z.object({
   question: z.string(),
@@ -37,8 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  if (!canAcceptAnamnesis(clinic)) {
-    return NextResponse.json({ error: "subscription_inactive" }, { status: 402 });
+  const trialUsed = clinic.subscription_status === "trialing" ? await countTotalAnamneses(supabase, clinic.id) : 0;
+  if (!canAcceptAnamnesis(clinic, trialUsed)) {
+    const error = clinic.subscription_status === "trialing" ? "trial_limit_reached" : "subscription_inactive";
+    return NextResponse.json({ error }, { status: 402 });
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));

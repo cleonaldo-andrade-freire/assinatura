@@ -38,6 +38,16 @@ export function planValueFor(plan: Plan, cycle: BillingCycle): number {
   return cycle === "yearly" ? monthly * 10 : monthly;
 }
 
+/** Preço mensal de uma clínica específica — respeita um desconto/preço customizado (admin), senão cai no preço padrão do plano. */
+export function effectiveMonthlyPrice(clinic: { plan: Plan; custom_monthly_price: number | null }): number {
+  return clinic.custom_monthly_price ?? PLAN_MONTHLY_PRICE[clinic.plan];
+}
+
+export function effectivePlanValue(clinic: { plan: Plan; custom_monthly_price: number | null }, cycle: BillingCycle): number {
+  const monthly = effectiveMonthlyPrice(clinic);
+  return cycle === "yearly" ? monthly * 10 : monthly;
+}
+
 function baseUrl(): string {
   return process.env.ASAAS_BASE_URL || "https://sandbox.asaas.com/api/v3";
 }
@@ -190,18 +200,38 @@ export async function cancelAsaasSubscription(subscriptionId: string): Promise<v
   await asaasFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
 }
 
+/**
+ * Atualiza campos soltos de uma assinatura existente (valor, ciclo, próxima data
+ * de vencimento) — base pra troca de plano self-service, desconto e extensão de
+ * trial do admin. `nextDueDate` no formato YYYY-MM-DD.
+ */
+export async function updateAsaasSubscriptionFields(input: {
+  subscriptionId: string;
+  value?: number;
+  cycle?: BillingCycle;
+  nextDueDate?: string;
+}): Promise<AsaasSubscription> {
+  const body: Record<string, unknown> = {};
+  if (input.value !== undefined) body.value = input.value;
+  if (input.cycle) body.cycle = input.cycle === "yearly" ? "YEARLY" : "MONTHLY";
+  if (input.nextDueDate) body.nextDueDate = input.nextDueDate;
+
+  return asaasFetch<AsaasSubscription>(`/subscriptions/${encodeURIComponent(input.subscriptionId)}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 /** Muda o valor (e opcionalmente o ciclo) de uma assinatura existente — vale a partir da próxima cobrança, sem prorateio. */
 export async function updateAsaasSubscription(input: {
   subscriptionId: string;
   plan: Plan;
   cycle: BillingCycle;
 }): Promise<AsaasSubscription> {
-  return asaasFetch<AsaasSubscription>(`/subscriptions/${encodeURIComponent(input.subscriptionId)}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      cycle: input.cycle === "yearly" ? "YEARLY" : "MONTHLY",
-      value: planValueFor(input.plan, input.cycle),
-    }),
+  return updateAsaasSubscriptionFields({
+    subscriptionId: input.subscriptionId,
+    value: planValueFor(input.plan, input.cycle),
+    cycle: input.cycle,
   });
 }
 

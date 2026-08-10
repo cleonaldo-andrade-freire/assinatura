@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentClinic } from "@/lib/auth";
 import { canAcceptAnamnesis } from "@/lib/billing";
+import { countTotalAnamneses } from "@/lib/usage";
 import { sendText } from "@/lib/evolution";
 import { formatQuestionPrompt } from "@/lib/conversationEngine";
 import type { Question } from "@/lib/database.types";
@@ -26,8 +27,19 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  if (!canAcceptAnamnesis(clinic)) {
-    return NextResponse.json({ error: "subscription_inactive" }, { status: 402 });
+  const trialUsed = clinic.subscription_status === "trialing" ? await countTotalAnamneses(sessionClient, clinic.id) : 0;
+  if (!canAcceptAnamnesis(clinic, trialUsed)) {
+    const error = clinic.subscription_status === "trialing" ? "trial_limit_reached" : "subscription_inactive";
+    return NextResponse.json(
+      {
+        error,
+        message:
+          error === "trial_limit_reached"
+            ? `O período de teste cobre até 3 anamneses. Assine um plano em /billing pra continuar.`
+            : "Assinatura inativa.",
+      },
+      { status: 402 }
+    );
   }
 
   if (!clinic.evolution_base_url || !clinic.evolution_instance_name || !clinic.evolution_api_key) {

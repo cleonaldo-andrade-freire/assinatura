@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAcceptAnamnesis, GRACE_PERIOD_DAYS } from "./billing";
+import { canAcceptAnamnesis, GRACE_PERIOD_DAYS, TRIAL_ANAMNESIS_LIMIT } from "./billing";
 
 function daysAgo(days: number): string {
   const d = new Date();
@@ -8,8 +8,20 @@ function daysAgo(days: number): string {
 }
 
 describe("canAcceptAnamnesis", () => {
-  it("permite quando a assinatura está em trial", () => {
+  it("permite quando a assinatura está em trial e ainda não bateu o limite", () => {
     expect(canAcceptAnamnesis({ subscription_status: "trialing", past_due_since: null })).toBe(true);
+    expect(canAcceptAnamnesis({ subscription_status: "trialing", past_due_since: null }, TRIAL_ANAMNESIS_LIMIT - 1)).toBe(
+      true
+    );
+  });
+
+  it("bloqueia o trial ao atingir o limite de anamneses", () => {
+    expect(canAcceptAnamnesis({ subscription_status: "trialing", past_due_since: null }, TRIAL_ANAMNESIS_LIMIT)).toBe(
+      false
+    );
+    expect(
+      canAcceptAnamnesis({ subscription_status: "trialing", past_due_since: null }, TRIAL_ANAMNESIS_LIMIT + 2)
+    ).toBe(false);
   });
 
   it("permite quando a assinatura está ativa", () => {

@@ -22,6 +22,14 @@ const BENEFITS = [
     title: "Trilha de auditoria automática",
     text: "Hash do PDF, IP, data/hora e dispositivo registrados a cada assinatura, sem esforço extra.",
   },
+  {
+    title: "PDFs seguros na nuvem",
+    text: "Cada anamnese assinada fica guardada com segurança, disponível a qualquer momento, em qualquer dispositivo.",
+  },
+  {
+    title: "Acesse de onde estiver",
+    text: "Painel funciona tanto no computador da recepção quanto no celular — inclusive instalado como app.",
+  },
 ];
 
 const PLANS = [
@@ -145,7 +153,10 @@ export default async function HomePage() {
       <section className={styles.section} id="planos">
         <div className={styles.container}>
           <h2 className={styles.sectionTitle}>Planos</h2>
-          <p className={styles.sectionSubtitle}>Sem contrato de fidelidade. Cancele quando quiser.</p>
+          <p className={styles.sectionSubtitle}>
+            Teste grátis com até 3 anamneses, sem cartão de crédito. Sem contrato de fidelidade — cancele quando
+            quiser.
+          </p>
           <div className={styles.pricingGrid}>
             {PLANS.map((p) => (
               <div key={p.name} className={p.featured ? `${styles.plan} ${styles.planFeatured}` : styles.plan}>

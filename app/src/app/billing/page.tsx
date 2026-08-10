@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
 import { getCurrentClinic } from "@/lib/auth";
 import {
+  effectiveMonthlyPrice,
   getPendingInvoice,
   listPayments,
   PAYMENT_STATUS_LABEL,
   PLAN_LABEL,
   PLAN_MONTHLY_LIMIT,
-  PLAN_MONTHLY_PRICE,
   OVERAGE_PRICE,
   type AsaasPayment,
 } from "@/lib/asaas";
-import { countMonthlyAnamneses } from "@/lib/usage";
+import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
+import { countMonthlyAnamneses, countTotalAnamneses } from "@/lib/usage";
 import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
@@ -59,8 +60,11 @@ export default async function BillingPage() {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [usedThisMonth, { data: monthlyCharges }] = await Promise.all([
+  const isTrialing = clinic.subscription_status === "trialing";
+
+  const [usedThisMonth, usedInTrial, { data: monthlyCharges }] = await Promise.all([
     countMonthlyAnamneses(supabase, clinic.id),
+    isTrialing ? countTotalAnamneses(supabase, clinic.id) : Promise.resolve(0),
     supabase
       .from("usage_charges")
       .select("*")
@@ -69,10 +73,12 @@ export default async function BillingPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  const limit = PLAN_MONTHLY_LIMIT[clinic.plan];
-  const overageCount = Math.max(0, usedThisMonth - limit);
+  const limit = isTrialing ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[clinic.plan];
+  const used = isTrialing ? usedInTrial : usedThisMonth;
+  const overageCount = isTrialing ? 0 : Math.max(0, used - limit);
   const charges = (monthlyCharges as UsageCharge[]) ?? [];
   const chargedTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
+  const monthlyPrice = effectiveMonthlyPrice(clinic);
 
   return (
     <ClinicShell clinicName={clinic.name} clinicLogoUrl={clinic.logo_url} title="Assinatura">
@@ -83,10 +89,13 @@ export default async function BillingPage() {
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>
-            R$ {PLAN_MONTHLY_PRICE[clinic.plan].toFixed(2).replace(".", ",")}
+            R$ {monthlyPrice.toFixed(2).replace(".", ",")}
             {clinic.billing_cycle === "yearly" ? "×10" : ""}
           </div>
           <div className={styles.statLabel}>{clinic.billing_cycle === "yearly" ? "Por ano" : "Por mês"}</div>
+          {clinic.custom_monthly_price != null && (
+            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--brand)", fontWeight: 600 }}>Preço especial</div>
+          )}
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>
@@ -98,9 +107,9 @@ export default async function BillingPage() {
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>
-            {usedThisMonth}/{limit}
+            {used}/{limit}
           </div>
-          <div className={styles.statLabel}>Anamneses usadas este mês</div>
+          <div className={styles.statLabel}>{isTrialing ? "Anamneses do período de teste" : "Anamneses usadas este mês"}</div>
         </div>
       </div>
 

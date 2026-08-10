@@ -4,8 +4,8 @@ import {
   PLAN_MONTHLY_LIMIT,
   OVERAGE_PRICE,
   createAsaasCharge,
+  effectivePlanValue,
   getPendingInvoice,
-  planValueFor,
   updateAsaasPaymentValue,
 } from "@/lib/asaas";
 import type { Clinic } from "@/lib/database.types";
@@ -29,6 +29,12 @@ export async function countMonthlyAnamneses(supabase: SupabaseClient, clinicId: 
   return count ?? 0;
 }
 
+/** Total de anamneses desde sempre (não só do mês) — usado pro limite do trial, que é vitalício, não mensal. */
+export async function countTotalAnamneses(supabase: SupabaseClient, clinicId: string): Promise<number> {
+  const { count } = await supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinicId);
+  return count ?? 0;
+}
+
 /** Quantas unidades de uma contagem já ultrapassam o limite do plano (0 se dentro do limite). */
 export function overageUnits(usedThisMonth: number, plan: Clinic["plan"]): number {
   return Math.max(0, usedThisMonth - PLAN_MONTHLY_LIMIT[plan]);
@@ -46,7 +52,10 @@ export function overageUnits(usedThisMonth: number, plan: Clinic["plan"]): numbe
  */
 export async function chargeOverageIfNeeded(
   supabase: SupabaseClient,
-  clinic: Pick<Clinic, "id" | "name" | "plan" | "billing_cycle" | "asaas_customer_id" | "asaas_subscription_id">,
+  clinic: Pick<
+    Clinic,
+    "id" | "name" | "plan" | "billing_cycle" | "custom_monthly_price" | "asaas_customer_id" | "asaas_subscription_id"
+  >,
   anamnesisId: string
 ): Promise<void> {
   if (!clinic.asaas_customer_id) return;
@@ -56,7 +65,7 @@ export async function chargeOverageIfNeeded(
   if (units <= 0) return;
 
   const overageTotal = Math.round(units * OVERAGE_PRICE * 100) / 100;
-  const planValue = planValueFor(clinic.plan, clinic.billing_cycle);
+  const planValue = effectivePlanValue(clinic, clinic.billing_cycle);
 
   try {
     const pending = clinic.asaas_subscription_id ? await getPendingInvoice(clinic.asaas_subscription_id) : null;
