@@ -10,7 +10,7 @@ const bodySchema = z.object({
     .string()
     .min(2)
     .regex(/^[a-z0-9-]+$/, "use apenas letras minúsculas, números e hífen"),
-  plan: z.enum(["starter", "pro"]),
+  plan: z.enum(["starter", "basic", "standard", "plus", "pro", "enterprise"]),
   billingCycle: z.enum(["monthly", "yearly"]),
   ownerEmail: z.string().email(),
   ownerPassword: z.string().min(8),

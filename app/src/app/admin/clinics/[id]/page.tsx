@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { asaasCustomerDashboardUrl, listPayments, type AsaasPayment } from "@/lib/asaas";
+import { asaasCustomerDashboardUrl, listPayments, PLAN_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CancelClinicButton } from "@/components/CancelClinicButton";
 import { LogoUpload } from "@/components/LogoUpload";
@@ -76,7 +76,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
           <div className={styles.statLabel}>Assinadas</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{typedClinic.plan === "pro" ? "Pro" : "Starter"}</div>
+          <div className={styles.statValue}>{PLAN_LABEL[typedClinic.plan]}</div>
           <div className={styles.statLabel}>
             Plano ({typedClinic.billing_cycle === "yearly" ? "anual" : "mensal"})
           </div>

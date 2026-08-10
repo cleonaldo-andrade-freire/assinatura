@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canAcceptAnamnesis } from "@/lib/billing";
 import { safeEqual } from "@/lib/safeEqual";
 import { createAnamnesis } from "@/lib/anamnesis";
+import { chargeOverageIfNeeded } from "@/lib/usage";
 
 const answerSchema = z.object({
   question: z.string(),
@@ -57,6 +58,8 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (!anamnesis) {
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
+
+  await chargeOverageIfNeeded(supabase, clinic, anamnesis.id);
 
   return NextResponse.json({ token: anamnesis.token }, { status: 201 });
 }

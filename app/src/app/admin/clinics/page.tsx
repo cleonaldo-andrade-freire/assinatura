@@ -3,6 +3,7 @@ import Link from "next/link";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PLAN_LABEL } from "@/lib/asaas";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
 
@@ -101,7 +102,7 @@ export default async function AdminClinicsPage() {
                       </Link>
                     </td>
                     <td>
-                      {c.plan === "pro" ? "Pro" : "Starter"}
+                      {PLAN_LABEL[c.plan]}
                       <div className={styles.rowMeta}>{c.billing_cycle === "yearly" ? "anual" : "mensal"}</div>
                     </td>
                     <td>

@@ -4,6 +4,7 @@ import { parseInboundMessage, sendText } from "@/lib/evolution";
 import { advanceConversation, formatQuestionPrompt } from "@/lib/conversationEngine";
 import { createAnamnesis } from "@/lib/anamnesis";
 import { brPhoneVariants } from "@/lib/validation";
+import { chargeOverageIfNeeded } from "@/lib/usage";
 import type { Conversation, Question } from "@/lib/database.types";
 
 /**
@@ -100,6 +101,8 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .eq("id", typedConversation.id);
 
   if (anamnesis) {
+    await chargeOverageIfNeeded(supabase, clinic, anamnesis.id);
+
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura?token=${anamnesis.token}`;
     await sendText(
       clinic,

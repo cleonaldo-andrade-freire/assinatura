@@ -2,9 +2,36 @@ import type { BillingCycle, Plan } from "@/lib/database.types";
 
 /** Preço mensal de cada plano, em reais. Anual cobra 10x o valor mensal (2 meses de desconto). */
 export const PLAN_MONTHLY_PRICE: Record<Plan, number> = {
-  starter: 147,
-  pro: 297,
+  starter: 39.9,
+  basic: 59.9,
+  standard: 79.9,
+  plus: 99.9,
+  pro: 129.9,
+  enterprise: 199.0,
 };
+
+/** Nome exibido de cada plano nas telas de admin/clínica. */
+export const PLAN_LABEL: Record<Plan, string> = {
+  starter: "Starter",
+  basic: "Basic",
+  standard: "Standard",
+  plus: "Plus",
+  pro: "Pro",
+  enterprise: "Enterprise",
+};
+
+/** Quantas anamneses o plano cobre por mês antes de virar cobrança avulsa. */
+export const PLAN_MONTHLY_LIMIT: Record<Plan, number> = {
+  starter: 20,
+  basic: 40,
+  standard: 60,
+  plus: 80,
+  pro: 120,
+  enterprise: 20,
+};
+
+/** Valor cobrado por anamnese além do limite do plano, igual pra todos os planos. */
+export const OVERAGE_PRICE = 1.9;
 
 export function planValueFor(plan: Plan, cycle: BillingCycle): number {
   const monthly = PLAN_MONTHLY_PRICE[plan];
@@ -141,4 +168,27 @@ export function asaasCustomerDashboardUrl(customerId: string): string {
 
 export async function cancelAsaasSubscription(subscriptionId: string): Promise<void> {
   await asaasFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
+}
+
+export interface AsaasCharge {
+  id: string;
+  invoiceUrl: string;
+}
+
+/** Cobrança avulsa (não-recorrente), usada pro excedente de anamneses do mês. */
+export async function createAsaasCharge(input: {
+  customerId: string;
+  value: number;
+  description: string;
+}): Promise<AsaasCharge> {
+  return asaasFetch<AsaasCharge>("/payments", {
+    method: "POST",
+    body: JSON.stringify({
+      customer: input.customerId,
+      billingType: "UNDEFINED",
+      value: input.value,
+      dueDate: addDays(new Date(), 3),
+      description: input.description,
+    }),
+  });
 }

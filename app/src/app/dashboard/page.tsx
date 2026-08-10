@@ -4,6 +4,8 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
+import { countMonthlyAnamneses } from "@/lib/usage";
+import { PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
 import type { Conversation } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -42,7 +44,7 @@ export default async function DashboardPage({
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
-  const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }] =
+  const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }, usedThisMonth] =
     await Promise.all([
       supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
       supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
@@ -53,12 +55,16 @@ export default async function DashboardPage({
         .eq("clinic_id", clinic.id)
         .in("status", ["active", "abandoned"])
         .order("created_at", { ascending: false }),
+      countMonthlyAnamneses(supabase, clinic.id),
     ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
   const conversations = (activeConversations as Conversation[]) ?? [];
   const activeConversationCount = conversations.filter((c) => c.status === "active").length;
   const pendingCount = (totalCount ?? 0) - (signedCount ?? 0);
+  const monthlyLimit = PLAN_MONTHLY_LIMIT[clinic.plan];
+  const monthlyPct = monthlyLimit > 0 ? Math.min(100, Math.round((usedThisMonth / monthlyLimit) * 100)) : 0;
+  const overThisMonth = usedThisMonth > monthlyLimit;
 
   function pageHref(p: number) {
     const params = new URLSearchParams();
@@ -81,8 +87,35 @@ export default async function DashboardPage({
     >
       <div className={styles.statGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{totalCount ?? 0}</div>
-          <div className={styles.statLabel}>Total de anamneses</div>
+          <div className={styles.statValue}>
+            {usedThisMonth}/{monthlyLimit}
+          </div>
+          <div className={styles.statLabel}>Anamneses este mês</div>
+          <div
+            style={{
+              marginTop: 8,
+              height: 5,
+              borderRadius: 999,
+              background: "var(--surface-sunken)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${monthlyPct}%`,
+                height: "100%",
+                background: overThisMonth ? "var(--danger)" : "var(--brand)",
+              }}
+            />
+          </div>
+          {overThisMonth && (
+            <a
+              href="/billing"
+              style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--danger)", fontWeight: 600 }}
+            >
+              {usedThisMonth - monthlyLimit} excedente{usedThisMonth - monthlyLimit === 1 ? "" : "s"} este mês →
+            </a>
+          )}
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>{signedCount ?? 0}</div>
@@ -207,10 +240,10 @@ export default async function DashboardPage({
                   return (
                     <tr key={a.id}>
                       <td>
-                        <div className={styles.rowMain}>
+                        <Link href={`/dashboard/anamneses/${a.id}`} className={styles.rowMain} style={{ textDecoration: "none", color: "inherit" }}>
                           <div className={styles.rowAvatarPlaceholder}>{initials(a.patient_name)}</div>
                           <span className={styles.rowTitle}>{a.patient_name}</span>
-                        </div>
+                        </Link>
                       </td>
                       <td>{new Date(a.created_at).toLocaleDateString("pt-BR")}</td>
                       <td>
@@ -221,6 +254,8 @@ export default async function DashboardPage({
                         )}
                       </td>
                       <td>
+                        <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
+                        {" · "}
                         {signatureId ? (
                           <a href={`/api/pdf/${signatureId}`} target="_blank" rel="noreferrer">
                             Baixar PDF

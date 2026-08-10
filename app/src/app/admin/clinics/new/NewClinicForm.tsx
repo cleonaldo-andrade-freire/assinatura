@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/validation";
+import { PLAN_LABEL, PLAN_MONTHLY_PRICE, PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
+import type { Plan } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
+
+const PLAN_OPTIONS: Plan[] = ["starter", "basic", "standard", "plus", "pro", "enterprise"];
 
 function slugify(name: string): string {
   return name
@@ -20,7 +24,7 @@ export function NewClinicForm() {
   const [clinicName, setClinicName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [plan, setPlan] = useState<"starter" | "pro">("starter");
+  const [plan, setPlan] = useState<Plan>("starter");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -126,9 +130,13 @@ export function NewClinicForm() {
                 <label htmlFor="plan" className={styles.label}>
                   Plano
                 </label>
-                <select id="plan" className={styles.select} value={plan} onChange={(e) => setPlan(e.target.value as "starter" | "pro")}>
-                  <option value="starter">Starter — R$ 147/mês</option>
-                  <option value="pro">Pro — R$ 297/mês</option>
+                <select id="plan" className={styles.select} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                  {PLAN_OPTIONS.map((p) => (
+                    <option key={p} value={p}>
+                      {PLAN_LABEL[p]} — R$ {PLAN_MONTHLY_PRICE[p].toFixed(2).replace(".", ",")}/mês ({PLAN_MONTHLY_LIMIT[p]}{" "}
+                      anamneses)
+                    </option>
+                  ))}
                 </select>
               </div>
 

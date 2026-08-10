@@ -17,7 +17,7 @@ interface CreateAnamnesisInput {
 export async function createAnamnesis(
   supabase: SupabaseClient,
   input: CreateAnamnesisInput
-): Promise<{ token: string } | null> {
+): Promise<{ id: string; token: string } | null> {
   const { data, error } = await supabase
     .from("anamneses")
     .insert({
@@ -27,7 +27,7 @@ export async function createAnamnesis(
       patient_phone: input.patientPhone ?? null,
       answers: input.answers,
     })
-    .select("token")
+    .select("id, token")
     .single();
 
   if (error || !data) {

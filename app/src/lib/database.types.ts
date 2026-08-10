@@ -1,7 +1,7 @@
 // Tipos escritos à mão, espelhando supabase/schema.sql. Se o schema mudar, atualize aqui também
 // (ou gere automaticamente depois com `supabase gen types typescript`, quando o CLI estiver configurado).
 
-export type Plan = "starter" | "pro";
+export type Plan = "starter" | "basic" | "standard" | "plus" | "pro" | "enterprise";
 export type BillingCycle = "monthly" | "yearly";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 export type UserRole = "owner" | "staff";
@@ -96,4 +96,13 @@ export interface Conversation {
   status: ConversationStatus;
   created_at: string;
   updated_at: string;
+}
+
+export interface UsageCharge {
+  id: string;
+  clinic_id: string;
+  anamnesis_id: string;
+  asaas_payment_id: string | null;
+  amount: number;
+  created_at: string;
 }

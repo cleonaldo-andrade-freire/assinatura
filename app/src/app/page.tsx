@@ -24,6 +24,46 @@ const BENEFITS = [
   },
 ];
 
+const PLANS = [
+  {
+    name: "Starter",
+    price: "39,90",
+    limit: 20,
+    features: ["1 número de WhatsApp", "Modelo de perguntas padrão"],
+  },
+  {
+    name: "Basic",
+    price: "59,90",
+    limit: 40,
+    features: ["1 número de WhatsApp", "Modelo de perguntas padrão"],
+  },
+  {
+    name: "Standard",
+    price: "79,90",
+    limit: 60,
+    features: ["Perguntas personalizáveis", "Suporte prioritário"],
+  },
+  {
+    name: "Plus",
+    price: "99,90",
+    limit: 80,
+    features: ["Perguntas personalizáveis", "Múltiplos usuários na recepção", "Suporte prioritário"],
+  },
+  {
+    name: "Pro",
+    price: "129,90",
+    limit: 120,
+    features: ["Perguntas personalizáveis", "Múltiplos usuários na recepção", "Suporte prioritário"],
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    price: "199,00",
+    limit: 20,
+    features: ["Múltiplas unidades/números", "Relatórios de uso", "Suporte prioritário dedicado"],
+  },
+];
+
 const STEPS = [
   { title: "Você envia o link", text: "Direto pelo WhatsApp da clínica, pro paciente que vai ser atendido." },
   { title: "Paciente responde", text: "Perguntas da anamnese, em formato de conversa, no próprio celular." },
@@ -107,51 +147,30 @@ export default async function HomePage() {
           <h2 className={styles.sectionTitle}>Planos</h2>
           <p className={styles.sectionSubtitle}>Sem contrato de fidelidade. Cancele quando quiser.</p>
           <div className={styles.pricingGrid}>
-            <div className={styles.plan}>
-              <span className={styles.planName}>Starter</span>
-              <span className={styles.planPrice}>
-                R$ 147<span>/mês</span>
-              </span>
-              <ul className={styles.planList}>
-                <li>Até 40 anamneses/mês</li>
-                <li>1 número de WhatsApp</li>
-                <li>Modelo de perguntas padrão</li>
-              </ul>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className={styles.planCta}>
-                Falar no WhatsApp
-              </a>
-            </div>
-
-            <div className={`${styles.plan} ${styles.planFeatured}`}>
-              <span className={styles.planBadge}>Mais popular</span>
-              <span className={styles.planName}>Pro</span>
-              <span className={styles.planPrice}>
-                R$ 297<span>/mês</span>
-              </span>
-              <ul className={styles.planList}>
-                <li>Até 150 anamneses/mês</li>
-                <li>Perguntas personalizáveis</li>
-                <li>Múltiplos usuários na recepção</li>
-              </ul>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className={`${styles.planCta} ${styles.planCtaFeatured}`}>
-                Falar no WhatsApp
-              </a>
-            </div>
-
-            <div className={styles.plan}>
-              <span className={styles.planName}>Clínica+</span>
-              <span className={styles.planPrice} style={{ fontSize: 22 }}>
-                Sob consulta
-              </span>
-              <ul className={styles.planList}>
-                <li>Múltiplas unidades/números</li>
-                <li>Suporte prioritário</li>
-                <li>Relatórios de uso</li>
-              </ul>
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className={styles.planCta}>
-                Falar no WhatsApp
-              </a>
-            </div>
+            {PLANS.map((p) => (
+              <div key={p.name} className={p.featured ? `${styles.plan} ${styles.planFeatured}` : styles.plan}>
+                {p.featured && <span className={styles.planBadge}>Mais popular</span>}
+                <span className={styles.planName}>{p.name}</span>
+                <span className={styles.planPrice}>
+                  R$ {p.price}
+                  <span>/mês</span>
+                </span>
+                <ul className={styles.planList}>
+                  <li>Até {p.limit} anamneses/mês</li>
+                  {p.features.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={p.featured ? `${styles.planCta} ${styles.planCtaFeatured}` : styles.planCta}
+                >
+                  Falar no WhatsApp
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       </section>
