@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+/** Lê parâmetros tanto da query string (?erro=) quanto do fragmento (#erro=) — o Supabase usa os dois formatos dependendo do tipo de falha. */
+function readParam(name: string): string | null {
+  if (typeof window === "undefined") return null;
+  const search = new URLSearchParams(window.location.search);
+  if (search.get(name)) return search.get(name);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return hash.get(name);
+}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -11,6 +20,17 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const errorCode = readParam("error_code") || readParam("error");
+    const errorDescription = readParam("error_description");
+    if (errorCode) {
+      const reason = errorDescription ? decodeURIComponent(errorDescription.replace(/\+/g, " ")) : errorCode;
+      setError(
+        `O link de redefinição não é mais válido (motivo: ${reason}). Isso costuma acontecer quando o link já foi aberto antes (às vezes pelo próprio antivírus/scanner de segurança do e-mail) — peça um novo em "Esqueci minha senha".`
+      );
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,8 +50,9 @@ export default function ResetPasswordPage() {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
+        console.error("Falha ao redefinir senha:", error);
         setError(
-          "Não foi possível redefinir a senha. O link pode ter expirado — peça um novo em 'Esqueci minha senha'."
+          `Não foi possível redefinir a senha (motivo: ${error.message}). O link pode já ter sido usado — peça um novo em "Esqueci minha senha".`
         );
         return;
       }
