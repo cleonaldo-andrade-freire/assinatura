@@ -307,19 +307,120 @@
 }
 
 /* ---- trust / legal ---- */
-.trust {
+/* ---- trust cards grid ---- */
+.trustCard {
   background: var(--brand-tint);
   border-radius: var(--radius);
-  padding: 32px 28px;
-  text-align: center;
+  padding: 24px 20px;
 }
 
-.trustText {
+.trustCard .benefitTitle,
+.trustCard .benefitText {
   color: var(--brand-deep);
-  font-size: 14.5px;
-  line-height: 1.65;
-  max-width: 680px;
+}
+
+.trustCard .benefitText {
+  opacity: 0.85;
+}
+
+/* ---- screenshots ---- */
+.screensRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.screenDesktop {
+  width: min(640px, 100%);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.screenDesktop img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.screenMobile {
+  width: min(220px, 40%);
+  border-radius: 22px;
+  border: 6px solid var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.screenMobile img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  .screensRow {
+    flex-direction: column;
+    align-items: center;
+  }
+  .screenMobile {
+    width: min(220px, 60%);
+  }
+}
+
+/* ---- FAQ ---- */
+.faqList {
+  max-width: 720px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.faqItem {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px 20px;
+}
+
+.faqItem summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 0;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem summary::after {
+  content: "+";
+  flex: none;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--brand);
+  transition: transform 0.15s ease;
+}
+
+.faqItem[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.faqAnswer {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  line-height: 1.6;
+  margin: 0 0 18px;
 }
 
 /* ---- final cta ---- */

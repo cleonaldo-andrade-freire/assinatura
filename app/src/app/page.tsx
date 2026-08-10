@@ -72,6 +72,56 @@ const PLANS = [
   },
 ];
 
+const TRUST = [
+  {
+    title: "Validade jurídica real",
+    text: "Assinatura eletrônica simples, válida no Brasil pela MP 2.200-2/2001 e pela Lei nº 14.063/2020.",
+  },
+  {
+    title: "Dados isolados por clínica",
+    text: "Cada clínica só acessa os próprios pacientes e documentos — nunca dá pra ver dados de outra clínica.",
+  },
+  {
+    title: "Trilha de auditoria completa",
+    text: "Hash SHA-256, IP, data/hora e dispositivo registrados em cada assinatura, disponíveis pra consulta a qualquer momento.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Preciso instalar algum aplicativo?",
+    a: "Não. O paciente responde e assina direto pelo WhatsApp que já usa. O painel da clínica funciona no navegador, no computador ou no celular — dá pra instalar como atalho no celular se quiser, mas não é obrigatório.",
+  },
+  {
+    q: "A assinatura eletrônica tem validade jurídica?",
+    a: "Sim — é uma assinatura eletrônica simples, válida no Brasil pela MP 2.200-2/2001 e pela Lei nº 14.063/2020 (não é certificado ICP-Brasil).",
+  },
+  {
+    q: "Como funciona o período de teste?",
+    a: "3 anamneses grátis, sem pedir cartão de crédito. Depois disso, é só escolher um dos planos.",
+  },
+  {
+    q: "Posso cancelar quando quiser?",
+    a: "Sim, sem contrato de fidelidade nem multa.",
+  },
+  {
+    q: "Preciso trocar o número de WhatsApp da clínica?",
+    a: "Não — você conecta o número que a clínica já usa, escaneando um QR Code direto no painel.",
+  },
+  {
+    q: "E se eu passar do limite de anamneses do plano?",
+    a: "Não bloqueia. Cada anamnese extra é cobrada à parte, direto na fatura do mês — sem multa nem corte de acesso.",
+  },
+  {
+    q: "Posso mudar de plano depois?",
+    a: "Sim, a qualquer momento, direto no painel — a mudança vale a partir da próxima cobrança.",
+  },
+  {
+    q: "Os dados da minha clínica ficam seguros?",
+    a: "Sim — cada clínica só acessa os próprios dados, e os PDFs assinados ficam guardados com segurança na nuvem.",
+  },
+];
+
 const STEPS = [
   { title: "Você envia o link", text: "Direto pelo WhatsApp da clínica, pro paciente que vai ser atendido." },
   { title: "Paciente responde", text: "Perguntas da anamnese, em formato de conversa, no próprio celular." },
@@ -188,12 +238,31 @@ export default async function HomePage() {
 
       <section className={styles.section}>
         <div className={styles.container}>
-          <div className={styles.trust}>
-            <p className={styles.trustText}>
-              A assinatura eletrônica gerada é válida no Brasil pela MP 2.200-2/2001 e pela Lei nº 14.063/2020. Cada
-              documento assinado guarda hash SHA-256, IP, data/hora e dispositivo do paciente como trilha de
-              auditoria — a mesma evidência que sustenta a validade em caso de contestação.
-            </p>
+          <h2 className={styles.sectionTitle}>Segurança e confiança</h2>
+          <p className={styles.sectionSubtitle}>
+            A mesma evidência que sustenta a validade jurídica em caso de contestação.
+          </p>
+          <div className={styles.grid}>
+            {TRUST.map((t) => (
+              <div key={t.title} className={`${styles.benefitCard} ${styles.trustCard}`}>
+                <p className={styles.benefitTitle}>{t.title}</p>
+                <p className={styles.benefitText}>{t.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.container}>
+          <h2 className={styles.sectionTitle}>Perguntas frequentes</h2>
+          <div className={styles.faqList}>
+            {FAQ.map((f) => (
+              <details key={f.q} className={styles.faqItem}>
+                <summary>{f.q}</summary>
+                <p className={styles.faqAnswer}>{f.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
