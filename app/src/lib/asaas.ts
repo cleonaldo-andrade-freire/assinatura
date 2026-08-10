@@ -27,7 +27,7 @@ export const PLAN_MONTHLY_LIMIT: Record<Plan, number> = {
   standard: 60,
   plus: 80,
   pro: 120,
-  enterprise: 20,
+  enterprise: 200,
 };
 
 /** Valor cobrado por anamnese além do limite do plano, igual pra todos os planos. */

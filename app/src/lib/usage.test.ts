@@ -15,6 +15,6 @@ describe("overageUnits", () => {
   it("cada plano tem seu próprio limite", () => {
     expect(overageUnits(25, "basic")).toBe(0); // limite 40
     expect(overageUnits(25, "starter")).toBe(5); // limite 20
-    expect(overageUnits(25, "enterprise")).toBe(5); // limite 20, igual ao starter
+    expect(overageUnits(25, "enterprise")).toBe(0); // limite 200
   });
 });

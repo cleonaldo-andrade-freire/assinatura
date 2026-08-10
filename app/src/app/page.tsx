@@ -67,7 +67,7 @@ const PLANS = [
   {
     name: "Enterprise",
     price: "199,00",
-    limit: 20,
+    limit: 200,
     features: ["Relatórios de uso", "Suporte prioritário dedicado"],
   },
 ];
