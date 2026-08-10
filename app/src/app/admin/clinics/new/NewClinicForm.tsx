@@ -4,11 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/validation";
-import { PLAN_LABEL, PLAN_MONTHLY_PRICE, PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
-import type { Plan } from "@/lib/database.types";
+import type { Plan, PlanRecord } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
-
-const PLAN_OPTIONS: Plan[] = ["starter", "basic", "standard", "plus", "pro", "enterprise"];
 
 function slugify(name: string): string {
   return name
@@ -19,12 +16,12 @@ function slugify(name: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export function NewClinicForm() {
+export function NewClinicForm({ plans }: { plans: PlanRecord[] }) {
   const router = useRouter();
   const [clinicName, setClinicName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [plan, setPlan] = useState<Plan>("starter");
+  const [plan, setPlan] = useState<Plan>(plans[0]?.id ?? "");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -73,7 +70,7 @@ export function NewClinicForm() {
   }
 
   return (
-    <AdminShell title="Nova clínica" subtitle="Cria o registro, o usuário do responsável e a assinatura no Asaas de uma vez">
+    <AdminShell title="Nova clínica" subtitle="Cria o registro, o usuário do responsável e o cliente no Asaas de uma vez">
       <div className={styles.panel}>
         <div className={styles.panelBody}>
           {error && (
@@ -130,11 +127,10 @@ export function NewClinicForm() {
                 <label htmlFor="plan" className={styles.label}>
                   Plano
                 </label>
-                <select id="plan" className={styles.select} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-                  {PLAN_OPTIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {PLAN_LABEL[p]} — R$ {PLAN_MONTHLY_PRICE[p].toFixed(2).replace(".", ",")}/mês ({PLAN_MONTHLY_LIMIT[p]}{" "}
-                      anamneses)
+                <select id="plan" className={styles.select} value={plan} onChange={(e) => setPlan(e.target.value)}>
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — R$ {p.monthly_price.toFixed(2).replace(".", ",")}/mês ({p.monthly_limit} anamneses)
                     </option>
                   ))}
                 </select>

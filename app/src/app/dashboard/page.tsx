@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
-import { PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
+import { getPlanById } from "@/lib/plans";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Conversation } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -37,7 +37,7 @@ export default async function DashboardPage({
 
   const supabase = await createSupabaseServerClient();
 
-  const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }, usedThisMonth] =
+  const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }, usedThisMonth, plan] =
     await Promise.all([
       supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
       supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
@@ -49,6 +49,7 @@ export default async function DashboardPage({
         .in("status", ["active", "abandoned"])
         .order("created_at", { ascending: false }),
       countMonthlyAnamneses(supabase, clinic.id),
+      getPlanById(supabase, clinic.plan),
     ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
@@ -70,7 +71,7 @@ export default async function DashboardPage({
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const activeConversationCount = conversations.filter((c) => c.status === "active").length;
   const pendingCount = (totalCount ?? 0) - (signedCount ?? 0);
-  const monthlyLimit = PLAN_MONTHLY_LIMIT[clinic.plan];
+  const monthlyLimit = plan?.monthly_limit ?? 0;
   const monthlyPct = monthlyLimit > 0 ? Math.min(100, Math.round((usedThisMonth / monthlyLimit) * 100)) : 0;
   const overThisMonth = usedThisMonth > monthlyLimit;
 

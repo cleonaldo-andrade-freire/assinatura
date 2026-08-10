@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAsaasCustomer } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isAdminRequestAuthorized } from "@/lib/adminSession";
+import { getPlanById } from "@/lib/plans";
 
 const bodySchema = z.object({
   clinicName: z.string().min(2),
@@ -10,7 +11,7 @@ const bodySchema = z.object({
     .string()
     .min(2)
     .regex(/^[a-z0-9-]+$/, "use apenas letras minúsculas, números e hífen"),
-  plan: z.enum(["starter", "basic", "standard", "plus", "pro", "enterprise"]),
+  plan: z.string().min(1),
   billingCycle: z.enum(["monthly", "yearly"]),
   ownerEmail: z.string().email(),
   ownerPassword: z.string().min(8),
@@ -42,6 +43,11 @@ export async function POST(req: NextRequest) {
   const { data: existingSlug } = await supabase.from("clinics").select("id").eq("slug", input.slug).maybeSingle();
   if (existingSlug) {
     return NextResponse.json({ error: "slug_taken" }, { status: 409 });
+  }
+
+  const plan = await getPlanById(supabase, input.plan);
+  if (!plan) {
+    return NextResponse.json({ error: "plan_not_found" }, { status: 400 });
   }
 
   let asaasCustomerId: string | undefined;

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { PLAN_LABEL, PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
+import { getAllPlans } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { formatBRDate } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
@@ -31,6 +31,8 @@ export default async function AdminClinicsPage() {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase.from("clinics").select("*").order("created_at", { ascending: false });
   const clinics = (data as Clinic[]) ?? [];
+  const plans = await getAllPlans(supabase);
+  const planById = new Map(plans.map((p) => [p.id, p]));
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -47,7 +49,7 @@ export default async function AdminClinicsPage() {
 
   function usageFor(c: Clinic) {
     const used = usageByClinic.get(c.id) ?? 0;
-    const limit = c.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[c.plan];
+    const limit = c.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : planById.get(c.plan)?.monthly_limit ?? 0;
     return { used, limit, over: used > limit };
   }
 
@@ -125,11 +127,11 @@ export default async function AdminClinicsPage() {
                       </Link>
                     </td>
                     <td>
-                      {PLAN_LABEL[c.plan]}
+                      {planById.get(c.plan)?.name ?? c.plan}
                       <div className={styles.rowMeta}>{c.billing_cycle === "yearly" ? "anual" : "mensal"}</div>
                       {c.pending_plan && (
                         <div style={{ fontSize: 11.5, color: "var(--warn)", fontWeight: 600, marginTop: 2 }}>
-                          → {PLAN_LABEL[c.pending_plan]}
+                          → {planById.get(c.pending_plan)?.name ?? c.pending_plan}
                         </div>
                       )}
                     </td>

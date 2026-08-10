@@ -1,52 +1,8 @@
-import type { BillingCycle, Plan } from "@/lib/database.types";
-
-/** Preço mensal de cada plano, em reais. Anual cobra 10x o valor mensal (2 meses de desconto). */
-export const PLAN_MONTHLY_PRICE: Record<Plan, number> = {
-  starter: 39.9,
-  basic: 59.9,
-  standard: 79.9,
-  plus: 99.9,
-  pro: 129.9,
-  enterprise: 199.0,
-};
-
-/** Nome exibido de cada plano nas telas de admin/clínica. */
-export const PLAN_LABEL: Record<Plan, string> = {
-  starter: "Starter",
-  basic: "Basic",
-  standard: "Standard",
-  plus: "Plus",
-  pro: "Pro",
-  enterprise: "Enterprise",
-};
-
-/** Quantas anamneses o plano cobre por mês antes de virar cobrança avulsa. */
-export const PLAN_MONTHLY_LIMIT: Record<Plan, number> = {
-  starter: 20,
-  basic: 40,
-  standard: 60,
-  plus: 80,
-  pro: 120,
-  enterprise: 200,
-};
+import type { BillingCycle, PlanRecord } from "@/lib/database.types";
+import { planValueFor } from "@/lib/plans";
 
 /** Valor cobrado por anamnese além do limite do plano, igual pra todos os planos. */
 export const OVERAGE_PRICE = 1.9;
-
-export function planValueFor(plan: Plan, cycle: BillingCycle): number {
-  const monthly = PLAN_MONTHLY_PRICE[plan];
-  return cycle === "yearly" ? monthly * 10 : monthly;
-}
-
-/** Preço mensal de uma clínica específica — respeita um desconto/preço customizado (admin), senão cai no preço padrão do plano. */
-export function effectiveMonthlyPrice(clinic: { plan: Plan; custom_monthly_price: number | null }): number {
-  return clinic.custom_monthly_price ?? PLAN_MONTHLY_PRICE[clinic.plan];
-}
-
-export function effectivePlanValue(clinic: { plan: Plan; custom_monthly_price: number | null }, cycle: BillingCycle): number {
-  const monthly = effectiveMonthlyPrice(clinic);
-  return cycle === "yearly" ? monthly * 10 : monthly;
-}
 
 function baseUrl(): string {
   return process.env.ASAAS_BASE_URL || "https://sandbox.asaas.com/api/v3";
@@ -116,7 +72,7 @@ export function addDays(date: Date, days: number): string {
  */
 export async function createAsaasSubscription(input: {
   customerId: string;
-  plan: Plan;
+  plan: PlanRecord;
   cycle: BillingCycle;
   description: string;
   nextDueDate?: string;
@@ -230,7 +186,7 @@ export async function updateAsaasSubscriptionFields(input: {
 /** Muda o valor (e opcionalmente o ciclo) de uma assinatura existente — vale a partir da próxima cobrança, sem prorateio. */
 export async function updateAsaasSubscription(input: {
   subscriptionId: string;
-  plan: Plan;
+  plan: PlanRecord;
   cycle: BillingCycle;
 }): Promise<AsaasSubscription> {
   return updateAsaasSubscriptionFields({

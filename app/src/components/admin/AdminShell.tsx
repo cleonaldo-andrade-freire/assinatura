@@ -18,6 +18,20 @@ function ClinicsIcon() {
   );
 }
 
+function PlansIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -69,6 +83,10 @@ export function AdminShell({ title, subtitle, actions, children }: AdminShellPro
           <a href="/admin/clinics" className={`${styles.navLink} ${pathname?.startsWith("/admin/clinics") ? styles.navLinkActive : ""}`}>
             <ClinicsIcon />
             Clínicas
+          </a>
+          <a href="/admin/plans" className={`${styles.navLink} ${pathname?.startsWith("/admin/plans") ? styles.navLinkActive : ""}`}>
+            <PlansIcon />
+            Planos
           </a>
         </nav>
 

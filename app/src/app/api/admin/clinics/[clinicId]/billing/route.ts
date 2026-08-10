@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequestAuthorized } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PLAN_MONTHLY_PRICE, updateAsaasSubscriptionFields } from "@/lib/asaas";
+import { updateAsaasSubscriptionFields } from "@/lib/asaas";
+import { getPlanById } from "@/lib/plans";
 import type { Clinic } from "@/lib/database.types";
 
 const bodySchema = z.object({
@@ -59,7 +60,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (parsed.data.custom_monthly_price !== undefined) {
     updates.custom_monthly_price = parsed.data.custom_monthly_price;
     if (typedClinic.asaas_subscription_id) {
-      const monthly = parsed.data.custom_monthly_price ?? PLAN_MONTHLY_PRICE[typedClinic.plan];
+      const plan = await getPlanById(supabase, typedClinic.plan);
+      const monthly = parsed.data.custom_monthly_price ?? plan?.monthly_price ?? 0;
       const value = typedClinic.billing_cycle === "yearly" ? monthly * 10 : monthly;
       try {
         await updateAsaasSubscriptionFields({ subscriptionId: typedClinic.asaas_subscription_id, value });

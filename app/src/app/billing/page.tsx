@@ -1,15 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentClinic } from "@/lib/auth";
-import {
-  effectiveMonthlyPrice,
-  getPendingInvoice,
-  listPayments,
-  PAYMENT_STATUS_LABEL,
-  PLAN_LABEL,
-  PLAN_MONTHLY_LIMIT,
-  OVERAGE_PRICE,
-  type AsaasPayment,
-} from "@/lib/asaas";
+import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, OVERAGE_PRICE, type AsaasPayment } from "@/lib/asaas";
+import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { countMonthlyAnamneses, countTotalAnamneses } from "@/lib/usage";
 import { formatBRDate } from "@/lib/date";
@@ -62,7 +54,7 @@ export default async function BillingPage() {
 
   const isTrialing = clinic.subscription_status === "trialing";
 
-  const [usedThisMonth, usedInTrial, { data: monthlyCharges }] = await Promise.all([
+  const [usedThisMonth, usedInTrial, { data: monthlyCharges }, activePlans, currentPlan] = await Promise.all([
     countMonthlyAnamneses(supabase, clinic.id),
     isTrialing ? countTotalAnamneses(supabase, clinic.id) : Promise.resolve(0),
     supabase
@@ -71,20 +63,26 @@ export default async function BillingPage() {
       .eq("clinic_id", clinic.id)
       .gte("created_at", startOfMonth.toISOString())
       .order("created_at", { ascending: false }),
+    getActivePlans(supabase),
+    getPlanById(supabase, clinic.plan),
   ]);
 
-  const limit = isTrialing ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[clinic.plan];
+  // Clínica pode estar num plano já desativado — garante que ele apareça no
+  // seletor mesmo assim (senão sumiria da tela sem explicação nenhuma).
+  const plans = currentPlan && !activePlans.some((p) => p.id === currentPlan.id) ? [...activePlans, currentPlan] : activePlans;
+
+  const limit = isTrialing ? TRIAL_ANAMNESIS_LIMIT : currentPlan?.monthly_limit ?? 0;
   const used = isTrialing ? usedInTrial : usedThisMonth;
   const overageCount = isTrialing ? 0 : Math.max(0, used - limit);
   const charges = (monthlyCharges as UsageCharge[]) ?? [];
   const chargedTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
-  const monthlyPrice = effectiveMonthlyPrice(clinic);
+  const monthlyPrice = currentPlan ? effectiveMonthlyPrice(clinic, currentPlan) : 0;
 
   return (
     <ClinicShell clinicName={clinic.name} clinicLogoUrl={clinic.logo_url} title="Assinatura">
       <div className={styles.statGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{PLAN_LABEL[clinic.plan]}</div>
+          <div className={styles.statValue}>{currentPlan?.name ?? clinic.plan}</div>
           <div className={styles.statLabel}>Plano ({clinic.billing_cycle === "yearly" ? "anual" : "mensal"})</div>
         </div>
         <div className={styles.statCard}>
@@ -189,7 +187,13 @@ export default async function BillingPage() {
           <p className={styles.panelHeaderTitle}>Trocar de plano</p>
         </div>
         <div className={styles.panelBody}>
-          <PlanPicker clinicId={clinic.id} currentPlan={clinic.plan} pendingPlan={clinic.pending_plan} isTrialing={isTrialing} />
+          <PlanPicker
+            clinicId={clinic.id}
+            currentPlan={clinic.plan}
+            pendingPlan={clinic.pending_plan}
+            isTrialing={isTrialing}
+            plans={plans}
+          />
         </div>
       </div>
     </ClinicShell>

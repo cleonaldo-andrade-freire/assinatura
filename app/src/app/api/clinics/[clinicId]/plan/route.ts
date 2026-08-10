@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { addDays, createAsaasSubscription, planValueFor, updateAsaasSubscription, updateAsaasSubscriptionFields } from "@/lib/asaas";
+import { addDays, createAsaasSubscription, updateAsaasSubscription, updateAsaasSubscriptionFields } from "@/lib/asaas";
+import { getPlanById, planValueFor } from "@/lib/plans";
 
 const bodySchema = z.object({
-  plan: z.enum(["starter", "basic", "standard", "plus", "pro", "enterprise"]),
+  plan: z.string().min(1),
 });
 
 /**
@@ -36,8 +37,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
-  const newPlan = parsed.data.plan;
+  const newPlanId = parsed.data.plan;
   const supabase = createSupabaseAdminClient();
+
+  const newPlan = await getPlanById(supabase, newPlanId);
+  if (!newPlan) {
+    return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
+  }
 
   if (clinic.subscription_status === "trialing") {
     if (!clinic.asaas_customer_id) {
@@ -51,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
           customerId: clinic.asaas_customer_id,
           plan: newPlan,
           cycle: clinic.billing_cycle,
-          description: `Assinatura ${newPlan} — ${clinic.name}`,
+          description: `Assinatura ${newPlan.name} — ${clinic.name}`,
         });
         subscriptionId = subscription.id;
       } else {
@@ -64,12 +70,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
 
       const { error } = await supabase
         .from("clinics")
-        .update({ plan: newPlan, asaas_subscription_id: subscriptionId })
+        .update({ plan: newPlan.id, asaas_subscription_id: subscriptionId })
         .eq("id", clinic.id);
       if (error) {
         return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
       }
-      return NextResponse.json({ ok: true, plan: newPlan, immediate: true });
+      return NextResponse.json({ ok: true, plan: newPlan.id, immediate: true });
     } catch (err) {
       return NextResponse.json(
         { error: "asaas_error", message: err instanceof Error ? err.message : String(err) },
@@ -78,13 +84,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     }
   }
 
-  if (newPlan === clinic.plan) {
+  if (newPlan.id === clinic.plan) {
     if (!clinic.pending_plan) {
       return NextResponse.json({ error: "same_plan" }, { status: 400 });
     }
     if (clinic.asaas_subscription_id) {
       try {
-        await updateAsaasSubscription({ subscriptionId: clinic.asaas_subscription_id, plan: clinic.plan, cycle: clinic.billing_cycle });
+        await updateAsaasSubscription({ subscriptionId: clinic.asaas_subscription_id, plan: newPlan, cycle: clinic.billing_cycle });
       } catch (err) {
         return NextResponse.json(
           { error: "asaas_error", message: err instanceof Error ? err.message : String(err) },
@@ -107,10 +113,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     }
   }
 
-  const { error } = await supabase.from("clinics").update({ pending_plan: newPlan }).eq("id", clinic.id);
+  const { error } = await supabase.from("clinics").update({ pending_plan: newPlan.id }).eq("id", clinic.id);
   if (error) {
     return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, pending_plan: newPlan });
+  return NextResponse.json({ ok: true, pending_plan: newPlan.id });
 }

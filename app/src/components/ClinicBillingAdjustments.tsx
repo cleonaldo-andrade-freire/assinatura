@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "@/components/admin/admin.module.css";
-import { PLAN_MONTHLY_PRICE } from "@/lib/asaas";
 import type { Clinic } from "@/lib/database.types";
 
 function toDateInputValue(iso: string | null): string {
@@ -14,9 +13,11 @@ function toDateInputValue(iso: string | null): string {
 export function ClinicBillingAdjustments({
   clinicId,
   clinic,
+  defaultMonthlyPrice,
 }: {
   clinicId: string;
   clinic: Pick<Clinic, "subscription_status" | "trial_ends_at" | "plan" | "custom_monthly_price" | "asaas_subscription_id">;
+  defaultMonthlyPrice: number;
 }) {
   const router = useRouter();
   const [trialDate, setTrialDate] = useState(toDateInputValue(clinic.trial_ends_at));
@@ -64,7 +65,7 @@ export function ClinicBillingAdjustments({
     await save({ custom_monthly_price: value }, () => setSavingPrice(false));
   }
 
-  const defaultPrice = PLAN_MONTHLY_PRICE[clinic.plan];
+  const defaultPrice = defaultMonthlyPrice;
 
   return (
     <div className={styles.formRow}>

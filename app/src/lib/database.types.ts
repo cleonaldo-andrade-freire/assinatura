@@ -1,7 +1,8 @@
 // Tipos escritos à mão, espelhando supabase/schema.sql. Se o schema mudar, atualize aqui também
 // (ou gere automaticamente depois com `supabase gen types typescript`, quando o CLI estiver configurado).
 
-export type Plan = "starter" | "basic" | "standard" | "plus" | "pro" | "enterprise";
+/** Antes era união fechada de 6 valores; agora os planos são dado editável (tabela `plans`) — só o `id`/slug fica fixo aqui. */
+export type Plan = string;
 export type BillingCycle = "monthly" | "yearly";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 export type UserRole = "owner" | "staff";
@@ -107,4 +108,17 @@ export interface UsageCharge {
   asaas_payment_id: string | null;
   amount: number;
   created_at: string;
+}
+
+export interface PlanRecord {
+  id: string;
+  name: string;
+  monthly_price: number;
+  monthly_limit: number;
+  features: string[];
+  display_order: number;
+  active: boolean;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
 }

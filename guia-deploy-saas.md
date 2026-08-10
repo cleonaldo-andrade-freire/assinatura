@@ -10,7 +10,7 @@ Este guia cobre publicar o app novo (`app/` neste repositório) na Vercel, usand
 
 1. Em [supabase.com](https://supabase.com), crie um projeto novo (região São Paulo/`sa-east-1`).
 2. Em **Project Settings → API**, anote: `URL`, `anon public key`, `service_role key`.
-3. Em **SQL Editor → New query**, rode nesta ordem: `app/supabase/schema.sql`, `app/supabase/002_add_clinic_logo.sql`, `app/supabase/003_add_whatsapp_number.sql`, `app/supabase/004_conversation_engine.sql`, `app/supabase/005_plan_tiers.sql`, `app/supabase/006_pending_plan.sql`, `app/supabase/007_clinic_price_override.sql`.
+3. Em **SQL Editor → New query**, rode nesta ordem: `app/supabase/schema.sql`, `app/supabase/002_add_clinic_logo.sql`, `app/supabase/003_add_whatsapp_number.sql`, `app/supabase/004_conversation_engine.sql`, `app/supabase/005_plan_tiers.sql`, `app/supabase/006_pending_plan.sql`, `app/supabase/007_clinic_price_override.sql`, `app/supabase/008_plans_table.sql`.
 4. Em **Storage**, crie dois buckets: **`signed-pdfs`** (privado) e **`clinic-logos`** (público).
 
 ⚠️ Confirme que é **esse mesmo projeto** Supabase que o app em produção vai usar — rodar as migrations num projeto e apontar `NEXT_PUBLIC_SUPABASE_URL` de produção pra outro é um jeito garantido de tudo parecer quebrado sem erro nenhum.

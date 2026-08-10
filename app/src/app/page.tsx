@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getActivePlans } from "@/lib/plans";
 import styles from "./page.module.css";
 
 const WHATSAPP_NUMBER = "5579998616410";
@@ -29,46 +30,6 @@ const BENEFITS = [
   {
     title: "Acesse de onde estiver",
     text: "Painel funciona tanto no computador da recepção quanto no celular — inclusive instalado como app.",
-  },
-];
-
-const PLANS = [
-  {
-    name: "Starter",
-    price: "39,90",
-    limit: 20,
-    features: ["1 número de WhatsApp", "Modelo de perguntas padrão"],
-  },
-  {
-    name: "Basic",
-    price: "59,90",
-    limit: 40,
-    features: ["1 número de WhatsApp", "Modelo de perguntas padrão"],
-  },
-  {
-    name: "Standard",
-    price: "79,90",
-    limit: 60,
-    features: ["Perguntas personalizáveis", "Suporte prioritário"],
-  },
-  {
-    name: "Plus",
-    price: "99,90",
-    limit: 80,
-    features: ["Perguntas personalizáveis", "Suporte prioritário"],
-  },
-  {
-    name: "Pro",
-    price: "129,90",
-    limit: 120,
-    features: ["Perguntas personalizáveis", "Suporte prioritário"],
-    featured: true,
-  },
-  {
-    name: "Enterprise",
-    price: "199,00",
-    limit: 200,
-    features: ["Relatórios de uso", "Suporte prioritário dedicado"],
   },
 ];
 
@@ -131,9 +92,12 @@ const STEPS = [
 
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    plans,
+  ] = await Promise.all([supabase.auth.getUser(), getActivePlans(supabase)]);
 
   return (
     <div className={styles.page}>
@@ -208,16 +172,16 @@ export default async function HomePage() {
             quiser.
           </p>
           <div className={styles.pricingGrid}>
-            {PLANS.map((p) => (
-              <div key={p.name} className={p.featured ? `${styles.plan} ${styles.planFeatured}` : styles.plan}>
+            {plans.map((p) => (
+              <div key={p.id} className={p.featured ? `${styles.plan} ${styles.planFeatured}` : styles.plan}>
                 {p.featured && <span className={styles.planBadge}>Mais popular</span>}
                 <span className={styles.planName}>{p.name}</span>
                 <span className={styles.planPrice}>
-                  R$ {p.price}
+                  R$ {p.monthly_price.toFixed(2).replace(".", ",")}
                   <span>/mês</span>
                 </span>
                 <ul className={styles.planList}>
-                  <li>Até {p.limit} anamneses/mês</li>
+                  <li>Até {p.monthly_limit} anamneses/mês</li>
                   {p.features.map((f) => (
                     <li key={f}>{f}</li>
                   ))}

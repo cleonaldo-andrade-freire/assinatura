@@ -1,14 +1,8 @@
 import { redirect } from "next/navigation";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  asaasCustomerDashboardUrl,
-  listPayments,
-  PAYMENT_STATUS_LABEL,
-  PLAN_LABEL,
-  PLAN_MONTHLY_LIMIT,
-  type AsaasPayment,
-} from "@/lib/asaas";
+import { asaasCustomerDashboardUrl, listPayments, PAYMENT_STATUS_LABEL, type AsaasPayment } from "@/lib/asaas";
+import { getPlanById } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -39,23 +33,31 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
     className: "",
   };
 
-  const [{ count: anamnesesCount }, { count: signaturesCount }, { data: recentAnamneses }, { data: signatures }, usedThisMonth] =
-    await Promise.all([
-      supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
-      supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
-      supabase
-        .from("anamneses")
-        .select("id, patient_name, created_at")
-        .eq("clinic_id", typedClinic.id)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase.from("signatures").select("anamnesis_id").eq("clinic_id", typedClinic.id),
-      countMonthlyAnamneses(supabase, typedClinic.id),
-    ]);
+  const [
+    { count: anamnesesCount },
+    { count: signaturesCount },
+    { data: recentAnamneses },
+    { data: signatures },
+    usedThisMonth,
+    plan,
+    pendingPlan,
+  ] = await Promise.all([
+    supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
+    supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
+    supabase
+      .from("anamneses")
+      .select("id, patient_name, created_at")
+      .eq("clinic_id", typedClinic.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase.from("signatures").select("anamnesis_id").eq("clinic_id", typedClinic.id),
+    countMonthlyAnamneses(supabase, typedClinic.id),
+    getPlanById(supabase, typedClinic.plan),
+    typedClinic.pending_plan ? getPlanById(supabase, typedClinic.pending_plan) : Promise.resolve(null),
+  ]);
 
   const signedAnamnesisIds = new Set((signatures ?? []).map((s) => s.anamnesis_id));
-  const monthlyLimit =
-    typedClinic.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[typedClinic.plan];
+  const monthlyLimit = typedClinic.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : plan?.monthly_limit ?? 0;
   const overThisMonth = usedThisMonth > monthlyLimit;
 
   let payments: AsaasPayment[] = [];
@@ -106,13 +108,13 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
           )}
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{PLAN_LABEL[typedClinic.plan]}</div>
+          <div className={styles.statValue}>{plan?.name ?? typedClinic.plan}</div>
           <div className={styles.statLabel}>
             Plano ({typedClinic.billing_cycle === "yearly" ? "anual" : "mensal"})
           </div>
-          {typedClinic.pending_plan && (
+          {pendingPlan && (
             <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn)", fontWeight: 600 }}>
-              → {PLAN_LABEL[typedClinic.pending_plan]} na próxima cobrança
+              → {pendingPlan.name} na próxima cobrança
             </div>
           )}
         </div>
@@ -175,7 +177,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
           <p className={styles.panelHeaderTitle}>Ajustes de cobrança</p>
         </div>
         <div className={styles.panelBody}>
-          <ClinicBillingAdjustments clinicId={typedClinic.id} clinic={typedClinic} />
+          <ClinicBillingAdjustments clinicId={typedClinic.id} clinic={typedClinic} defaultMonthlyPrice={plan?.monthly_price ?? 0} />
         </div>
       </div>
 
