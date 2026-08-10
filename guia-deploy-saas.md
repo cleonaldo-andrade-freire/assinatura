@@ -10,7 +10,7 @@ Este guia cobre publicar o app novo (`app/` neste repositório) na Vercel, usand
 
 1. Em [supabase.com](https://supabase.com), crie um projeto novo (região São Paulo/`sa-east-1`).
 2. Em **Project Settings → API**, anote: `URL`, `anon public key`, `service_role key`.
-3. Em **SQL Editor → New query**, rode nesta ordem: `app/supabase/schema.sql`, `app/supabase/002_add_clinic_logo.sql`, `app/supabase/003_add_whatsapp_number.sql`, `app/supabase/004_conversation_engine.sql`, `app/supabase/005_plan_tiers.sql`, `app/supabase/006_pending_plan.sql`.
+3. Em **SQL Editor → New query**, rode nesta ordem: `app/supabase/schema.sql`, `app/supabase/002_add_clinic_logo.sql`, `app/supabase/003_add_whatsapp_number.sql`, `app/supabase/004_conversation_engine.sql`, `app/supabase/005_plan_tiers.sql`, `app/supabase/006_pending_plan.sql`, `app/supabase/007_clinic_price_override.sql`.
 4. Em **Storage**, crie dois buckets: **`signed-pdfs`** (privado) e **`clinic-logos`** (público).
 
 ⚠️ Confirme que é **esse mesmo projeto** Supabase que o app em produção vai usar — rodar as migrations num projeto e apontar `NEXT_PUBLIC_SUPABASE_URL` de produção pra outro é um jeito garantido de tudo parecer quebrado sem erro nenhum.
@@ -86,8 +86,10 @@ A própria clínica faz isso sozinha, sem você precisar mexer na Evolution API:
 1. Em `/dashboard/templates`, a clínica cria pelo menos um modelo de perguntas.
 2. Em `/dashboard/new`, dispara uma anamnese de teste pro próprio WhatsApp de quem estiver testando.
 3. Confirma que a primeira pergunta chega, que responder avança pra próxima, e que ao final chega o link `/assinatura?token=...`.
-4. Assina, confirma que o PDF fica disponível em `/dashboard` com status "Assinado", e que `/billing` mostra o status da assinatura (trial/em dia).
-5. Se uma anamnese ficar travada no meio (paciente não respondeu, ou algo deu errado), dá pra cancelar direto na seção "Em andamento" do `/dashboard` — isso não apaga o histórico, só marca como abandonada e libera o telefone pra uma anamnese nova.
+4. Assina, confirma que o PDF fica disponível em `/dashboard` com status "Assinado", e que `/billing` mostra o status da assinatura (trial/em dia). Clicar no paciente na lista abre `/dashboard/anamneses/[id]` com a trilha de auditoria (hash, IP, dispositivo, horário).
+5. Se uma anamnese ficar travada no meio (paciente não respondeu, ou algo deu errado), dá pra cancelar direto na seção "Em andamento" do `/dashboard` (não apaga o histórico, marca como abandonada) — ou "Reenviar pergunta"/"Retomar" em vez de cancelar, se só precisar dar um empurrão.
+6. **Trial cobre só 3 anamneses** (vitalício, não é por mês) — na 4ª tentativa o painel bloqueia com um aviso e link pra assinar. Pra estender o trial ou dar um preço customizado numa clínica específica, use "Ajustes de cobrança" na tela dela em `/admin/clinics/[id]`.
+7. No celular, teste instalar como app: Safari/Chrome → "Adicionar à Tela de Início". Deve abrir sem barra de endereço (modo standalone). Se instalou antes dessas mudanças, apague o atalho antigo e adicione de novo — o iOS só lê a configuração no momento da instalação.
 
 **Ponto de atenção confirmado em produção:** o payload que a Evolution API espera em `POST /webhook/set/{instance}` é **aninhado** — `{"webhook": {"enabled": true, "url": ..., "events": [...]}}` — não achatado como algumas versões da documentação sugerem. O código em `lib/evolutionAdmin.ts` já usa o formato aninhado (corrigido depois de testar contra uma instância real). Se você estiver numa versão diferente da Evolution API e o `/instance/connect` retornar 400 reclamando de `"instance requires property webhook"` ou o inverso, é esse o primeiro lugar a olhar.
 
