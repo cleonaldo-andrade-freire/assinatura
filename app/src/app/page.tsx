@@ -47,20 +47,20 @@ const PLANS = [
     name: "Plus",
     price: "99,90",
     limit: 80,
-    features: ["Perguntas personalizáveis", "Múltiplos usuários na recepção", "Suporte prioritário"],
+    features: ["Perguntas personalizáveis", "Suporte prioritário"],
   },
   {
     name: "Pro",
     price: "129,90",
     limit: 120,
-    features: ["Perguntas personalizáveis", "Múltiplos usuários na recepção", "Suporte prioritário"],
+    features: ["Perguntas personalizáveis", "Suporte prioritário"],
     featured: true,
   },
   {
     name: "Enterprise",
     price: "199,00",
     limit: 20,
-    features: ["Múltiplas unidades/números", "Relatórios de uso", "Suporte prioritário dedicado"],
+    features: ["Relatórios de uso", "Suporte prioritário dedicado"],
   },
 ];
 
