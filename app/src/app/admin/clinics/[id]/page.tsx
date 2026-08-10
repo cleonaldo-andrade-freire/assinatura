@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { asaasCustomerDashboardUrl, listPayments, PAYMENT_STATUS_LABEL, PLAN_LABEL, type AsaasPayment } from "@/lib/asaas";
+import {
+  asaasCustomerDashboardUrl,
+  listPayments,
+  PAYMENT_STATUS_LABEL,
+  PLAN_LABEL,
+  PLAN_MONTHLY_LIMIT,
+  type AsaasPayment,
+} from "@/lib/asaas";
+import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
+import { countMonthlyAnamneses } from "@/lib/usage";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CancelClinicButton } from "@/components/CancelClinicButton";
 import { ClinicBillingAdjustments } from "@/components/ClinicBillingAdjustments";
@@ -30,10 +39,24 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
     className: "",
   };
 
-  const [{ count: anamnesesCount }, { count: signaturesCount }] = await Promise.all([
-    supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
-    supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
-  ]);
+  const [{ count: anamnesesCount }, { count: signaturesCount }, { data: recentAnamneses }, { data: signatures }, usedThisMonth] =
+    await Promise.all([
+      supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
+      supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", typedClinic.id),
+      supabase
+        .from("anamneses")
+        .select("id, patient_name, created_at")
+        .eq("clinic_id", typedClinic.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase.from("signatures").select("anamnesis_id").eq("clinic_id", typedClinic.id),
+      countMonthlyAnamneses(supabase, typedClinic.id),
+    ]);
+
+  const signedAnamnesisIds = new Set((signatures ?? []).map((s) => s.anamnesis_id));
+  const monthlyLimit =
+    typedClinic.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[typedClinic.plan];
+  const overThisMonth = usedThisMonth > monthlyLimit;
 
   let payments: AsaasPayment[] = [];
   if (typedClinic.asaas_subscription_id) {
@@ -68,6 +91,19 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
         <div className={styles.statCard}>
           <div className={styles.statValue}>{signaturesCount ?? 0}</div>
           <div className={styles.statLabel}>Assinadas</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue} style={{ color: overThisMonth ? "var(--danger)" : undefined }}>
+            {usedThisMonth}/{monthlyLimit}
+          </div>
+          <div className={styles.statLabel}>
+            {typedClinic.subscription_status === "trialing" ? "Anamneses do trial" : "Anamneses este mês"}
+          </div>
+          {overThisMonth && (
+            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}>
+              passou do limite
+            </div>
+          )}
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>{PLAN_LABEL[typedClinic.plan]}</div>
@@ -141,6 +177,40 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
         <div className={styles.panelBody}>
           <ClinicBillingAdjustments clinicId={typedClinic.id} clinic={typedClinic} />
         </div>
+      </div>
+
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Histórico de anamneses</p>
+        </div>
+        {!recentAnamneses || recentAnamneses.length === 0 ? (
+          <div className={styles.emptyState}>Nenhuma anamnese registrada ainda.</div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Paciente</th>
+                <th>Data</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentAnamneses.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.patient_name}</td>
+                  <td>{formatBRDate(a.created_at)}</td>
+                  <td>
+                    {signedAnamnesisIds.has(a.id) ? (
+                      <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>
+                    ) : (
+                      <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className={styles.panel}>

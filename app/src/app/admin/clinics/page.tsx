@@ -3,7 +3,8 @@ import Link from "next/link";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { PLAN_LABEL } from "@/lib/asaas";
+import { PLAN_LABEL, PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
+import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { formatBRDate } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
@@ -30,6 +31,25 @@ export default async function AdminClinicsPage() {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase.from("clinics").select("*").order("created_at", { ascending: false });
   const clinics = (data as Clinic[]) ?? [];
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const { data: monthlyAnamneses } = await supabase
+    .from("anamneses")
+    .select("clinic_id")
+    .gte("created_at", startOfMonth.toISOString());
+
+  const usageByClinic = new Map<string, number>();
+  for (const a of monthlyAnamneses ?? []) {
+    usageByClinic.set(a.clinic_id, (usageByClinic.get(a.clinic_id) ?? 0) + 1);
+  }
+
+  function usageFor(c: Clinic) {
+    const used = usageByClinic.get(c.id) ?? 0;
+    const limit = c.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : PLAN_MONTHLY_LIMIT[c.plan];
+    return { used, limit, over: used > limit };
+  }
 
   const stats = {
     total: clinics.length,
@@ -76,6 +96,7 @@ export default async function AdminClinicsPage() {
               <tr>
                 <th>Clínica</th>
                 <th>Plano</th>
+                <th>Uso este mês</th>
                 <th>Status</th>
                 <th>Trial até</th>
                 <th>Criada em</th>
@@ -84,6 +105,7 @@ export default async function AdminClinicsPage() {
             <tbody>
               {clinics.map((c) => {
                 const status = STATUS_META[c.subscription_status] ?? { label: c.subscription_status, className: "" };
+                const usage = usageFor(c);
                 return (
                   <tr key={c.id}>
                     <td>
@@ -109,6 +131,14 @@ export default async function AdminClinicsPage() {
                         <div style={{ fontSize: 11.5, color: "var(--warn)", fontWeight: 600, marginTop: 2 }}>
                           → {PLAN_LABEL[c.pending_plan]}
                         </div>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: usage.over ? "var(--danger)" : "var(--ink)" }}>
+                        {usage.used}/{usage.limit}
+                      </span>
+                      {usage.over && (
+                        <div style={{ fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}>excedente</div>
                       )}
                     </td>
                     <td>
