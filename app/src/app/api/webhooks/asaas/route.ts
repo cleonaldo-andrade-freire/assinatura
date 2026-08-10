@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const supabase = createSupabaseAdminClient();
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, past_due_since")
+    .select("id, past_due_since, pending_plan")
     .eq("asaas_subscription_id", subscriptionId)
     .maybeSingle();
   if (!clinic) {
@@ -31,7 +31,17 @@ export async function POST(req: NextRequest) {
   }
 
   if (ASAAS_ACTIVATING_EVENTS.has(payload.event)) {
-    await supabase.from("clinics").update({ subscription_status: "active", past_due_since: null }).eq("id", clinic.id);
+    // Pagamento confirmado é a "virada de data" da assinatura — é aqui que uma
+    // troca de plano pendente (self-service, ver /api/clinics/:id/plan) passa a
+    // valer de fato, junto com a fatura que já veio com o valor novo.
+    await supabase
+      .from("clinics")
+      .update({
+        subscription_status: "active",
+        past_due_since: null,
+        ...(clinic.pending_plan ? { plan: clinic.pending_plan, pending_plan: null } : {}),
+      })
+      .eq("id", clinic.id);
   } else if (ASAAS_OVERDUE_EVENTS.has(payload.event)) {
     await supabase
       .from("clinics")

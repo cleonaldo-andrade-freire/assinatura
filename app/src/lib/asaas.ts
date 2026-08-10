@@ -170,6 +170,21 @@ export async function cancelAsaasSubscription(subscriptionId: string): Promise<v
   await asaasFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
 }
 
+/** Muda o valor (e opcionalmente o ciclo) de uma assinatura existente — vale a partir da próxima cobrança, sem prorateio. */
+export async function updateAsaasSubscription(input: {
+  subscriptionId: string;
+  plan: Plan;
+  cycle: BillingCycle;
+}): Promise<AsaasSubscription> {
+  return asaasFetch<AsaasSubscription>(`/subscriptions/${encodeURIComponent(input.subscriptionId)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      cycle: input.cycle === "yearly" ? "YEARLY" : "MONTHLY",
+      value: planValueFor(input.plan, input.cycle),
+    }),
+  });
+}
+
 export interface AsaasCharge {
   id: string;
   invoiceUrl: string;

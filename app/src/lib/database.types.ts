@@ -12,6 +12,7 @@ export interface Clinic {
   slug: string;
   api_key: string;
   plan: Plan;
+  pending_plan: Plan | null;
   billing_cycle: BillingCycle;
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;

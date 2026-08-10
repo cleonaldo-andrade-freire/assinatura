@@ -6,7 +6,7 @@ Painel multi-clínica + API que substitui os webhooks do n8n para clínicas nova
 
 1. Crie uma conta e um projeto grátis em [supabase.com](https://supabase.com).
 2. Em **Project Settings → API**, copie a `URL`, a `anon public key` e a `service_role key`.
-3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode também `supabase/002_add_clinic_logo.sql`, `supabase/003_add_whatsapp_number.sql`, `supabase/004_conversation_engine.sql` e `supabase/005_plan_tiers.sql`, nessa ordem.
+3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode também `supabase/002_add_clinic_logo.sql`, `supabase/003_add_whatsapp_number.sql`, `supabase/004_conversation_engine.sql`, `supabase/005_plan_tiers.sql` e `supabase/006_pending_plan.sql`, nessa ordem.
 4. Em **Storage**, crie dois buckets:
    - `signed-pdfs` — **privado** (PDFs assinados)
    - `clinic-logos` — **público** (logo de cada clínica, usado na página de assinatura e no PDF)
@@ -57,6 +57,8 @@ A resposta traz um `token` — abra `http://localhost:3000/assinatura?token=<tok
 6 faixas de plano (`lib/asaas.ts`: `PLAN_MONTHLY_PRICE`, `PLAN_MONTHLY_LIMIT`, `PLAN_LABEL`), cada uma com um limite de anamneses por mês. O sistema **nunca bloqueia** a clínica por ter passado do limite — `lib/usage.ts` conta quantas anamneses (`anamneses`, não `conversations`) foram criadas desde o dia 1 do mês corrente, e se a unidade recém-criada ultrapassa o limite do plano, dispara uma cobrança avulsa de `OVERAGE_PRICE` (R$1,90, igual pra todos os planos) via Asaas (`createAsaasCharge`, `POST /payments` — diferente de `/subscriptions`), registrando em `usage_charges` pra aparecer no `/billing` da clínica. Chamado logo após cada `createAnamnesis` bem-sucedido, nos dois pontos de entrada (Typebot legado e motor de conversa novo).
 
 Adicionar um plano novo: só mexer nos 3 `Record<Plan, ...>` em `lib/asaas.ts` — mas o valor do enum (`Plan` em `database.types.ts`) precisa existir primeiro no Postgres via uma migration com `alter type plan add value '...'` (cada uma como statement isolado, não pode estar na mesma transação que já usa o valor).
+
+**Troca de plano self-service** (`/billing`, componente `PlanPicker`): a clínica escolhe um plano novo e o Asaas já passa a cobrar o valor dele na próxima fatura (`updateAsaasSubscription`), mas o `plan` da clínica no nosso banco **não muda na hora** — fica guardado em `pending_plan` até o webhook do Asaas (`/api/webhooks/asaas`) receber a confirmação desse próximo pagamento, que é quando `pending_plan` vira `plan` de fato. Isso evita qualquer descompasso entre "o que a clínica pode usar" e "o que ela está pagando".
 
 ## Componentes de UI compartilhados (`src/components/ui/`)
 

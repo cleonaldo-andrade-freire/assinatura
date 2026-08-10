@@ -5,6 +5,7 @@ import { countMonthlyAnamneses } from "@/lib/usage";
 import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { PlanPicker } from "@/components/PlanPicker";
 import type { UsageCharge } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -124,6 +125,15 @@ export default async function BillingPage() {
           </div>
         </div>
       )}
+
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Trocar de plano</p>
+        </div>
+        <div className={styles.panelBody}>
+          <PlanPicker clinicId={clinic.id} currentPlan={clinic.plan} pendingPlan={clinic.pending_plan} />
+        </div>
+      </div>
     </ClinicShell>
   );
 }
