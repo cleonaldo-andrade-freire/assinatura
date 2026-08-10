@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { asaasCustomerDashboardUrl, listPayments, PLAN_LABEL, type AsaasPayment } from "@/lib/asaas";
+import { asaasCustomerDashboardUrl, listPayments, PAYMENT_STATUS_LABEL, PLAN_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CancelClinicButton } from "@/components/CancelClinicButton";
 import { LogoUpload } from "@/components/LogoUpload";
@@ -15,14 +15,6 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   active: { label: "Em dia", className: styles.statusOk },
   past_due: { label: "Pagamento em atraso", className: styles.statusWarn },
   canceled: { label: "Cancelada", className: styles.statusDanger },
-};
-
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pendente",
-  RECEIVED: "Recebido",
-  CONFIRMED: "Confirmado",
-  OVERDUE: "Em atraso",
-  REFUNDED: "Estornado",
 };
 
 export default async function AdminClinicDetailPage({ params }: { params: { id: string } }) {
@@ -81,6 +73,11 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
           <div className={styles.statLabel}>
             Plano ({typedClinic.billing_cycle === "yearly" ? "anual" : "mensal"})
           </div>
+          {typedClinic.pending_plan && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn)", fontWeight: 600 }}>
+              → {PLAN_LABEL[typedClinic.pending_plan]} na próxima cobrança
+            </div>
+          )}
         </div>
       </div>
 

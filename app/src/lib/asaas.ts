@@ -134,6 +134,14 @@ export interface AsaasWebhookPayload {
   };
 }
 
+export const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pendente",
+  RECEIVED: "Recebido",
+  CONFIRMED: "Confirmado",
+  OVERDUE: "Em atraso",
+  REFUNDED: "Estornado",
+};
+
 export interface AsaasPayment {
   id: string;
   status: string;

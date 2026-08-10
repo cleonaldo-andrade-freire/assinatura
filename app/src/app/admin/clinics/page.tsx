@@ -105,6 +105,11 @@ export default async function AdminClinicsPage() {
                     <td>
                       {PLAN_LABEL[c.plan]}
                       <div className={styles.rowMeta}>{c.billing_cycle === "yearly" ? "anual" : "mensal"}</div>
+                      {c.pending_plan && (
+                        <div style={{ fontSize: 11.5, color: "var(--warn)", fontWeight: 600, marginTop: 2 }}>
+                          → {PLAN_LABEL[c.pending_plan]}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <span className={`${styles.statusDot} ${status.className}`}>{status.label}</span>

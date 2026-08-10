@@ -12,7 +12,6 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Anamnese SaaS",
   description: "Anamnese e assinatura eletrônica via WhatsApp",
-  manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

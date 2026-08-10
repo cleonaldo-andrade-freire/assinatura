@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
 import { getCurrentClinic } from "@/lib/auth";
-import { getPendingInvoice, PLAN_LABEL, PLAN_MONTHLY_LIMIT, PLAN_MONTHLY_PRICE, OVERAGE_PRICE } from "@/lib/asaas";
+import {
+  getPendingInvoice,
+  listPayments,
+  PAYMENT_STATUS_LABEL,
+  PLAN_LABEL,
+  PLAN_MONTHLY_LIMIT,
+  PLAN_MONTHLY_PRICE,
+  OVERAGE_PRICE,
+  type AsaasPayment,
+} from "@/lib/asaas";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -28,12 +37,20 @@ export default async function BillingPage() {
   if (!clinic) redirect("/login");
 
   let invoiceUrl: string | null = null;
-  if (clinic.asaas_subscription_id && clinic.subscription_status !== "trialing") {
+  let payments: AsaasPayment[] = [];
+  if (clinic.asaas_subscription_id) {
     try {
-      const invoice = await getPendingInvoice(clinic.asaas_subscription_id);
-      invoiceUrl = invoice?.invoiceUrl ?? null;
+      payments = await listPayments(clinic.asaas_subscription_id);
     } catch (err) {
-      console.error("Falha ao buscar fatura pendente no Asaas:", err);
+      console.error("Falha ao buscar cobranças no Asaas:", err);
+    }
+    if (clinic.subscription_status !== "trialing") {
+      try {
+        const invoice = await getPendingInvoice(clinic.asaas_subscription_id);
+        invoiceUrl = invoice?.invoiceUrl ?? null;
+      } catch (err) {
+        console.error("Falha ao buscar fatura pendente no Asaas:", err);
+      }
     }
   }
 
@@ -123,6 +140,38 @@ export default async function BillingPage() {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {payments.length > 0 && (
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Cobranças</p>
+          </div>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Vencimento</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.id}>
+                  <td>{formatBRDate(p.dueDate)}</td>
+                  <td>R$ {p.value.toFixed(2).replace(".", ",")}</td>
+                  <td>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
+                  <td>
+                    <a href={p.invoiceUrl} target="_blank" rel="noreferrer">
+                      Ver fatura
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
