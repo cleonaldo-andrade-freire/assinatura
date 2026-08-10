@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Anamnesis, Signature } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -41,7 +42,7 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title={typedAnamnesis.patient_name}
-      subtitle={`Anamnese registrada em ${new Date(typedAnamnesis.created_at).toLocaleDateString("pt-BR")}`}
+      subtitle={`Anamnese registrada em ${formatBRDate(typedAnamnesis.created_at)}`}
       actions={
         <Link href="/dashboard" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar
@@ -83,11 +84,11 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
               {detailRow("Assinado por", `${typedSignature.signer_name} (CPF ${typedSignature.signer_cpf})`)}
               {detailRow(
                 "Data/hora (dispositivo do paciente)",
-                new Date(typedSignature.signed_at_client).toLocaleString("pt-BR")
+                formatBRDateTime(typedSignature.signed_at_client, "medium")
               )}
               {detailRow(
                 "Data/hora (servidor)",
-                new Date(typedSignature.signed_at_server).toLocaleString("pt-BR")
+                formatBRDateTime(typedSignature.signed_at_server, "medium")
               )}
               {detailRow("Endereço IP", typedSignature.ip ?? "não capturado")}
               {detailRow("Dispositivo/navegador", typedSignature.user_agent ?? "não capturado")}

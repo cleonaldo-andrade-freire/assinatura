@@ -81,6 +81,28 @@ export async function getConnectionState(instanceName: string): Promise<Connecti
   }
 }
 
+/**
+ * Desconecta a sessão do WhatsApp da instância (equivalente a "sair" no
+ * Aparelhos Conectados), sem apagar a instância em si — fica pronta pra
+ * escanear um QR Code novo, de outro número, em seguida.
+ */
+export async function logoutInstance(instanceName: string): Promise<boolean> {
+  const base = baseUrl();
+  const key = adminKey();
+  if (!base || !key) return false;
+
+  try {
+    const res = await fetch(`${base}/instance/logout/${encodeURIComponent(instanceName)}`, {
+      method: "DELETE",
+      headers: { apikey: key },
+    });
+    return res.ok;
+  } catch (err) {
+    console.error("Falha ao desconectar instância Evolution:", err);
+    return false;
+  }
+}
+
 /** Configura o webhook genérico da instância pra apontar pro nosso endpoint. */
 export async function setInstanceWebhook(instanceName: string, webhookUrl: string): Promise<boolean> {
   const base = baseUrl();

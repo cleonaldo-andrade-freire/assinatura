@@ -4,6 +4,7 @@ import { hasAdminSession } from "@/lib/adminSession";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PLAN_LABEL } from "@/lib/asaas";
+import { formatBRDate } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
 
@@ -108,8 +109,8 @@ export default async function AdminClinicsPage() {
                     <td>
                       <span className={`${styles.statusDot} ${status.className}`}>{status.label}</span>
                     </td>
-                    <td>{c.trial_ends_at ? new Date(c.trial_ends_at).toLocaleDateString("pt-BR") : "—"}</td>
-                    <td>{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
+                    <td>{c.trial_ends_at ? formatBRDate(c.trial_ends_at) : "—"}</td>
+                    <td>{formatBRDate(c.created_at)}</td>
                   </tr>
                 );
               })}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentClinic } from "@/lib/auth";
 import { getPendingInvoice, PLAN_LABEL, PLAN_MONTHLY_LIMIT, PLAN_MONTHLY_PRICE, OVERAGE_PRICE } from "@/lib/asaas";
 import { countMonthlyAnamneses } from "@/lib/usage";
+import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import type { UsageCharge } from "@/lib/database.types";
@@ -89,7 +90,7 @@ export default async function BillingPage() {
         <div className={styles.panelBody}>
           {clinic.subscription_status === "trialing" && clinic.trial_ends_at && (
             <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: invoiceUrl ? "0 0 16px" : 0 }}>
-              Teste gratuito até {new Date(clinic.trial_ends_at).toLocaleDateString("pt-BR")}.
+              Teste gratuito até {formatBRDate(clinic.trial_ends_at)}.
             </p>
           )}
           {invoiceUrl ? (

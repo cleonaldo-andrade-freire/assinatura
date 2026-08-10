@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { CancelClinicButton } from "@/components/CancelClinicButton";
 import { LogoUpload } from "@/components/LogoUpload";
 import { WhatsappConfigForm } from "@/components/WhatsappConfigForm";
+import { formatBRDate } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
 
@@ -110,12 +111,12 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
             <div className={styles.defItem}>
               <span className={styles.defLabel}>Trial até</span>
               <span className={styles.defValue}>
-                {typedClinic.trial_ends_at ? new Date(typedClinic.trial_ends_at).toLocaleDateString("pt-BR") : "—"}
+                {typedClinic.trial_ends_at ? formatBRDate(typedClinic.trial_ends_at) : "—"}
               </span>
             </div>
             <div className={styles.defItem}>
               <span className={styles.defLabel}>Criada em</span>
-              <span className={styles.defValue}>{new Date(typedClinic.created_at).toLocaleDateString("pt-BR")}</span>
+              <span className={styles.defValue}>{formatBRDate(typedClinic.created_at)}</span>
             </div>
             {typedClinic.asaas_customer_id && (
               <div className={styles.defItem}>
@@ -154,7 +155,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td>{new Date(p.dueDate).toLocaleDateString("pt-BR")}</td>
+                  <td>{formatBRDate(p.dueDate)}</td>
                   <td>R$ {p.value.toFixed(2)}</td>
                   <td>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
                   <td>

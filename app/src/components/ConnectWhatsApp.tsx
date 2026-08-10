@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
 
 type Status = "checking" | "disconnected" | "connecting" | "connected";
@@ -15,6 +17,9 @@ export function ConnectWhatsApp({ clinicId, initialWhatsappNumber }: { clinicId:
   const [loading, setLoading] = useState(false);
   const [number, setNumber] = useState(formatBRPhoneLocal(initialWhatsappNumber ?? ""));
   const [numberSaved, setNumberSaved] = useState(!!initialWhatsappNumber);
+  const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const { toasts, push, dismiss } = useToasts();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function checkStatus() {
@@ -76,6 +81,25 @@ export function ConnectWhatsApp({ clinicId, initialWhatsappNumber }: { clinicId:
     }
   }
 
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/whatsapp/disconnect`, { method: "POST" });
+      if (!res.ok) {
+        push("Falha ao desconectar. Tenta de novo.");
+        return;
+      }
+      setDisconnectConfirmOpen(false);
+      setStatus("disconnected");
+      setNumberSaved(false);
+      setNumber("");
+      setQrCode(null);
+      router.refresh();
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   if (status === "checking") {
     return <p style={{ color: "var(--ink-soft)" }}>Verificando…</p>;
   }
@@ -85,6 +109,10 @@ export function ConnectWhatsApp({ clinicId, initialWhatsappNumber }: { clinicId:
       <div>
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
             background: "var(--brand-tint)",
             color: "var(--brand-deep)",
             borderRadius: "var(--radius-sm)",
@@ -93,7 +121,19 @@ export function ConnectWhatsApp({ clinicId, initialWhatsappNumber }: { clinicId:
             fontSize: 14,
           }}
         >
-          ✅ WhatsApp conectado.
+          <span>
+            ✅ WhatsApp conectado{numberSaved ? ` — 🇧🇷 +55 ${number}` : ""}
+          </span>
+          {numberSaved && (
+            <button
+              type="button"
+              onClick={() => setDisconnectConfirmOpen(true)}
+              className={`${styles.btn} ${styles.btnGhost}`}
+              style={{ padding: "6px 12px", fontSize: 13, background: "var(--surface)" }}
+            >
+              Trocar número
+            </button>
+          )}
         </div>
 
         {!numberSaved && (
@@ -134,6 +174,19 @@ export function ConnectWhatsApp({ clinicId, initialWhatsappNumber }: { clinicId:
             </button>
           </form>
         )}
+
+        <ConfirmDialog
+          open={disconnectConfirmOpen}
+          title="Trocar número de WhatsApp"
+          message="Isso desconecta o WhatsApp atual da clínica. Anamneses em andamento nesse número param de receber respostas até você conectar o número novo. Depois de desconectar, escaneie o QR Code com o WhatsApp do novo número."
+          confirmLabel="Desconectar"
+          cancelLabel="Cancelar"
+          danger
+          loading={disconnecting}
+          onConfirm={handleDisconnect}
+          onCancel={() => setDisconnectConfirmOpen(false)}
+        />
+        <ToastStack toasts={toasts} onDismiss={dismiss} />
       </div>
     );
   }

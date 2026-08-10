@@ -6,10 +6,11 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { PLAN_MONTHLY_LIMIT } from "@/lib/asaas";
+import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Conversation } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 function initials(name: string): string {
   return name
@@ -23,26 +24,18 @@ function initials(name: string): string {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { q?: string; page?: string };
+  searchParams: { q?: string; page?: string; status?: string };
 }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
   const q = searchParams.q?.trim() ?? "";
+  const status = searchParams.status === "signed" || searchParams.status === "pending" ? searchParams.status : "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
   const supabase = await createSupabaseServerClient();
-
-  let query = supabase
-    .from("anamneses")
-    .select("id, token, patient_name, created_at", { count: "exact" })
-    .eq("clinic_id", clinic.id);
-  if (q) query = query.ilike("patient_name", `%${q}%`);
-  const { data: anamneses, count } = await query.order("created_at", { ascending: false }).range(from, to);
-
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
   const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }, usedThisMonth] =
     await Promise.all([
@@ -59,7 +52,22 @@ export default async function DashboardPage({
     ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
+  const signedIds = Array.from(signatureByAnamnesis.keys());
   const conversations = (activeConversations as Conversation[]) ?? [];
+
+  let query = supabase
+    .from("anamneses")
+    .select("id, token, patient_name, created_at", { count: "exact" })
+    .eq("clinic_id", clinic.id);
+  if (q) query = query.ilike("patient_name", `%${q}%`);
+  if (status === "signed") {
+    query = signedIds.length > 0 ? query.in("id", signedIds) : query.eq("id", "00000000-0000-0000-0000-000000000000");
+  } else if (status === "pending" && signedIds.length > 0) {
+    query = query.not("id", "in", `(${signedIds.join(",")})`);
+  }
+  const { data: anamneses, count } = await query.order("created_at", { ascending: false }).range(from, to);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const activeConversationCount = conversations.filter((c) => c.status === "active").length;
   const pendingCount = (totalCount ?? 0) - (signedCount ?? 0);
   const monthlyLimit = PLAN_MONTHLY_LIMIT[clinic.plan];
@@ -69,6 +77,7 @@ export default async function DashboardPage({
   function pageHref(p: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (status) params.set("status", status);
     params.set("page", String(p));
     return `/dashboard?${params.toString()}`;
   }
@@ -188,7 +197,7 @@ export default async function DashboardPage({
                       )}
                     </td>
                     <td style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-                      {new Date(c.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                      {formatBRDateTime(c.updated_at)}
                     </td>
                     <td>
                       <ConversationRowActions clinicId={clinic.id} conversationId={c.id} status={c.status} />
@@ -204,24 +213,36 @@ export default async function DashboardPage({
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Todas as anamneses</p>
-          <form method="GET" className={styles.searchBox}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.7" />
-              <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="Buscar por paciente…"
-              className={styles.searchInput}
-            />
+          <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className={styles.searchBox}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.7" />
+                <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar por paciente…"
+                className={styles.searchInput}
+              />
+            </div>
+            <select name="status" defaultValue={status} className={styles.select} style={{ width: "auto" }}>
+              <option value="">Todos os status</option>
+              <option value="signed">Assinadas</option>
+              <option value="pending">Pendentes</option>
+            </select>
+            <button type="submit" className={`${styles.btn} ${styles.btnGhost}`}>
+              Filtrar
+            </button>
           </form>
         </div>
 
         {!anamneses || anamneses.length === 0 ? (
           <div className={styles.emptyState}>
-            {q ? `Nenhuma anamnese encontrada pra "${q}".` : "Nenhuma anamnese registrada ainda."}
+            {q || status
+              ? `Nenhuma anamnese encontrada${q ? ` pra "${q}"` : ""}${status ? " com esse filtro" : ""}.`
+              : "Nenhuma anamnese registrada ainda."}
           </div>
         ) : (
           <>
@@ -245,7 +266,7 @@ export default async function DashboardPage({
                           <span className={styles.rowTitle}>{a.patient_name}</span>
                         </Link>
                       </td>
-                      <td>{new Date(a.created_at).toLocaleDateString("pt-BR")}</td>
+                      <td>{formatBRDate(a.created_at)}</td>
                       <td>
                         {signatureId ? (
                           <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>
