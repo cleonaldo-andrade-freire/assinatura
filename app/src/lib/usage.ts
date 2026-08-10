@@ -1,11 +1,23 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { PLAN_MONTHLY_LIMIT, OVERAGE_PRICE, createAsaasCharge } from "@/lib/asaas";
+import {
+  PLAN_LABEL,
+  PLAN_MONTHLY_LIMIT,
+  OVERAGE_PRICE,
+  createAsaasCharge,
+  getPendingInvoice,
+  planValueFor,
+  updateAsaasPaymentValue,
+} from "@/lib/asaas";
 import type { Clinic } from "@/lib/database.types";
 
 /** Início do mês corrente, em UTC, pra contar uso "desde o dia 1". */
 function startOfCurrentMonth(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+}
+
+function money(value: number): string {
+  return value.toFixed(2).replace(".", ",");
 }
 
 export async function countMonthlyAnamneses(supabase: SupabaseClient, clinicId: string): Promise<number> {
@@ -24,21 +36,47 @@ export function overageUnits(usedThisMonth: number, plan: Clinic["plan"]): numbe
 
 /**
  * Chamada logo depois de criar uma anamnese: se essa unidade ultrapassou o
- * limite mensal do plano, dispara uma cobrança avulsa no Asaas (best-effort —
- * nunca derruba a resposta principal, só loga se falhar, mesmo padrão de
- * `notifyClinicSigned`).
+ * limite mensal do plano, soma o excedente do mês inteiro direto na fatura
+ * pendente da assinatura (mesmo valor total recalculado do zero a cada vez —
+ * plano + excedente até agora — nunca incrementado, pra não haver risco de
+ * duplicar). Se não houver fatura pendente pra atualizar (raro — normalmente
+ * o Asaas já gera a próxima com antecedência), cai pra uma cobrança avulsa
+ * como plano B. Best-effort: nunca derruba a resposta principal, só loga se
+ * falhar, mesmo padrão de `notifyClinicSigned`.
  */
 export async function chargeOverageIfNeeded(
   supabase: SupabaseClient,
-  clinic: Pick<Clinic, "id" | "name" | "plan" | "asaas_customer_id">,
+  clinic: Pick<Clinic, "id" | "name" | "plan" | "billing_cycle" | "asaas_customer_id" | "asaas_subscription_id">,
   anamnesisId: string
 ): Promise<void> {
   if (!clinic.asaas_customer_id) return;
 
   const used = await countMonthlyAnamneses(supabase, clinic.id);
-  if (overageUnits(used, clinic.plan) <= 0) return;
+  const units = overageUnits(used, clinic.plan);
+  if (units <= 0) return;
+
+  const overageTotal = Math.round(units * OVERAGE_PRICE * 100) / 100;
+  const planValue = planValueFor(clinic.plan, clinic.billing_cycle);
 
   try {
+    const pending = clinic.asaas_subscription_id ? await getPendingInvoice(clinic.asaas_subscription_id) : null;
+
+    if (pending) {
+      const newValue = Math.round((planValue + overageTotal) * 100) / 100;
+      const description = `Assinatura ${PLAN_LABEL[clinic.plan]} (R$ ${money(planValue)}) + ${units} anamnese${
+        units === 1 ? "" : "s"
+      } excedente${units === 1 ? "" : "s"} (R$ ${money(overageTotal)}) = R$ ${money(newValue)}`;
+      await updateAsaasPaymentValue({ paymentId: pending.id, value: newValue, description });
+      await supabase.from("usage_charges").insert({
+        clinic_id: clinic.id,
+        anamnesis_id: anamnesisId,
+        asaas_payment_id: pending.id,
+        amount: OVERAGE_PRICE,
+      });
+      return;
+    }
+
+    // Plano B: sem fatura pendente pra atualizar — cobrança avulsa isolada.
     const charge = await createAsaasCharge({
       customerId: clinic.asaas_customer_id,
       value: OVERAGE_PRICE,

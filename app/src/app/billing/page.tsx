@@ -114,12 +114,12 @@ export default async function BillingPage() {
           <div className={styles.panelBody}>
             <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: "0 0 4px" }}>
               Você já passou {overageCount} anamnese{overageCount === 1 ? "" : "s"} do limite do plano
-              ({limit}/mês) — cada uma extra é cobrada à parte, R$ {OVERAGE_PRICE.toFixed(2).replace(".", ",")}.
+              ({limit}/mês) — R$ {OVERAGE_PRICE.toFixed(2).replace(".", ",")} por anamnese extra, somado direto na
+              sua próxima fatura (não gera cobrança separada).
             </p>
             {charges.length > 0 && (
               <p style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, margin: "8px 0 0" }}>
-                Total cobrado em excedentes este mês: R$ {chargedTotal.toFixed(2).replace(".", ",")} (
-                {charges.length} cobrança{charges.length === 1 ? "" : "s"})
+                Excedente já incluído na fatura: R$ {chargedTotal.toFixed(2).replace(".", ",")}
               </p>
             )}
           </div>

@@ -151,6 +151,18 @@ export async function getPendingInvoice(subscriptionId: string): Promise<AsaasPa
   return result.data[0] ?? null;
 }
 
+/** Atualiza valor/descrição de uma cobrança ainda pendente (não paga) — usado pra somar o excedente de anamneses direto na fatura da assinatura, em vez de criar uma cobrança avulsa separada. */
+export async function updateAsaasPaymentValue(input: {
+  paymentId: string;
+  value: number;
+  description: string;
+}): Promise<AsaasPayment> {
+  return asaasFetch<AsaasPayment>(`/payments/${encodeURIComponent(input.paymentId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ value: input.value, description: input.description }),
+  });
+}
+
 /** Últimas cobranças (pagas ou não) de uma assinatura — pra tela de admin. */
 export async function listPayments(subscriptionId: string, limit = 10): Promise<AsaasPayment[]> {
   const result = await asaasFetch<{ data: AsaasPayment[] }>(
