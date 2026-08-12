@@ -33,6 +33,7 @@ interface Record_ {
 }
 
 type Status = "loading" | "error" | "form" | "sending" | "success" | "send-error" | "already-signed";
+type FormStep = "review" | "sign";
 
 function demoData(): Record_ {
   return {
@@ -81,7 +82,9 @@ export function AssinaturaClient() {
   const [hasSignature, setHasSignature] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [signatureThumb, setSignatureThumb] = useState<string | null>(null);
-  const [reviewedGroups, setReviewedGroups] = useState<Set<number>>(new Set([0]));
+  const [formStep, setFormStep] = useState<FormStep>("review");
+  const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
+  const [visitedGroups, setVisitedGroups] = useState<Set<number>>(new Set([0]));
   const [isOnline, setIsOnline] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,6 +94,11 @@ export function AssinaturaClient() {
   const lastPdfBlobRef = useRef<Blob | null>(null);
   const submitPayloadRef = useRef<{ name: string; cpf: string } | null>(null);
   const restoredSignatureRef = useRef<string | null>(null);
+  // Guarda o último traço desenhado como imagem — o <canvas> desmonta ao
+  // voltar da tela de assinatura pra revisão (é um passo condicional, não
+  // só escondido por CSS), então sem isso o traço se perderia ao avançar
+  // de novo mesmo com hasSignature ainda true.
+  const signatureSnapshotRef = useRef<string | null>(null);
 
   const reviewGroups = useMemo(() => {
     const answers = record?.answers ?? [];
@@ -123,7 +131,17 @@ export function AssinaturaClient() {
   useEffect(() => {
     if (!token || demo || status !== "form") return;
     try {
-      const draft: Draft = { fullName, cpf, consent, signatureDataUrl: hasSignature ? currentSignatureDataUrl() : null };
+      const draft: Draft = {
+        fullName,
+        cpf,
+        consent,
+        // Se uma assinatura restaurada da sessão anterior ainda não foi
+        // redesenhada no canvas (só acontece ao chegar na etapa de assinar),
+        // mantém o valor restaurado em vez de gravar `null` por cima —
+        // senão uma mudança em nome/CPF antes de chegar lá apagaria a
+        // assinatura salva.
+        signatureDataUrl: hasSignature ? signatureSnapshotRef.current : restoredSignatureRef.current,
+      };
       sessionStorage.setItem(draftKey(token), JSON.stringify(draft));
     } catch {
       // sessionStorage indisponível (modo privado etc.) — segue sem persistir.
@@ -132,8 +150,8 @@ export function AssinaturaClient() {
   }, [token, demo, status, fullName, cpf, consent, hasSignature]);
 
   function currentSignatureDataUrl(): string | null {
-    if (!canvasRef.current) return null;
-    return canvasRef.current.toDataURL("image/png");
+    if (canvasRef.current) return canvasRef.current.toDataURL("image/png");
+    return signatureSnapshotRef.current;
   }
 
   function clearDraft() {
@@ -186,7 +204,7 @@ export function AssinaturaClient() {
   }, [token]);
 
   useEffect(() => {
-    if (status !== "form" || !canvasRef.current) return;
+    if (status !== "form" || formStep !== "sign" || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ratio = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -201,16 +219,21 @@ export function AssinaturaClient() {
     ctx.strokeStyle = "#1E2B27";
     ctxRef.current = ctx;
 
-    if (restoredSignatureRef.current) {
+    // Restaura o traço de uma sessão anterior (recarregou a página) ou de
+    // um "Voltar pra revisão" seguido de "Continuar" nesta mesma sessão —
+    // o <canvas> é um nó novo em qualquer um dos dois casos.
+    const toRestore = restoredSignatureRef.current ?? signatureSnapshotRef.current;
+    if (toRestore) {
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        signatureSnapshotRef.current = toRestore;
         setHasSignature(true);
       };
-      img.src = restoredSignatureRef.current;
+      img.src = toRestore;
       restoredSignatureRef.current = null;
     }
-  }, [status]);
+  }, [status, formStep]);
 
   function pos(e: React.PointerEvent<HTMLCanvasElement>) {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -237,6 +260,7 @@ export function AssinaturaClient() {
 
   function endStroke() {
     drawingRef.current = false;
+    if (canvasRef.current) signatureSnapshotRef.current = canvasRef.current.toDataURL("image/png");
   }
 
   function clearSignature() {
@@ -244,6 +268,7 @@ export function AssinaturaClient() {
     if (!canvas || !ctxRef.current) return;
     const rect = canvas.getBoundingClientRect();
     ctxRef.current.clearRect(0, 0, rect.width, rect.height);
+    signatureSnapshotRef.current = null;
     setHasSignature(false);
   }
 
@@ -479,8 +504,8 @@ export function AssinaturaClient() {
         </div>
       )}
 
-      {(status === "form" || status === "sending") && record && (
-        <>
+      {status === "form" && formStep === "review" && record && (
+        <div style={{ paddingBottom: 96 }}>
           <div className="card">
             <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
               Revisão
@@ -494,27 +519,18 @@ export function AssinaturaClient() {
             </p>
 
             {reviewGroups.length > 1 && (
-              <div style={{ marginBottom: 14 }}>
-                <div
-                  style={{
-                    height: 6,
-                    borderRadius: 999,
-                    background: "var(--surface-sunken)",
-                    overflow: "hidden",
-                  }}
-                >
+              <div style={{ display: "flex", gap: 5, marginBottom: 16 }}>
+                {reviewGroups.map((_, gi) => (
                   <div
+                    key={gi}
                     style={{
-                      width: `${Math.round((reviewedGroups.size / reviewGroups.length) * 100)}%`,
-                      height: "100%",
-                      background: "var(--brand)",
-                      transition: "width 0.2s ease",
+                      flex: 1,
+                      height: 5,
+                      borderRadius: 999,
+                      background: visitedGroups.has(gi) ? "var(--brand)" : "var(--surface-sunken)",
                     }}
                   />
-                </div>
-                <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "6px 0 0" }}>
-                  {reviewedGroups.size} de {reviewGroups.length} blocos abertos
-                </p>
+                ))}
               </div>
             )}
 
@@ -539,15 +555,11 @@ export function AssinaturaClient() {
               return (
                 <details
                   key={gi}
-                  open={reviewedGroups.has(gi)}
+                  open={openGroupIndex === gi}
                   onToggle={(e) => {
                     const open = (e.target as HTMLDetailsElement).open;
-                    setReviewedGroups((prev) => {
-                      const next = new Set(prev);
-                      if (open) next.add(gi);
-                      else next.delete(gi);
-                      return next;
-                    });
+                    setOpenGroupIndex(open ? gi : null);
+                    if (open) setVisitedGroups((prev) => new Set(prev).add(gi));
                   }}
                   style={{ borderTop: gi === 0 ? "1px solid var(--line)" : "none" }}
                 >
@@ -569,6 +581,40 @@ export function AssinaturaClient() {
               );
             })}
           </div>
+
+          <div className="sticky-actions">
+            <div className="sticky-actions-inner">
+              <button className="btn-primary" onClick={() => setFormStep("sign")}>
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(status === "form" || status === "sending") && formStep === "sign" && record && (
+        <div style={{ paddingBottom: 96 }}>
+          {status === "form" && (
+            <button
+              type="button"
+              onClick={() => setFormStep("review")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                background: "none",
+                border: "none",
+                color: "var(--ink-soft)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                padding: "8px 0",
+                marginBottom: 8,
+              }}
+            >
+              ‹ Voltar pra revisão
+            </button>
+          )}
 
           <div className="card" style={{ border: "1.5px solid var(--sign-line)" }}>
             <p
@@ -638,7 +684,7 @@ export function AssinaturaClient() {
                 <canvas
                   ref={canvasRef}
                   id="sigCanvas"
-                  style={{ display: "block", width: "100%", height: 180, touchAction: "none", cursor: "crosshair" }}
+                  className="sig-canvas"
                   onPointerDown={startStroke}
                   onPointerMove={moveStroke}
                   onPointerUp={endStroke}
@@ -711,19 +757,20 @@ export function AssinaturaClient() {
               </span>
             </label>
 
-            <button
-              className="btn-primary"
-              disabled={status === "sending"}
-              onClick={handleSubmit}
-            >
-              {status === "sending" ? "Enviando…" : "Confirmar e assinar"}
-            </button>
-            <p style={{ fontSize: 12, color: "var(--ink-soft)", textAlign: "center", marginTop: 14, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: "var(--ink-soft)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
               Ao confirmar, registramos data, hora, IP e dispositivo como parte da trilha de autenticação deste
               documento.
             </p>
           </div>
-        </>
+
+          <div className="sticky-actions">
+            <div className="sticky-actions-inner">
+              <button className="btn-primary" disabled={status === "sending"} onClick={handleSubmit}>
+                {status === "sending" ? "Enviando…" : "Confirmar e assinar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {status === "success" && (
