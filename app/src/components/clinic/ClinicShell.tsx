@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import styles from "@/styles/shell.module.css";
 
 function AnamnesesIcon() {
@@ -105,14 +105,34 @@ function LogoutIcon() {
   );
 }
 
-const NAV_ITEMS = [
+function MoreIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="19" cy="12" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+
+// No celular, a barra inferior só tem espaço confortável pra 4 abas com
+// rótulo por extenso — 6 estourava a largura (rótulos como "Configurações"
+// não encolhem abaixo do próprio texto). As duas de uso mais esporádico
+// ficam atrás do botão "Mais". Na sidebar de desktop/tablet, onde sobra
+// espaço vertical, as seis continuam aparecendo direto.
+const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
+];
+
+const MORE_NAV_ITEMS = [
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
   { href: "/billing", label: "Assinatura", icon: BillingIcon },
 ];
+
+const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 
 function initials(name: string): string {
   return name
@@ -135,11 +155,32 @@ interface ClinicShellProps {
 export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, actions, children }: ClinicShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
+  }
+
+  function isActive(href: string) {
+    return href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(href);
+  }
+
+  function renderNavLink(item: (typeof NAV_ITEMS)[number], extraClassName?: string, onClick?: () => void) {
+    const Icon = item.icon;
+    return (
+      <a
+        key={item.href}
+        href={item.href}
+        title={item.label}
+        onClick={onClick}
+        className={`${styles.navLink} ${isActive(item.href) ? styles.navLinkActive : ""} ${extraClassName ?? ""}`}
+      >
+        <Icon />
+        <span className={styles.navLabel}>{item.label}</span>
+      </a>
+    );
   }
 
   return (
@@ -158,22 +199,33 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(item.href);
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                title={item.label}
-                className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
-              >
-                <Icon />
-                <span className={styles.navLabel}>{item.label}</span>
-              </a>
-            );
-          })}
+          {PRIMARY_NAV_ITEMS.map((item) => renderNavLink(item))}
+          {MORE_NAV_ITEMS.map((item) => renderNavLink(item, styles.navExtra))}
+          <button
+            type="button"
+            title="Mais"
+            aria-expanded={moreOpen}
+            className={`${styles.navLink} ${styles.navMoreToggle}`}
+            onClick={() => setMoreOpen((v) => !v)}
+          >
+            <MoreIcon />
+            <span className={styles.navLabel}>Mais</span>
+          </button>
         </nav>
+
+        {moreOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Fechar menu"
+              className={styles.navMoreOverlay}
+              onClick={() => setMoreOpen(false)}
+            />
+            <div className={styles.navMorePanel} role="menu">
+              {MORE_NAV_ITEMS.map((item) => renderNavLink(item, styles.navMorePanelLink, () => setMoreOpen(false)))}
+            </div>
+          </>
+        )}
 
         <div className={styles.sidebarFooter}>
           <button type="button" title="Sair" className={styles.logoutLink} onClick={handleLogout}>
