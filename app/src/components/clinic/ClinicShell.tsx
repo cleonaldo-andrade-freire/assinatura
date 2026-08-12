@@ -82,15 +82,6 @@ function SettingsIcon() {
   );
 }
 
-function BillingIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M3 10h18M7 15h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function LogoutIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -115,22 +106,20 @@ function MoreIcon() {
   );
 }
 
-// No celular, a barra inferior só tem espaço confortável pra 4 abas com
-// rótulo por extenso — 6 estourava a largura (rótulos como "Configurações"
-// não encolhem abaixo do próprio texto). As duas de uso mais esporádico
-// ficam atrás do botão "Mais". Na sidebar de desktop/tablet, onde sobra
-// espaço vertical, as seis continuam aparecendo direto.
+// Assinatura/cobrança agora mora dentro de Configurações (não é mais rota
+// própria), então sobra só um item "extra" — não vale a pena um menu "Mais"
+// pra revelar um único destino. As cinco abas cabem direto na barra do
+// celular (rótulo mais comprido, "Configurações", ainda encolhe com
+// segurança via min-width:0 + reticências no CSS).
 const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
+  { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 
-const MORE_NAV_ITEMS = [
-  { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
-  { href: "/billing", label: "Assinatura", icon: BillingIcon },
-];
+const MORE_NAV_ITEMS: typeof PRIMARY_NAV_ITEMS = [];
 
 const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 
@@ -201,19 +190,21 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         <nav className={styles.nav}>
           {PRIMARY_NAV_ITEMS.map((item) => renderNavLink(item))}
           {MORE_NAV_ITEMS.map((item) => renderNavLink(item, styles.navExtra))}
-          <button
-            type="button"
-            title="Mais"
-            aria-expanded={moreOpen}
-            className={`${styles.navLink} ${styles.navMoreToggle}`}
-            onClick={() => setMoreOpen((v) => !v)}
-          >
-            <MoreIcon />
-            <span className={styles.navLabel}>Mais</span>
-          </button>
+          {MORE_NAV_ITEMS.length > 0 && (
+            <button
+              type="button"
+              title="Mais"
+              aria-expanded={moreOpen}
+              className={`${styles.navLink} ${styles.navMoreToggle}`}
+              onClick={() => setMoreOpen((v) => !v)}
+            >
+              <MoreIcon />
+              <span className={styles.navLabel}>Mais</span>
+            </button>
+          )}
         </nav>
 
-        {moreOpen && (
+        {MORE_NAV_ITEMS.length > 0 && moreOpen && (
           <>
             <button
               type="button"

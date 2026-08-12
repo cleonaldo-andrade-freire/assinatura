@@ -5,18 +5,19 @@ interface PaginationProps {
   totalPages: number;
   count: number;
   itemLabel: string;
+  /** Só precisa quando o plural não é simplesmente `itemLabel + "s"` (ex.: "prescrição" → "prescrições"). */
+  itemLabelPlural?: string;
   hrefFor: (page: number) => string;
 }
 
 /** Paginador compartilhado — mesmo padrão visual/comportamental já usado em `dashboard/page.tsx`. */
-export function Pagination({ page, totalPages, count, itemLabel, hrefFor }: PaginationProps) {
+export function Pagination({ page, totalPages, count, itemLabel, itemLabelPlural, hrefFor }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   return (
     <div className={styles.pagination}>
       <span className={styles.paginationInfo}>
-        Página {page} de {totalPages} — {count} {itemLabel}
-        {count === 1 ? "" : "s"}
+        Página {page} de {totalPages} — {count} {count === 1 ? itemLabel : itemLabelPlural ?? `${itemLabel}s`}
       </span>
       <div className={styles.paginationLinks}>
         <a

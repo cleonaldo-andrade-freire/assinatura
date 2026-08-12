@@ -125,7 +125,7 @@ export default async function DashboardPage({
           </div>
           {overThisMonth && (
             <a
-              href="/billing"
+              href="/dashboard/configuracoes#assinatura"
               style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--danger)", fontWeight: 600 }}
             >
               {usedThisMonth - monthlyLimit} excedente{usedThisMonth - monthlyLimit === 1 ? "" : "s"} este mês →

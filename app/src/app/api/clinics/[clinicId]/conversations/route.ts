@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
         error,
         message:
           error === "trial_limit_reached"
-            ? `O período de teste cobre até 3 anamneses. Assine um plano em /billing pra continuar.`
+            ? `O período de teste cobre até 3 anamneses. Assine um plano em Configurações → Assinatura pra continuar.`
             : "Assinatura inativa.",
       },
       { status: 402 }

@@ -262,6 +262,11 @@
   }
   .navLink {
     flex: 1;
+    /* min-width:0 é o que permite um item encolher abaixo do próprio texto
+       quando a barra fica apertada — sem isso um rótulo comprido (ex.:
+       "Configurações") empurra a barra inteira pra fora da tela em vez de
+       truncar. */
+    min-width: 0;
     flex-direction: column;
     justify-content: center;
     gap: 3px;
@@ -270,6 +275,11 @@
     font-size: 11px;
     text-align: center;
     white-space: nowrap;
+  }
+  .navLabel {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   /* Configurações e Assinatura saem da barra fixa (só cabem 4 rótulos com
      folga) e passam a viver atrás do botão "Mais". */

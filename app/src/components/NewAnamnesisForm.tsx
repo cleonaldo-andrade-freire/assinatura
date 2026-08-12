@@ -83,7 +83,7 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
               marginBottom: 18,
             }}
           >
-            {error} {billingBlocked && <a href="/billing">Ver planos e assinar →</a>}
+            {error} {billingBlocked && <a href="/dashboard/configuracoes#assinatura">Ver planos e assinar →</a>}
           </div>
         )}
         {sent && (
