@@ -70,9 +70,9 @@ export default async function CertificatesPage() {
               {certificates.map((c) => (
                 <tr key={c.id}>
                   <td className={styles.rowTitle}>{c.patient_name}</td>
-                  <td>{formatBRDate(c.created_at)}</td>
-                  <td>{c.rest_days}</td>
-                  <td>
+                  <td data-label="Data">{formatBRDate(c.created_at)}</td>
+                  <td data-label="Dias de afastamento">{c.rest_days}</td>
+                  <td data-label="Status">
                     <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
                       {DOCUMENT_STATUS_LABEL[c.status]}
                     </span>

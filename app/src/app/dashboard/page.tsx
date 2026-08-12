@@ -169,16 +169,16 @@ export default async function DashboardPage({
                 const lastAnswer = c.answers[c.answers.length - 1];
                 return (
                   <tr key={c.id}>
-                    <td>{c.patient_name}</td>
-                    <td>
+                    <td className={styles.rowTitle}>{c.patient_name}</td>
+                    <td data-label="Status">
                       {c.status === "abandoned" ? (
                         <span className={`${styles.statusDot} ${styles.statusDanger}`}>Cancelada</span>
                       ) : (
                         <span className={`${styles.statusDot} ${styles.statusWarn}`}>Aguardando</span>
                       )}
                     </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 140 }}>
+                    <td data-label="Progresso">
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 100 }}>
                         <div
                           style={{
                             flex: 1,
@@ -195,14 +195,14 @@ export default async function DashboardPage({
                         </span>
                       </div>
                     </td>
-                    <td style={{ maxWidth: 220, color: "var(--ink-soft)", fontSize: 13 }}>
+                    <td data-label="Última resposta" style={{ maxWidth: 220, color: "var(--ink-soft)", fontSize: 13 }}>
                       {lastAnswer ? (
                         <span title={`${lastAnswer.question}: ${lastAnswer.answer}`}>{lastAnswer.answer}</span>
                       ) : (
                         "Sem resposta ainda"
                       )}
                     </td>
-                    <td style={{ color: "var(--ink-soft)", fontSize: 13 }}>
+                    <td data-label="Atividade" style={{ color: "var(--ink-soft)", fontSize: 13 }}>
                       {formatBRDateTime(c.updated_at)}
                     </td>
                     <td>
@@ -272,8 +272,8 @@ export default async function DashboardPage({
                           <span className={styles.rowTitle}>{a.patient_name}</span>
                         </Link>
                       </td>
-                      <td>{formatBRDate(a.created_at)}</td>
-                      <td>
+                      <td data-label="Data">{formatBRDate(a.created_at)}</td>
+                      <td data-label="Status">
                         {signatureId ? (
                           <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>
                         ) : (

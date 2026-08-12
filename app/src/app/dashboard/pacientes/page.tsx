@@ -88,8 +88,8 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
                 {patients.map((p) => (
                   <tr key={p.id}>
                     <td className={styles.rowTitle}>{p.name}</td>
-                    <td>{p.cpf ?? "—"}</td>
-                    <td>{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
+                    <td data-label="CPF">{p.cpf ?? "—"}</td>
+                    <td data-label="WhatsApp">{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
                     <td>
                       <PatientRowActions clinicId={clinic.id} patientId={p.id} />
                     </td>

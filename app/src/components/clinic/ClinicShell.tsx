@@ -162,18 +162,23 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
             const Icon = item.icon;
             const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(item.href);
             return (
-              <a key={item.href} href={item.href} className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}>
+              <a
+                key={item.href}
+                href={item.href}
+                title={item.label}
+                className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
+              >
                 <Icon />
-                {item.label}
+                <span className={styles.navLabel}>{item.label}</span>
               </a>
             );
           })}
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <button type="button" className={styles.logoutLink} onClick={handleLogout}>
+          <button type="button" title="Sair" className={styles.logoutLink} onClick={handleLogout}>
             <LogoutIcon />
-            Sair
+            <span className={styles.navLabel}>Sair</span>
           </button>
         </div>
       </aside>

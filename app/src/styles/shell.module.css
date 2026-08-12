@@ -142,7 +142,36 @@
   max-width: 1180px;
 }
 
-@media (max-width: 860px) {
+@media (min-width: 768px) and (max-width: 900px) {
+  /* Tablet retrato (a própria largura de 820px pedida na auditoria cai
+     aqui): a sidebar não vira barra inferior de celular, colapsa pra uma
+     trilha só de ícones — mantém navegação sempre visível sem gastar 240px
+     de largura que sobram num tablet mas fazem falta no conteúdo. */
+  .sidebar {
+    width: 72px;
+    padding: 20px 12px;
+  }
+  .brand {
+    justify-content: center;
+    padding: 0;
+  }
+  .brandName {
+    display: none;
+  }
+  .navLink {
+    justify-content: center;
+    padding: 12px 8px;
+  }
+  .navLabel {
+    display: none;
+  }
+  .logoutLink {
+    justify-content: center;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 767px) {
   /* Sidebar de desktop vira uma barra superior enxuta (logo + sair); a
      navegação principal (.nav) sai do fluxo normal e vira uma barra fixa
      no rodapé, padrão de app mobile — sempre visível, alcance de polegar,
@@ -251,13 +280,62 @@
   .statGrid {
     grid-template-columns: repeat(2, 1fr);
   }
-  /* Tabela vira um bloco com scroll horizontal próprio em vez de estourar
-     a tela ou ficar cortada pelo overflow:hidden do .panel. */
+
+  /* Tabela vira uma lista de cartões — sem scroll horizontal, cada linha
+     legível de cima pra baixo. A primeira célula (identidade da linha —
+     nome/avatar) e a última (ações, sem cabeçalho) ficam sem rótulo e
+     alinhadas à esquerda; as do meio ganham o rótulo da coluna via
+     data-label. */
   .table {
     display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    white-space: nowrap;
+  }
+  .table thead {
+    display: none;
+  }
+  .table tbody {
+    display: block;
+  }
+  .table tbody tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 2px 16px;
+    margin-bottom: 12px;
+  }
+  .table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  .table tbody tr:hover {
+    background: var(--surface);
+  }
+  .table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    min-height: 24px;
+  }
+  .table td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+  }
+  .table tr > td:first-child {
+    justify-content: flex-start;
+    padding-top: 14px;
+  }
+  .table tr > td:last-child {
+    justify-content: flex-start;
+    border-bottom: none;
+    padding-bottom: 14px;
   }
 }
 
