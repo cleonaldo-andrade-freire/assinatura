@@ -90,9 +90,14 @@ export default async function DashboardPage({
       title="Anamneses"
       subtitle="Todas as anamneses recebidas pela clínica"
       actions={
-        <Link href="/dashboard/new" className={`${styles.btn} ${styles.btnPrimary}`}>
-          + Nova anamnese
-        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/dashboard/templates" className={`${styles.btn} ${styles.btnGhost}`}>
+            Modelos de anamnese
+          </Link>
+          <Link href="/dashboard/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+            + Nova anamnese
+          </Link>
+        </div>
       }
     >
       <div className={styles.statGrid}>

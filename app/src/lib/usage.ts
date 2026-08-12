@@ -4,7 +4,7 @@ import { effectivePlanValue, getPlanById } from "@/lib/plans";
 import type { Clinic, PlanRecord } from "@/lib/database.types";
 
 /** Início do mês corrente, em UTC, pra contar uso "desde o dia 1". */
-function startOfCurrentMonth(): Date {
+export function startOfCurrentMonth(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }

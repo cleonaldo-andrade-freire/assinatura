@@ -18,11 +18,19 @@ function AnamnesesIcon() {
   );
 }
 
-function TemplatesIcon() {
+function CertificateIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M4 6h16M4 12h16M4 18h10"
+        d="M6 3h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M9.5 15.5l1.6 1.6L14.5 13.5"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
@@ -32,16 +40,44 @@ function TemplatesIcon() {
   );
 }
 
-function WhatsAppIcon() {
+function PrescriptionIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M4 20l1.4-4.2A8 8 0 1112 20a7.9 7.9 0 01-3.8-1L4 20z"
+        d="M6.5 17.5l6-6a3 3 0 114.24 4.24l-6 6a3 3 0 01-4.24-4.24z"
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <path d="M11 8.5L15.5 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 20h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PatientsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M4.5 20c1-3.6 4-5.6 7.5-5.6s6.5 2 7.5 5.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 6h9M17 6h3M4 12h3M9 12h11M4 18h13M21 18h-2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="13" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="6" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="16" cy="18" r="2.2" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   );
 }
@@ -71,8 +107,10 @@ function LogoutIcon() {
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
-  { href: "/dashboard/templates", label: "Modelos", icon: TemplatesIcon },
-  { href: "/dashboard/whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
+  { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
+  { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
+  { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
+  { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
   { href: "/billing", label: "Assinatura", icon: BillingIcon },
 ];
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { QuestionTemplateRowActions } from "@/components/QuestionTemplateRowActions";
 import type { QuestionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -25,9 +26,14 @@ export default async function TemplatesPage() {
       title="Modelos de anamnese"
       subtitle="Cada modelo é uma lista de perguntas — escolha qual usar ao iniciar uma anamnese nova"
       actions={
-        <Link href="/dashboard/templates/new" className={`${styles.btn} ${styles.btnPrimary}`}>
-          + Novo modelo
-        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/dashboard" className={`${styles.btn} ${styles.btnGhost}`}>
+            ← Anamneses
+          </Link>
+          <Link href="/dashboard/templates/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+            + Novo modelo
+          </Link>
+        </div>
       }
     >
       <div className={styles.panel}>
@@ -48,7 +54,7 @@ export default async function TemplatesPage() {
                   <td className={styles.rowTitle}>{t.name}</td>
                   <td>{t.questions.length}</td>
                   <td>
-                    <Link href={`/dashboard/templates/${t.id}`}>Editar</Link>
+                    <QuestionTemplateRowActions clinicId={clinic.id} templateId={t.id} />
                   </td>
                 </tr>
               ))}

@@ -5,6 +5,7 @@ import { canAcceptAnamnesis } from "@/lib/billing";
 import { safeEqual } from "@/lib/safeEqual";
 import { createAnamnesis } from "@/lib/anamnesis";
 import { chargeOverageIfNeeded, countTotalAnamneses } from "@/lib/usage";
+import { upsertPatientFromContact } from "@/lib/patients";
 
 const answerSchema = z.object({
   question: z.string(),
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 
+  await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone, input.patient_cpf);
   await chargeOverageIfNeeded(supabase, clinic, anamnesis.id);
 
   return NextResponse.json({ token: anamnesis.token }, { status: 201 });

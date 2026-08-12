@@ -27,6 +27,12 @@ export interface Clinic {
   evolution_api_key: string | null;
   notify_phone: string | null;
   logo_url: string | null;
+  dentist_name: string | null;
+  dentist_cro: string | null;
+  dentist_cro_uf: string | null;
+  dentist_phone: string | null;
+  dentist_email: string | null;
+  clinic_address: string | null;
   created_at: string;
 }
 
@@ -67,6 +73,143 @@ export interface Signature {
   sha256: string;
   pdf_storage_key: string;
   created_at: string;
+}
+
+export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha";
+
+export interface Certificate {
+  id: string;
+  clinic_id: string;
+  token: string;
+  patient_name: string;
+  patient_cpf: string | null;
+  patient_phone: string | null;
+  dentist_name: string;
+  dentist_cro: string;
+  dentist_cro_uf: string;
+  cid: string | null;
+  hide_cid_on_patient_pdf: boolean;
+  reason: string;
+  rest_days: number;
+  starts_on: string;
+  status: CertificateStatus;
+  signature_provider: string | null;
+  signature_provider_doc_id: string | null;
+  signature_requested_at: string | null;
+  signed_at: string | null;
+  signature_error: string | null;
+  pdf_storage_key: string | null;
+  sha256: string | null;
+  sent_whatsapp_at: string | null;
+  patient_id: string | null;
+  validation_code: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface Patient {
+  id: string;
+  clinic_id: string;
+  name: string;
+  cpf: string | null;
+  phone: string | null;
+  notes: string | null;
+  photo_storage_key: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CidCode {
+  code: string;
+  description: string;
+}
+
+export interface CertificateTemplate {
+  id: string;
+  clinic_id: string;
+  name: string;
+  reason_template: string;
+  rest_days_default: number | null;
+  created_at: string;
+}
+
+export type PrescriptionStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha";
+
+/**
+ * Autodeclarado pelo dentista, não classificado pelo sistema — não temos uma
+ * base de referência confiável pra assumir isso automaticamente (ver
+ * `lib/prescriptionControl.ts`). "controlado_especial" é bloqueado na emissão,
+ * o sistema não suporta numeração/talão de receituário especial.
+ */
+export type PrescriptionControlType = "comum" | "antimicrobiano_retencao" | "controlado_especial";
+
+export interface PrescriptionItem {
+  drug_name: string;
+  dosage: string;
+  instructions: string;
+  generic_allowed: boolean;
+  control_type: PrescriptionControlType;
+  dispensed_at?: string | null;
+  dispensed_by_crf?: string | null;
+  dispensed_by_pharmacy_cnpj?: string | null;
+}
+
+export interface PrescriptionDispensation {
+  id: string;
+  prescription_id: string;
+  clinic_id: string;
+  item_index: number;
+  drug_name: string;
+  pharmacist_crf: string;
+  pharmacy_cnpj: string;
+  dispensed_at: string;
+}
+
+export interface Prescription {
+  id: string;
+  clinic_id: string;
+  token: string;
+  patient_name: string;
+  patient_cpf: string | null;
+  patient_phone: string | null;
+  patient_id: string | null;
+  dentist_name: string;
+  dentist_cro: string;
+  dentist_cro_uf: string;
+  items: PrescriptionItem[];
+  notes: string | null;
+  status: PrescriptionStatus;
+  signature_provider: string | null;
+  signature_provider_doc_id: string | null;
+  signature_requested_at: string | null;
+  signed_at: string | null;
+  signature_error: string | null;
+  pdf_storage_key: string | null;
+  sha256: string | null;
+  sent_whatsapp_at: string | null;
+  validation_code: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface PrescriptionTemplate {
+  id: string;
+  clinic_id: string;
+  name: string;
+  items: PrescriptionItem[];
+  notes_template: string | null;
+  created_at: string;
+}
+
+export interface Medication {
+  id: string;
+  name: string;
+  presentation: string | null;
+  default_dosage: string | null;
 }
 
 export type QuestionType = "text" | "yesno";

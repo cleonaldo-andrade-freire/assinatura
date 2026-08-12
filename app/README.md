@@ -6,10 +6,13 @@ Painel multi-clínica + API que substitui os webhooks do n8n para clínicas nova
 
 1. Crie uma conta e um projeto grátis em [supabase.com](https://supabase.com).
 2. Em **Project Settings → API**, copie a `URL`, a `anon public key` e a `service_role key`.
-3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode também `supabase/002_add_clinic_logo.sql`, `supabase/003_add_whatsapp_number.sql`, `supabase/004_conversation_engine.sql`, `supabase/005_plan_tiers.sql`, `supabase/006_pending_plan.sql`, `supabase/007_clinic_price_override.sql`, `supabase/008_plans_table.sql` e `supabase/009_plan_overage_price.sql`, nessa ordem.
-4. Em **Storage**, crie dois buckets:
+3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode também `supabase/002_add_clinic_logo.sql`, `supabase/003_add_whatsapp_number.sql`, `supabase/004_conversation_engine.sql`, `supabase/005_plan_tiers.sql`, `supabase/006_pending_plan.sql`, `supabase/007_clinic_price_override.sql`, `supabase/008_plans_table.sql`, `supabase/009_plan_overage_price.sql`, `supabase/010_dental_certificates.sql`, `supabase/011_patients.sql`, `supabase/012_clinic_profile.sql`, `supabase/013_cid10.sql`, `supabase/014_certificate_templates.sql`, `supabase/015_patient_photo.sql`, `supabase/016_prescriptions.sql`, `supabase/017_prescription_templates.sql`, `supabase/018_medications.sql`, `supabase/019_document_validation.sql`, `supabase/020_rate_limit_attempts.sql` e `supabase/021_prescription_dispensing.sql`, nessa ordem.
+4. Em **Storage**, crie cinco buckets:
    - `signed-pdfs` — **privado** (PDFs assinados)
    - `clinic-logos` — **público** (logo de cada clínica, usado na página de assinatura e no PDF)
+   - `certificate-pdfs` — **privado** (PDFs de atestado odontológico)
+   - `patient-photos` — **privado** (foto de cada paciente cadastrado)
+   - `prescription-pdfs` — **privado** (PDFs de prescrição odontológica)
 5. Preencha essas informações no `.env` (veja `.env.example`).
 
 Não precisa de Postgres/Docker local — dá pra desenvolver direto contra o projeto Supabase (inclusive o gratuito).

@@ -7,6 +7,7 @@ import { canAcceptAnamnesis } from "@/lib/billing";
 import { countTotalAnamneses } from "@/lib/usage";
 import { sendText } from "@/lib/evolution";
 import { formatQuestionPrompt } from "@/lib/conversationEngine";
+import { upsertPatientFromContact } from "@/lib/patients";
 import type { Question } from "@/lib/database.types";
 
 const bodySchema = z.object({
@@ -91,6 +92,8 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (error || !conversation) {
     return NextResponse.json({ error: "insert_failed", message: error?.message }, { status: 500 });
   }
+
+  await upsertPatientFromContact(adminClient, clinic.id, input.patient_name, phone);
 
   await sendText(
     clinic,

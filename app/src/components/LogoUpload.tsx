@@ -4,7 +4,16 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "@/components/admin/admin.module.css";
 
-export function LogoUpload({ clinicId, currentLogoUrl }: { clinicId: string; currentLogoUrl: string | null }) {
+export function LogoUpload({
+  clinicId,
+  currentLogoUrl,
+  uploadUrl,
+}: {
+  clinicId: string;
+  currentLogoUrl: string | null;
+  /** Endpoint de upload — o admin e o painel self-service da clínica usam rotas diferentes. */
+  uploadUrl?: string;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -19,7 +28,7 @@ export function LogoUpload({ clinicId, currentLogoUrl }: { clinicId: string; cur
     try {
       const formData = new FormData();
       formData.append("logo", file);
-      const res = await fetch(`/api/admin/clinics/${clinicId}/logo`, { method: "POST", body: formData });
+      const res = await fetch(uploadUrl ?? `/api/admin/clinics/${clinicId}/logo`, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || data.error || "Falha ao enviar o logo.");
