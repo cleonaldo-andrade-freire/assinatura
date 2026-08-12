@@ -187,8 +187,9 @@
     flex-direction: column;
     justify-content: center;
     gap: 3px;
-    padding: 7px 4px;
-    font-size: 10.5px;
+    padding: 9px 4px;
+    min-height: 48px;
+    font-size: 11px;
     text-align: center;
     white-space: nowrap;
   }
@@ -343,15 +344,15 @@
 
 .paginationLinks {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .pageLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 32px;
+  min-width: 44px;
+  height: 44px;
   padding: 0 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
@@ -627,13 +628,16 @@
 .input,
 .select {
   width: 100%;
+  /* font-size em 1rem (16px) de propósito — abaixo disso o Safari iOS dá
+     zoom automático ao focar o campo. */
   padding: 11px 13px;
   border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
-  font-size: 14.5px;
+  font-size: 1rem;
   font-family: inherit;
   color: var(--ink);
   background: var(--surface);
+  min-height: 44px;
 }
 
 .input:focus-visible,

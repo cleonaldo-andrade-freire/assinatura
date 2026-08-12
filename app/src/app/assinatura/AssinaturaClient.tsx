@@ -1,9 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { jsPDF } from "jspdf";
 import { formatCPF, isValidCPF } from "@/lib/validation";
+import { SignatureMark } from "@/components/SignatureMark";
+
+const REVIEW_GROUP_SIZE = 5;
+
+function draftKey(token: string) {
+  return `assinatura-draft:${token}`;
+}
+
+interface Draft {
+  fullName: string;
+  cpf: string;
+  consent: boolean;
+  signatureDataUrl: string | null;
+}
 
 interface Answer {
   question: string;
@@ -66,6 +80,9 @@ export function AssinaturaClient() {
   const [showErrors, setShowErrors] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [signatureThumb, setSignatureThumb] = useState<string | null>(null);
+  const [reviewedGroups, setReviewedGroups] = useState<Set<number>>(new Set([0]));
+  const [isOnline, setIsOnline] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -73,6 +90,60 @@ export function AssinaturaClient() {
   const lastPosRef = useRef({ x: 0, y: 0 });
   const lastPdfBlobRef = useRef<Blob | null>(null);
   const submitPayloadRef = useRef<{ name: string; cpf: string } | null>(null);
+  const restoredSignatureRef = useRef<string | null>(null);
+
+  const reviewGroups = useMemo(() => {
+    const answers = record?.answers ?? [];
+    const groups: Answer[][] = [];
+    for (let i = 0; i < answers.length; i += REVIEW_GROUP_SIZE) {
+      groups.push(answers.slice(i, i + REVIEW_GROUP_SIZE));
+    }
+    return groups;
+  }, [record]);
+
+  useEffect(() => {
+    function goOnline() {
+      setIsOnline(true);
+    }
+    function goOffline() {
+      setIsOnline(false);
+    }
+    setIsOnline(navigator.onLine);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  // Salva nome, CPF, consentimento e a assinatura desenhada a cada mudança,
+  // pra não perder o que o paciente já preencheu se a página recarregar
+  // sozinha numa conexão instável.
+  useEffect(() => {
+    if (!token || demo || status !== "form") return;
+    try {
+      const draft: Draft = { fullName, cpf, consent, signatureDataUrl: hasSignature ? currentSignatureDataUrl() : null };
+      sessionStorage.setItem(draftKey(token), JSON.stringify(draft));
+    } catch {
+      // sessionStorage indisponível (modo privado etc.) — segue sem persistir.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, demo, status, fullName, cpf, consent, hasSignature]);
+
+  function currentSignatureDataUrl(): string | null {
+    if (!canvasRef.current) return null;
+    return canvasRef.current.toDataURL("image/png");
+  }
+
+  function clearDraft() {
+    if (!token) return;
+    try {
+      sessionStorage.removeItem(draftKey(token));
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -88,6 +159,20 @@ export function AssinaturaClient() {
         const data = (await res.json()) as Record_;
         setRecord(data);
         setFullName(data.patient_name || "");
+
+        try {
+          const raw = sessionStorage.getItem(draftKey(token));
+          if (raw) {
+            const draft = JSON.parse(raw) as Draft;
+            if (draft.fullName) setFullName(draft.fullName);
+            if (draft.cpf) setCpf(draft.cpf);
+            if (draft.consent) setConsent(draft.consent);
+            if (draft.signatureDataUrl) restoredSignatureRef.current = draft.signatureDataUrl;
+          }
+        } catch {
+          // draft corrompido ou sessionStorage indisponível — segue sem restaurar.
+        }
+
         setStatus(data.already_signed ? "already-signed" : "form");
       } catch (err) {
         console.error("Falha ao carregar anamnese:", err);
@@ -115,6 +200,16 @@ export function AssinaturaClient() {
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#1E2B27";
     ctxRef.current = ctx;
+
+    if (restoredSignatureRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        setHasSignature(true);
+      };
+      img.src = restoredSignatureRef.current;
+      restoredSignatureRef.current = null;
+    }
   }, [status]);
 
   function pos(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -285,6 +380,7 @@ export function AssinaturaClient() {
 
     setStatus("sending");
     submitPayloadRef.current = { name: fullName.trim(), cpf };
+    setSignatureThumb(currentSignatureDataUrl());
 
     const logoDataUrl = record!.clinic_logo_url ? await loadImageAsDataUrl(record!.clinic_logo_url) : null;
     const doc = buildPdf(record!.clinic_name, record!.answers, logoDataUrl);
@@ -294,6 +390,7 @@ export function AssinaturaClient() {
     try {
       await sendSignature(pdfBlob);
       setPdfUrl(URL.createObjectURL(pdfBlob));
+      clearDraft();
       setStatus("success");
     } catch (err) {
       console.error("Falha ao enviar assinatura:", err);
@@ -310,6 +407,7 @@ export function AssinaturaClient() {
     try {
       await sendSignature(lastPdfBlobRef.current);
       setPdfUrl(URL.createObjectURL(lastPdfBlobRef.current));
+      clearDraft();
       setStatus("success");
     } catch {
       setStatus("send-error");
@@ -363,6 +461,24 @@ export function AssinaturaClient() {
         </div>
       )}
 
+      {!isOnline && (status === "form" || status === "sending") && (
+        <div
+          style={{
+            background: "var(--sign-tint)",
+            border: "1px solid var(--sign-line)",
+            color: "var(--sign)",
+            borderRadius: "var(--radius-sm)",
+            padding: "10px 14px",
+            fontSize: 13,
+            marginBottom: 16,
+            textAlign: "center",
+          }}
+        >
+          Você está sem conexão agora. O que você já preencheu fica salvo neste aparelho — pode continuar
+          respondendo e assinando; o envio conclui automaticamente quando a internet voltar.
+        </div>
+      )}
+
       {(status === "form" || status === "sending") && record && (
         <>
           <div className="card">
@@ -370,24 +486,104 @@ export function AssinaturaClient() {
               Revisão
             </p>
             <h1>Confira suas respostas</h1>
-            <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 24 }}>
+            <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 10 }}>
               Revise com atenção antes de assinar. Se algo estiver errado, avise a clínica antes de confirmar.
             </p>
             <p style={{ fontSize: 15, marginBottom: 18 }}>
               Paciente: <strong style={{ color: "var(--brand-deep)" }}>{record.patient_name || "—"}</strong>
             </p>
-            <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>
-              {record.answers.map((qa, i) => (
-                <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
-                  <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>{qa.question}</dt>
-                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{qa.answer || "—"}</dd>
+
+            {reviewGroups.length > 1 && (
+              <div style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--surface-sunken)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.round((reviewedGroups.size / reviewGroups.length) * 100)}%`,
+                      height: "100%",
+                      background: "var(--brand)",
+                      transition: "width 0.2s ease",
+                    }}
+                  />
                 </div>
-              ))}
-            </dl>
+                <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "6px 0 0" }}>
+                  {reviewedGroups.size} de {reviewGroups.length} blocos abertos
+                </p>
+              </div>
+            )}
+
+            {reviewGroups.map((group, gi) => {
+              const items = (
+                <dl style={{ margin: 0 }}>
+                  {group.map((qa, i) => (
+                    <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                      <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>{qa.question}</dt>
+                      <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{qa.answer || "—"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              );
+              if (reviewGroups.length === 1) {
+                return (
+                  <div key={gi} style={{ borderTop: "1px solid var(--line)" }}>
+                    {items}
+                  </div>
+                );
+              }
+              return (
+                <details
+                  key={gi}
+                  open={reviewedGroups.has(gi)}
+                  onToggle={(e) => {
+                    const open = (e.target as HTMLDetailsElement).open;
+                    setReviewedGroups((prev) => {
+                      const next = new Set(prev);
+                      if (open) next.add(gi);
+                      else next.delete(gi);
+                      return next;
+                    });
+                  }}
+                  style={{ borderTop: gi === 0 ? "1px solid var(--line)" : "none" }}
+                >
+                  <summary
+                    style={{
+                      padding: "12px 0",
+                      borderBottom: "1px solid var(--line)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--ink-soft)",
+                      cursor: "pointer",
+                      minHeight: 22,
+                    }}
+                  >
+                    Perguntas {gi * REVIEW_GROUP_SIZE + 1}–{gi * REVIEW_GROUP_SIZE + group.length}
+                  </summary>
+                  {items}
+                </details>
+              );
+            })}
           </div>
 
-          <div className="card">
-            <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
+          <div className="card" style={{ border: "1.5px solid var(--sign-line)" }}>
+            <p
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                textTransform: "uppercase",
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: "var(--sign)",
+                margin: "0 0 10px",
+              }}
+            >
+              <SignatureMark size={26} />
               Assinatura
             </p>
             <h1>Confirme e assine</h1>
@@ -487,15 +683,18 @@ export function AssinaturaClient() {
               )}
             </div>
 
-            <div
+            <label
+              htmlFor="consentCheck"
               style={{
                 display: "flex",
-                gap: 10,
+                gap: 12,
                 alignItems: "flex-start",
                 background: "var(--brand-tint)",
                 borderRadius: "var(--radius-sm)",
                 padding: "14px 15px",
                 margin: "20px 0",
+                cursor: "pointer",
+                minHeight: 44,
               }}
             >
               <input
@@ -503,14 +702,14 @@ export function AssinaturaClient() {
                 id="consentCheck"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                style={{ width: 19, height: 19, marginTop: 1, flex: "none", accentColor: "var(--brand)" }}
+                style={{ width: 22, height: 22, marginTop: 1, flex: "none", accentColor: "var(--brand)" }}
               />
-              <p style={{ margin: 0, fontSize: 13, color: "var(--brand-deep)", lineHeight: 1.5 }}>
+              <span style={{ fontSize: 13, color: "var(--brand-deep)", lineHeight: 1.5 }}>
                 Declaro que as informações prestadas nesta anamnese são verdadeiras e completas, e reconheço esta
                 como minha assinatura eletrônica, com validade jurídica nos termos da MP 2.200-2/2001 e da Lei nº
                 14.063/2020.
-              </p>
-            </div>
+              </span>
+            </label>
 
             <button
               className="btn-primary"
@@ -529,6 +728,21 @@ export function AssinaturaClient() {
 
       {status === "success" && (
         <div className="card" style={{ textAlign: "center", padding: "20px 4px" }}>
+          {signatureThumb && (
+            <div
+              style={{
+                display: "inline-block",
+                margin: "0 auto 16px",
+                padding: "10px 18px",
+                background: "var(--sign-tint)",
+                border: "1px solid var(--sign-line)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={signatureThumb} alt="Sua assinatura" style={{ display: "block", maxWidth: 200, maxHeight: 70 }} />
+            </div>
+          )}
           <h1>Documento assinado</h1>
           <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 22 }}>
             Obrigado! Sua anamnese foi enviada e assinada com sucesso. A clínica já recebeu uma cópia.

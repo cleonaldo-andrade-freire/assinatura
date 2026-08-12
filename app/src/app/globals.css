@@ -9,6 +9,11 @@
   --brand: #2c6659;
   --brand-deep: #1d473d;
   --brand-tint: #e7f0ec;
+  /* Azul-assinatura — reservada só pro momento de assinar (canvas, cartão de
+     assinatura, confirmação), não é a cor de marca do produto. */
+  --sign: #1f3f6e;
+  --sign-tint: #e8eef7;
+  --sign-line: #c3d2e6;
   --warn: #a15a16;
   --warn-tint: #f7ecd9;
   --danger: #b23b3b;
@@ -18,6 +23,14 @@
   --radius-lg: 20px;
   --shadow: 0 1px 2px rgba(30, 43, 39, 0.04), 0 8px 24px rgba(30, 43, 39, 0.06);
   --shadow-sm: 0 1px 2px rgba(30, 43, 39, 0.06);
+
+  /* Escala tipográfica fixa — ver plano de design (Etapa 2). */
+  --text-display: clamp(1.5rem, 4vw + 1rem, 2.125rem);
+  --text-h2: 1.375rem;
+  --text-h3: 1rem;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-label: 0.75rem;
 }
 
 * {

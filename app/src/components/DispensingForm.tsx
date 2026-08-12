@@ -126,7 +126,7 @@ export function DispensingForm({
                 className="btn-primary"
                 disabled={!identifiedOk || dispensingIndex !== null}
                 onClick={() => handleDispense(i)}
-                style={{ padding: "8px 16px", fontSize: 13.5 }}
+                style={{ width: "auto", padding: "12px 20px" }}
               >
                 {dispensingIndex === i ? "Dando baixa…" : "Dar baixa"}
               </button>

@@ -5,7 +5,11 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Anamnese SaaS",
     short_name: "Anamnese",
     description: "Anamnese e assinatura eletrônica via WhatsApp",
-    start_url: "/dashboard",
+    // "/" e não "/dashboard": pacientes também podem instalar o atalho a
+    // partir do link de assinatura recebido no WhatsApp — mandar todo mundo
+    // pro painel da clínica deixava esse caso num beco sem saída (redirect
+    // pro /login). A home decide sozinha pra onde mandar quem já tem sessão.
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
