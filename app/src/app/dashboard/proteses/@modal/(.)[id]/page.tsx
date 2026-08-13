@@ -1,14 +1,18 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { DetailModalShell } from "@/components/dashboard/DetailModalShell";
 import { ProsthesisOrderDetailBody } from "@/components/dashboard/ProsthesisOrderDetailBody";
 import { PROSTHESIS_STAGE_LABEL } from "@/lib/prosthesisTemplates";
 import type { ProsthesisOrder, ProsthesisOrderEvent } from "@/lib/database.types";
-import styles from "@/styles/shell.module.css";
 
-export default async function ProsthesisOrderDetailPage({ params }: { params: { id: string } }) {
+/**
+ * Intercepta `/dashboard/proteses/[id]` quando a navegação parte de dentro
+ * do próprio quadro kanban — abre como modal por cima dele em vez de trocar
+ * de página. Acesso direto ou F5 continua caindo na página cheia
+ * (`proteses/[id]/page.tsx`), fora do alcance da interceptação.
+ */
+export default async function ProsthesisOrderDetailModal({ params }: { params: { id: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
@@ -30,20 +34,8 @@ export default async function ProsthesisOrderDetailPage({ params }: { params: { 
   const events = (eventsData as ProsthesisOrderEvent[]) ?? [];
 
   return (
-    <ClinicShell
-      clinicName={clinic.name}
-      clinicLogoUrl={clinic.logo_url}
-      title={o.description}
-      subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}
-      actions={
-        <Link href="/dashboard/proteses" className={`${styles.btn} ${styles.btnGhost}`}>
-          ← Voltar
-        </Link>
-      }
-    >
-      <div className={styles.narrowContent}>
-        <ProsthesisOrderDetailBody clinicId={clinic.id} order={o} events={events} />
-      </div>
-    </ClinicShell>
+    <DetailModalShell title={o.description} subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}>
+      <ProsthesisOrderDetailBody clinicId={clinic.id} order={o} events={events} />
+    </DetailModalShell>
   );
 }

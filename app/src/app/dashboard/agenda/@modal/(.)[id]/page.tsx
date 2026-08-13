@@ -1,13 +1,17 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { DetailModalShell } from "@/components/dashboard/DetailModalShell";
 import { AppointmentDetailBody } from "@/components/dashboard/AppointmentDetailBody";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
-import styles from "@/styles/shell.module.css";
 
-export default async function AppointmentDetailPage({ params }: { params: { id: string } }) {
+/**
+ * Intercepta `/dashboard/agenda/[id]` quando a navegação parte de dentro da
+ * própria agenda (semana/dia/mês) — abre como modal por cima da grade em
+ * vez de trocar de página. Acesso direto ou F5 continua caindo na página
+ * cheia (`agenda/[id]/page.tsx`), fora do alcance da interceptação.
+ */
+export default async function AppointmentDetailModal({ params }: { params: { id: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
@@ -29,19 +33,8 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
   const events = (eventsData as AppointmentEvent[]) ?? [];
 
   return (
-    <ClinicShell
-      clinicName={clinic.name}
-      clinicLogoUrl={clinic.logo_url}
-      title="Agendamento"
-      actions={
-        <Link href="/dashboard/agenda" className={`${styles.btn} ${styles.btnGhost}`}>
-          ← Voltar
-        </Link>
-      }
-    >
-      <div className={styles.narrowContent}>
-        <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} />
-      </div>
-    </ClinicShell>
+    <DetailModalShell title="Agendamento">
+      <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} />
+    </DetailModalShell>
   );
 }
