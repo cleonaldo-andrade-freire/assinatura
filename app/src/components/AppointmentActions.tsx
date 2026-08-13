@@ -117,14 +117,16 @@ export function AppointmentActions({
             Remarcar
           </button>
         )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => patch({ urgent: !urgent }, urgent ? "Urgência removida." : "Marcado como urgente.")}
-          className={`${styles.btn} ${styles.btnGhost}`}
-        >
-          {urgent ? "Remover urgência" : "Marcar como urgente"}
-        </button>
+        {!isTerminal && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => patch({ urgent: !urgent }, urgent ? "Urgência removida." : "Marcado como urgência.")}
+            className={`${styles.btn} ${styles.btnGhost}`}
+          >
+            {urgent ? "Remover urgência" : "Marcar como urgência"}
+          </button>
+        )}
       </div>
 
       {isTerminal && (

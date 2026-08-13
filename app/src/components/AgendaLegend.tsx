@@ -29,7 +29,7 @@ export function AgendaLegend() {
         <span className={styles.agendaLegendSymbol} style={{ color: "var(--urgent)" }}>
           ▲
         </span>
-        Urgente
+        Urgência
       </span>
     </div>
   );

@@ -113,7 +113,7 @@ export function AgendaWeekGrid({
                         key={a.id}
                         href={`/dashboard/agenda/${a.id}`}
                         className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
-                        title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgente" : ""}`}
+                        title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}`}
                       >
                         {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
                       </Link>

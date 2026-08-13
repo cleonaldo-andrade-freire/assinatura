@@ -284,7 +284,7 @@ export function NewAppointmentForm({
               onChange={(e) => setUrgent(e.target.checked)}
               style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
             />
-            <span style={{ fontSize: 13.5 }}>Marcar como urgente</span>
+            <span style={{ fontSize: 13.5 }}>Marcar como urgência</span>
           </label>
 
           <div className={styles.field}>
