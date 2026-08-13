@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import { buildDaySlotTimes } from "@/lib/appointments";
 import { formatBRTime } from "@/lib/date";
+import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 interface PatientSuggestion {
@@ -19,11 +20,19 @@ export function NewAppointmentForm({
   professionalName,
   initialDate,
   initialTime,
+  onSuccess,
+  bare,
 }: {
   clinicId: string;
   professionalName: string;
   initialDate: string;
   initialTime?: string;
+  /** Usado quando o formulário roda dentro de um modal (ex.: duplo clique na grade
+   * semanal) — no lugar de navegar pra página de detalhe, devolve o agendamento
+   * criado pro chamador decidir o que fazer (fechar o modal, atualizar a lista). */
+  onSuccess?: (appointment: Appointment) => void;
+  /** Sem o cartão (`.panel`) ao redor — pro caso de já estar dentro de um modal, que já tem sua própria moldura. */
+  bare?: boolean;
 }) {
   const router = useRouter();
 
@@ -112,19 +121,23 @@ export function NewAppointmentForm({
         setError(data.message || data.error || "Falha ao criar o agendamento.");
         return;
       }
-      router.push(`/dashboard/agenda/${data.appointment.id}`);
-      router.refresh();
+      if (onSuccess) {
+        onSuccess(data.appointment);
+        router.refresh();
+      } else {
+        router.push(`/dashboard/agenda/${data.appointment.id}`);
+        router.refresh();
+      }
     } finally {
       setSending(false);
     }
   }
 
-  return (
-    <div className={styles.panel}>
-      <div className={styles.panelBody}>
-        {error && <div className="error-box">{error}</div>}
+  const content = (
+    <>
+      {error && <div className="error-box">{error}</div>}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field} style={{ position: "relative" }}>
             <label htmlFor="patientName" className={styles.label}>
               Nome do paciente
@@ -271,7 +284,14 @@ export function NewAppointmentForm({
             </button>
           </div>
         </form>
-      </div>
+    </>
+  );
+
+  if (bare) return content;
+
+  return (
+    <div className={styles.panel}>
+      <div className={styles.panelBody}>{content}</div>
     </div>
   );
 }

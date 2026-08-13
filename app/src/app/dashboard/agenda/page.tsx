@@ -1,16 +1,14 @@
-import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
-import { APPOINTMENT_STATUS_CLASS, buildDaySlotTimes } from "@/lib/appointments";
+import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
+import { buildDaySlotTimes } from "@/lib/appointments";
 import { addDaysToDateStr, brDateOnly, brDayRangeUtc, formatBRTime, formatBRWeekday, mondayOfWeek } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
-
-const WEEKDAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 export default async function AgendaPage({ searchParams }: { searchParams: { date?: string } }) {
   const clinic = await getCurrentClinic();
@@ -130,44 +128,14 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
           </Link>
         </div>
 
-        <div className={styles.agendaWeekGrid}>
-          <div className={styles.agendaWeekHeaderCell} />
-          {weekDays.map((d) => (
-            <div key={d} className={`${styles.agendaWeekHeaderCell} ${d === today ? styles.today : ""}`}>
-              {WEEKDAY_LABEL[new Date(`${d}T12:00:00-03:00`).getUTCDay()]} {d.split("-")[2]}
-            </div>
-          ))}
-
-          {daySlots.map((_, slotIndex) => {
-            const hour = 8 + Math.floor(slotIndex / 2);
-            const minute = slotIndex % 2 === 0 ? "00" : "30";
-            return (
-              <Fragment key={`row-${slotIndex}`}>
-                <div className={styles.agendaWeekTimeCell}>
-                  {minute === "00" ? `${String(hour).padStart(2, "0")}:00` : ""}
-                </div>
-                {weekDays.map((d) => {
-                  const slot = buildDaySlotTimes(d)[slotIndex];
-                  const items = bySlot.get(slot) ?? [];
-                  return (
-                    <div key={`${d}-${slotIndex}`} className={styles.agendaWeekCell}>
-                      {items.map((a) => (
-                        <Link
-                          key={a.id}
-                          href={`/dashboard/agenda/${a.id}`}
-                          className={`${styles.agendaWeekChip} ${styles.statusBadge} ${styles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? styles.urgentMark : ""}`}
-                          title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgente" : ""}`}
-                        >
-                          {a.patient_name}
-                        </Link>
-                      ))}
-                    </div>
-                  );
-                })}
-              </Fragment>
-            );
-          })}
-        </div>
+        <AgendaWeekGrid
+          clinicId={clinic.id}
+          professionalName={clinic.dentist_name || clinic.name}
+          weekDays={weekDays}
+          slotsPerDay={daySlots.length}
+          today={today}
+          appointments={appointments}
+        />
       </div>
     </ClinicShell>
   );

@@ -30,6 +30,15 @@
   animation: dialogIn 0.15s ease-out;
 }
 
+/* Variante mais larga pra diálogos com formulário (ex.: criar agendamento
+   pelo duplo clique na grade semanal) — o conteúdo pode ser mais alto que a
+   viewport, então rola dentro do próprio diálogo em vez de estourar a tela. */
+.dialogWide {
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
 @keyframes dialogIn {
   from {
     opacity: 0;
