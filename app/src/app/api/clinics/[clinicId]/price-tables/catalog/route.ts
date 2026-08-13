@@ -17,10 +17,13 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
   const supabase = await createSupabaseServerClient();
   const [{ data: tablesData }, { data: itemsData }] = await Promise.all([
     supabase.from("price_tables").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
+    // Só ativos — o seletor de tratamento do orçamento não deve mostrar o
+    // que a clínica não trabalha (ver `active` em price_table_items).
     supabase
       .from("price_table_items")
       .select("*")
       .eq("clinic_id", clinic.id)
+      .eq("active", true)
       .order("specialty", { ascending: true, nullsFirst: true })
       .order("name", { ascending: true }),
   ]);

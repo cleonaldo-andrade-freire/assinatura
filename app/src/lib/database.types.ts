@@ -396,6 +396,7 @@ export interface PriceTableItem {
   specialty: string | null;
   name: string;
   price: number;
+  active: boolean;
   display_order: number;
   created_at: string;
   updated_at: string;

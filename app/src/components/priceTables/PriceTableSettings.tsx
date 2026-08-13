@@ -12,6 +12,7 @@ export function PriceTableSettings({ clinicId, table }: { clinicId: string; tabl
   const [name, setName] = useState(table.name);
   const [savingName, setSavingName] = useState(false);
   const [settingDefault, setSettingDefault] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toasts, push, dismiss } = useToasts();
@@ -49,6 +50,23 @@ export function PriceTableSettings({ clinicId, table }: { clinicId: string; tabl
       if (ok) push("Tabela marcada como padrão.", "success");
     } finally {
       setSettingDefault(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/price-tables/${table.id}/duplicate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        push("Falha ao duplicar. Tenta de novo.");
+        return;
+      }
+      push("Tabela duplicada.", "success");
+      router.push(`/dashboard/configuracoes/tabelas-tratamento/${data.priceTable.id}`);
+      router.refresh();
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -96,6 +114,9 @@ export function PriceTableSettings({ clinicId, table }: { clinicId: string; tabl
             {settingDefault ? "Marcando…" : "Marcar como padrão"}
           </button>
         )}
+        <button type="button" disabled={duplicating} onClick={handleDuplicate} className={`${styles.btn} ${styles.btnGhost}`}>
+          {duplicating ? "Duplicando…" : "Duplicar tabela"}
+        </button>
         <button
           type="button"
           onClick={() => setConfirmDeleteOpen(true)}

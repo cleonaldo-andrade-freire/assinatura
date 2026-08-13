@@ -4,7 +4,6 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClickableRow } from "@/components/ui/ClickableRow";
-import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { NewPriceTableForm } from "@/components/priceTables/NewPriceTableForm";
 import type { PriceTable } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -64,20 +63,19 @@ export default async function PriceTablesPage() {
                 <th>Nome</th>
                 <th>Tratamentos</th>
                 <th></th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {priceTables.map((t) => (
                 <ClickableRow key={t.id} href={`/dashboard/configuracoes/tabelas-tratamento/${t.id}`}>
-                  <td className={styles.rowTitle}>{t.name}</td>
-                  <td>{countByTable.get(t.id) ?? 0}</td>
-                  <td>
-                    {t.is_default && <span className={`${styles.statusDot} ${styles.statusOk}`}>Padrão</span>}
+                  <td className={styles.rowTitle}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {t.name}
+                      {t.is_default && <span className={`${styles.statusDot} ${styles.statusOk}`}>Padrão</span>}
+                    </span>
                   </td>
-                  <StopPropagationTd>
-                    <Link href={`/dashboard/configuracoes/tabelas-tratamento/${t.id}`}>Editar</Link>
-                  </StopPropagationTd>
+                  <td data-label="Tratamentos">{countByTable.get(t.id) ?? 0}</td>
+                  <td style={{ textAlign: "right", color: "var(--ink-faint)" }}>›</td>
                 </ClickableRow>
               ))}
             </tbody>
