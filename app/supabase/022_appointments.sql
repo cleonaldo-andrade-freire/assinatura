@@ -10,6 +10,13 @@ create table appointments (
   clinic_id         uuid not null references clinics(id) on delete cascade,
   scheduled_at      timestamptz not null,
   duration_minutes  int not null default 30 check (duration_minutes > 0),
+  -- Mantido em sincronia com scheduled_at/duration_minutes por um trigger
+  -- logo abaixo, não por coluna gerada nem pelo cálculo direto no índice:
+  -- `timestamptz + interval` é STABLE, não IMMUTABLE (depende de fuso em
+  -- geral), e tanto coluna gerada quanto expressão de índice exigem
+  -- IMMUTABLE — é o que causava "functions in index expression must be
+  -- marked IMMUTABLE" na primeira versão desta migration.
+  ends_at           timestamptz not null,
   status            text not null default 'agendado'
                      check (status in ('agendado', 'confirmado', 'cancelado_paciente', 'cancelado_dentista', 'atendido')),
   -- Independente do status, de propósito (pedido do escopo original) — um
@@ -44,16 +51,31 @@ create index appointments_clinic_id_idx on appointments(clinic_id);
 create index appointments_clinic_scheduled_idx on appointments(clinic_id, scheduled_at);
 create unique index appointments_confirm_token_idx on appointments(confirm_token);
 
+create function set_appointment_ends_at() returns trigger
+language plpgsql as $$
+begin
+  new.ends_at := new.scheduled_at + (new.duration_minutes || ' minutes')::interval;
+  return new;
+end;
+$$;
+
+create trigger appointments_set_ends_at
+  before insert or update of scheduled_at, duration_minutes on appointments
+  for each row execute function set_appointment_ends_at();
+
 -- Impede dois agendamentos sobrepostos pro mesmo profissional na mesma
 -- clínica — nível de banco, não só checagem na aplicação (a aplicação ainda
 -- faz uma checagem prévia pra devolver um erro amigável, mas é este índice
 -- que garante a regra mesmo sob concorrência). Agendamentos cancelados não
 -- entram na exclusão: cancelar libera o horário de verdade pra realocação.
+-- Usa a coluna ends_at (já calculada pelo trigger acima), não uma expressão
+-- com aritmética de data — só assim o índice aceita a função (ver comentário
+-- na definição da coluna).
 alter table appointments add constraint appointments_no_overlap
   exclude using gist (
     clinic_id with =,
     professional_name with =,
-    tstzrange(scheduled_at, scheduled_at + (duration_minutes || ' minutes')::interval, '[)') with &&
+    tstzrange(scheduled_at, ends_at, '[)') with &&
   )
   where (status not in ('cancelado_paciente', 'cancelado_dentista'));
 
