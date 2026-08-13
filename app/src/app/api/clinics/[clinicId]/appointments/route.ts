@@ -60,6 +60,13 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   const input = parsed.data;
   const durationMinutes = input.duration_minutes ?? APPOINTMENT_SLOT_MINUTES;
 
+  if (new Date(input.scheduled_at).getTime() < Date.now()) {
+    return NextResponse.json(
+      { error: "past_datetime", message: "Não dá pra agendar num horário que já passou." },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const conflict = await findOverlappingAppointment(supabase, {

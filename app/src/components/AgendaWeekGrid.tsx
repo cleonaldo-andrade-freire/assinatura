@@ -121,18 +121,23 @@ export function AgendaWeekGrid({
                 const items = bySlot.get(slot) ?? [];
                 const continuedBy = items.length === 0 ? continuationSlots.get(slot) : undefined;
                 const empty = items.length === 0 && !continuedBy;
+                // Horário que já passou não pode virar agendamento novo nem
+                // receber um card arrastado — mesma regra do servidor, só que
+                // aqui evita nem oferecer a interação.
+                const isPast = new Date(slot).getTime() < Date.now();
+                const interactive = empty && !isPast;
                 const cellKey = `${d}-${slotIndex}`;
-                const droppable = empty && draggingId && !moving;
+                const droppable = interactive && draggingId && !moving;
                 return (
                   <div
                     key={cellKey}
                     className={shellStyles.agendaWeekCell}
-                    onDoubleClick={empty && !draggingId ? () => setOpenSlot({ date: d, time: slot }) : undefined}
-                    role={empty ? "button" : undefined}
-                    tabIndex={empty ? 0 : undefined}
-                    aria-label={empty ? `Agendar em ${formatBRDate(slot)} às ${formatBRTime(slot)}` : undefined}
+                    onDoubleClick={interactive && !draggingId ? () => setOpenSlot({ date: d, time: slot }) : undefined}
+                    role={interactive ? "button" : undefined}
+                    tabIndex={interactive ? 0 : undefined}
+                    aria-label={interactive ? `Agendar em ${formatBRDate(slot)} às ${formatBRTime(slot)}` : undefined}
                     onKeyDown={
-                      empty && !draggingId
+                      interactive && !draggingId
                         ? (e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
@@ -161,7 +166,7 @@ export function AgendaWeekGrid({
                         : undefined
                     }
                     style={{
-                      cursor: empty && !draggingId ? "pointer" : undefined,
+                      cursor: interactive && !draggingId ? "pointer" : undefined,
                       background: dragOverKey === cellKey ? "var(--brand-tint)" : undefined,
                       outline: dragOverKey === cellKey ? "2px dashed var(--brand)" : undefined,
                       outlineOffset: dragOverKey === cellKey ? "-2px" : undefined,

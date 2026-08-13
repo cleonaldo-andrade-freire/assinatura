@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import { buildDaySlotTimes } from "@/lib/appointments";
-import { formatBRTime } from "@/lib/date";
+import { brDateOnly, formatBRTime } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -13,6 +13,7 @@ interface PatientSuggestion {
   name: string;
   cpf: string | null;
   phone: string | null;
+  has_photo: boolean;
 }
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
@@ -55,7 +56,9 @@ export function NewAppointmentForm({
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
 
-  const slots = buildDaySlotTimes(date);
+  // Filtra horários que já passaram — o servidor também recusa (é a garantia
+  // de verdade), isso aqui é só pra não oferecer uma opção que vai falhar.
+  const slots = buildDaySlotTimes(date).filter((s) => new Date(s).getTime() > Date.now());
   const phoneDigits = patientPhone.replace(/\D/g, "");
   const phoneError = showErrors && phoneDigits.length < 10 ? "Celular inválido." : null;
 
@@ -187,7 +190,9 @@ export function NewAppointmentForm({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => pickSuggestion(s)}
                       style={{
-                        display: "block",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
                         width: "100%",
                         textAlign: "left",
                         padding: "8px 10px",
@@ -195,11 +200,43 @@ export function NewAppointmentForm({
                         border: "none",
                         cursor: "pointer",
                         borderRadius: 6,
-                        fontSize: 13.5,
                       }}
                     >
-                      {s.name}
-                      {s.cpf && <span style={{ color: "var(--ink-soft)" }}> — CPF {formatCPF(s.cpf)}</span>}
+                      {s.has_photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/clinics/${clinicId}/patients/${s.id}/photo`}
+                          alt=""
+                          style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: "var(--surface-sunken)",
+                            color: "var(--ink-faint)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 15,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {s.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.name}
+                        </span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)" }}>
+                          {s.phone ? formatBRPhoneLocal(s.phone) : s.cpf ? `CPF ${formatCPF(s.cpf)}` : "Sem contato cadastrado"}
+                        </span>
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -238,6 +275,7 @@ export function NewAppointmentForm({
                 type="date"
                 className={styles.input}
                 value={date}
+                min={brDateOnly()}
                 onChange={(e) => setDate(e.target.value)}
                 required
               />

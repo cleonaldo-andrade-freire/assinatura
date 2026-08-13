@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
@@ -81,8 +81,15 @@ export function AppointmentActions({
     if (ok) setRescheduling(false);
   }
 
-  const slots = buildDaySlotTimes(newDate);
+  // Mesma lógica do formulário de criação — filtra horários que já passaram
+  // pra não oferecer uma remarcação que o servidor vai recusar.
+  const slots = buildDaySlotTimes(newDate).filter((s) => new Date(s).getTime() > Date.now());
   const isTerminal = status === "atendido" || status === "cancelado_paciente" || status === "cancelado_dentista" || status === "faltou";
+
+  useEffect(() => {
+    if (newTime && !slots.includes(newTime)) setNewTime("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newDate]);
 
   return (
     <div>
@@ -156,6 +163,7 @@ export function AppointmentActions({
                 type="date"
                 className={styles.input}
                 value={newDate}
+                min={brDateOnly()}
                 onChange={(e) => {
                   setNewDate(e.target.value);
                   setNewTime("");

@@ -17,11 +17,16 @@ export async function GET(req: NextRequest, { params }: { params: { clinicId: st
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("patients")
-    .select("id, name, cpf, phone")
+    .select("id, name, cpf, phone, photo_storage_key")
     .eq("clinic_id", clinic.id)
     .ilike("name", `%${q}%`)
     .order("name", { ascending: true })
     .limit(8);
 
-  return NextResponse.json({ patients: data ?? [] });
+  const patients = (data ?? []).map(({ photo_storage_key, ...rest }) => ({
+    ...rest,
+    has_photo: !!photo_storage_key,
+  }));
+
+  return NextResponse.json({ patients });
 }

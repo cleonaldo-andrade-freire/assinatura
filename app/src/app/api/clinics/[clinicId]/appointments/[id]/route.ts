@@ -51,6 +51,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (isReschedule) {
     const newScheduledAt = input.scheduled_at ?? appointment.scheduled_at;
     const newDuration = input.duration_minutes ?? appointment.duration_minutes;
+
+    // Só bloqueia quando o horário está realmente mudando (não quando só a
+    // duração muda) — senão editar a duração de um agendamento antigo já
+    // concluído ficaria impossível.
+    if (input.scheduled_at !== undefined && new Date(newScheduledAt).getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "past_datetime", message: "Não dá pra remarcar pra um horário que já passou." },
+        { status: 400 }
+      );
+    }
+
     const conflict = await findOverlappingAppointment(supabase, {
       clinicId: clinic.id,
       professionalName: appointment.professional_name,
