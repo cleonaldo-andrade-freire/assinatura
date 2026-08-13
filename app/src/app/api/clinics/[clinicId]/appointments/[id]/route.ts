@@ -47,15 +47,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (!current) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const appointment = current as Appointment;
 
-  const isReschedule = input.scheduled_at !== undefined || input.duration_minutes !== undefined;
-  if (isReschedule) {
+  // scheduled_at pode vir no corpo sem ter mudado de verdade de fato (ex.: o
+  // formulário de remarcar manda sempre os dois campos, mesmo quando só a
+  // duração foi alterada) — compara o instante, não a string (mesmo motivo
+  // de sempre: "+00:00" do banco vs ISO do cliente não batem como texto).
+  const scheduledAtChanged =
+    input.scheduled_at !== undefined && new Date(input.scheduled_at).getTime() !== new Date(appointment.scheduled_at).getTime();
+  const needsConflictCheck = input.scheduled_at !== undefined || input.duration_minutes !== undefined;
+
+  if (needsConflictCheck) {
     const newScheduledAt = input.scheduled_at ?? appointment.scheduled_at;
     const newDuration = input.duration_minutes ?? appointment.duration_minutes;
 
     // Só bloqueia quando o horário está realmente mudando (não quando só a
     // duração muda) — senão editar a duração de um agendamento antigo já
     // concluído ficaria impossível.
-    if (input.scheduled_at !== undefined && new Date(newScheduledAt).getTime() < Date.now()) {
+    if (scheduledAtChanged && new Date(newScheduledAt).getTime() < Date.now()) {
       return NextResponse.json(
         { error: "past_datetime", message: "Não dá pra remarcar pra um horário que já passou." },
         { status: 400 }
@@ -102,7 +109,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "update_failed", message: error?.message }, { status: 500 });
   }
 
-  if (isReschedule) {
+  // Só conta como remarcação (evento + aviso por WhatsApp) quando o horário
+  // muda de verdade — esticar/encolher a duração pela grade (ou editar só a
+  // duração no formulário) não é remarcação nenhuma pro paciente.
+  if (scheduledAtChanged) {
     await recordAppointmentEvent(supabase, {
       appointmentId: appointment.id,
       clinicId: clinic.id,

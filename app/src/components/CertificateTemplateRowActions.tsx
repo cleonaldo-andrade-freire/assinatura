@@ -1,25 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
-
-function EditIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function TrashIcon() {
   return (
@@ -59,15 +44,6 @@ export function CertificateTemplateRowActions({ clinicId, templateId }: { clinic
   return (
     <>
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
-        <Link
-          href={`/dashboard/atestados/templates/${templateId}`}
-          aria-label="Editar modelo"
-          title="Editar"
-          className={`${styles.btn} ${styles.btnGhost}`}
-          style={{ padding: 7 }}
-        >
-          <EditIcon />
-        </Link>
         <button
           type="button"
           onClick={() => setConfirmOpen(true)}
