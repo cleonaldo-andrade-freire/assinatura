@@ -1,0 +1,129 @@
+.wrap {
+  position: relative;
+}
+
+.panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  padding: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.regionList {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.regionItem {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.regionItem:hover {
+  background: var(--surface-sunken);
+}
+
+.tabBar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 10px;
+}
+
+.tabBtn {
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tabBtn:hover {
+  color: var(--ink);
+}
+
+.tabBtnActive {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quadrant {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.row .quadrant:last-child {
+  justify-content: flex-start;
+}
+
+.midline {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.tooth {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooth:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.toothSelected {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}

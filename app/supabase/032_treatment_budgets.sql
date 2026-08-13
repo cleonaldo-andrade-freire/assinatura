@@ -1,5 +1,11 @@
 -- Anamnese SaaS — tabelas de tratamento (preço por plano) e orçamentos odontológicos
 -- Rode uma vez no SQL Editor do Supabase, depois da 031.
+--
+-- Também precisa de um bucket de Storage novo, criado manualmente (Storage
+-- > New bucket, igual "certificate-pdfs"/"signed-pdfs"/"patient-photos"):
+--   nome: budget-pdfs — privado (não marcar "Public bucket").
+-- O PDF do orçamento só é acessado por rota autenticada (dashboard) ou pelo
+-- link com token público (/orcamento?token=), nunca por URL direta do bucket.
 
 -- "Plano" aqui é o plano de tratamento/convênio da clínica (ex.: "Particular",
 -- "Unimed Odonto") — não confundir com o `plan` de assinatura do SaaS

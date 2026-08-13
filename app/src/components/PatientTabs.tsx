@@ -5,6 +5,7 @@ import styles from "@/styles/shell.module.css";
 
 export const PATIENT_TABS = [
   { key: "agendamentos", label: "Agendamentos" },
+  { key: "orcamentos", label: "Orçamentos" },
   { key: "anamneses", label: "Anamneses" },
   { key: "atestados", label: "Atestados" },
   { key: "prescricoes", label: "Prescrições" },

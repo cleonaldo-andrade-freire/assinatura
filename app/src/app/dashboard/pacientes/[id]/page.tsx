@@ -6,13 +6,22 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PatientForm } from "@/components/PatientForm";
 import { Pagination } from "@/components/ui/Pagination";
 import { PatientTabs, PATIENT_TABS, type PatientTabKey } from "@/components/PatientTabs";
+import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
+import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
-import type { Anamnesis, Appointment, Certificate, Patient, Prescription } from "@/lib/database.types";
+import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
+
+const BUDGET_STATUS_LABEL = { em_aberto: "Em aberto", aprovado: "Aprovado" } as const;
+const BUDGET_STATUS_CLASS = { em_aberto: styles.statusWarn, aprovado: styles.statusOk } as const;
+
+function formatMoney(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
 
 function isTabKey(v: string | undefined): v is PatientTabKey {
   return !!v && PATIENT_TABS.some((t) => t.key === v);
@@ -23,7 +32,7 @@ export default async function EditPatientPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { page?: string; rxPage?: string; apPage?: string; anPage?: string; tab?: string };
+  searchParams: { page?: string; rxPage?: string; apPage?: string; anPage?: string; bgPage?: string; tab?: string };
 }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
@@ -84,6 +93,38 @@ export default async function EditPatientPage({
     .range(apFrom, apTo);
   const appointments = (appointmentsData as Appointment[]) ?? [];
   const appointmentsTotalPages = Math.max(1, Math.ceil((appointmentsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  const budgetsPage = Math.max(1, parseInt(searchParams.bgPage ?? "1", 10) || 1);
+  const bgFrom = (budgetsPage - 1) * DOCS_PAGE_SIZE;
+  const bgTo = bgFrom + DOCS_PAGE_SIZE - 1;
+  const { data: budgetsData, count: budgetsCount } = await supabase
+    .from("budgets")
+    .select("*", { count: "exact" })
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .order("created_at", { ascending: false })
+    .range(bgFrom, bgTo);
+  const budgets = (budgetsData as Budget[]) ?? [];
+  const budgetsTotalPages = Math.max(1, Math.ceil((budgetsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  // Valor por orçamento (soma dos itens selecionados menos desconto) — busca
+  // os itens dos orçamentos desta página numa query só, em vez de N+1.
+  const budgetTotalById = new Map<string, number>();
+  if (budgets.length > 0) {
+    const { data: budgetItemsData } = await supabase
+      .from("budget_items")
+      .select("budget_id, price, selected")
+      .in(
+        "budget_id",
+        budgets.map((b) => b.id)
+      );
+    const items = (budgetItemsData as Pick<BudgetItem, "budget_id" | "price" | "selected">[]) ?? [];
+    for (const b of budgets) {
+      const selectedValue = items.filter((i) => i.budget_id === b.id && i.selected).reduce((sum, i) => sum + i.price, 0);
+      const discountAmount = b.discount_type === "percent" ? (selectedValue * b.discount_value) / 100 : b.discount_value;
+      budgetTotalById.set(b.id, Math.max(0, selectedValue - discountAmount));
+    }
+  }
 
   // Não existe `patient_id` em `anamneses` (tabela bem mais antiga, com histórico
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
@@ -203,6 +244,63 @@ export default async function EditPatientPage({
       </>
     );
 
+  const orcamentosPanel = !patient.phone ? (
+    <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra criar um orçamento.</div>
+  ) : (
+    <>
+      <div style={{ marginBottom: 14 }}>
+        <NewBudgetTrigger
+          clinicId={clinic.id}
+          patientId={patient.id}
+          patientName={patient.name}
+          defaultResponsibleName={clinic.dentist_name || clinic.name}
+          className={`${styles.btn} ${styles.btnPrimary}`}
+        >
+          + Novo orçamento
+        </NewBudgetTrigger>
+      </div>
+      {budgets.length === 0 ? (
+        <div className={styles.emptyState}>Nenhum orçamento criado pra este paciente ainda.</div>
+      ) : (
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {budgets.map((b) => (
+                <tr key={b.id}>
+                  <td>{formatBRDate(b.budget_date)}</td>
+                  <td className={styles.rowTitle}>{b.description}</td>
+                  <td data-label="Valor">{formatMoney(budgetTotalById.get(b.id) ?? 0)}</td>
+                  <td data-label="Status">
+                    <span className={`${styles.statusDot} ${BUDGET_STATUS_CLASS[b.status]}`}>{BUDGET_STATUS_LABEL[b.status]}</span>
+                  </td>
+                  <td>
+                    <BudgetRowActions clinicId={clinic.id} budgetId={b.id} status={b.status} hasPdf={!!b.pdf_storage_key} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={budgetsPage}
+            totalPages={budgetsTotalPages}
+            count={budgetsCount ?? 0}
+            itemLabel="orçamento"
+            hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { bgPage: p })}
+          />
+        </>
+      )}
+    </>
+  );
+
   const atestadosPanel =
     certificates.length === 0 ? (
       <div className={styles.emptyState}>
@@ -300,6 +398,7 @@ export default async function EditPatientPage({
         panels={{
           anamneses: anamnesesPanel,
           agendamentos: agendamentosPanel,
+          orcamentos: orcamentosPanel,
           atestados: atestadosPanel,
           prescricoes: prescricoesPanel,
         }}
