@@ -278,10 +278,15 @@ export interface Appointment {
   reminder_24h_sent_at: string | null;
   reminder_final_sent_at: string | null;
   // Data prevista de retorno, marcada na hora do agendamento — não cria uma
-  // segunda consulta sozinha, é só um sinal pra "Retornos próximos"
-  // avisar a recepção quando estiver perto (ver return_notified_at).
+  // segunda consulta sozinha, é só um sinal pro dashboard avisar a recepção
+  // quando estiver perto. return_notified_at é só informativo ("já mandei
+  // lembrete"); quem tira da lista é return_dismissed_at (manual ou
+  // automático, quando o paciente é reagendado).
   return_due_date: string | null;
   return_notified_at: string | null;
+  return_dismissed_at: string | null;
+  // Idem, mas pra lista de "consultas canceladas" do dashboard.
+  cancellation_dismissed_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -309,7 +314,8 @@ export type AppointmentMessageTemplateType =
   | "confirmado"
   | "cancelado"
   | "remarcado"
-  | "retorno_lembrete";
+  | "retorno_lembrete"
+  | "cancelamento_contato";
 
 export interface AppointmentMessageTemplate {
   id: string;

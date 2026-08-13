@@ -20,6 +20,9 @@ export function NewAppointmentModal({
   professionalName,
   date,
   time,
+  patientId,
+  patientName,
+  patientPhone,
   onCreated,
 }: {
   open: boolean;
@@ -28,6 +31,10 @@ export function NewAppointmentModal({
   professionalName: string;
   date: string;
   time?: string;
+  /** Pré-preenche o paciente — usado pelo botão "Agendar" dos painéis de Retornos/Cancelamentos do dashboard. */
+  patientId?: string | null;
+  patientName?: string;
+  patientPhone?: string;
   onCreated?: (appointment: Appointment) => void;
 }) {
   useEffect(() => {
@@ -62,6 +69,9 @@ export function NewAppointmentModal({
           professionalName={professionalName}
           initialDate={date}
           initialTime={time}
+          initialPatientId={patientId}
+          initialPatientName={patientName}
+          initialPatientPhone={patientPhone}
           onSuccess={(appointment) => {
             onClose();
             onCreated?.(appointment);

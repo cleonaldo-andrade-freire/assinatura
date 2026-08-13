@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sendAppointmentReturnReminder } from "@/lib/appointmentNotifications";
+import { sendCancellationOutreach } from "@/lib/appointmentNotifications";
 import type { Appointment } from "@/lib/database.types";
 
 /**
- * Dispara o lembrete de retorno pelo painel "Retornos próximos" e marca
- * `return_notified_at` — só informativo ("já mandei lembrete pra esse"), não
- * tira da lista sozinho. Quem tira é reagendar de verdade (automático) ou
- * "excluir da lista" manual (`dismiss-return`).
+ * Dispara o contato de reengajamento pelo painel "Cancelamentos" do
+ * dashboard. Não marca nada na consulta — mandar mensagem é só uma
+ * tentativa; quem tira da lista é o reagendamento de verdade (automático)
+ * ou o "excluir da lista" manual.
  */
 export async function POST(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const clinic = await getCurrentClinic();
@@ -28,18 +28,10 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
   }
 
   try {
-    await sendAppointmentReturnReminder(supabase, clinic, appointment as Appointment);
+    await sendCancellationOutreach(supabase, clinic, appointment as Appointment);
   } catch (err) {
-    console.error("Falha ao enviar lembrete de retorno por WhatsApp:", err);
+    console.error("Falha ao enviar contato pós-cancelamento por WhatsApp:", err);
     return NextResponse.json({ error: "send_failed" }, { status: 502 });
-  }
-
-  const { error } = await supabase
-    .from("appointments")
-    .update({ return_notified_at: new Date().toISOString() })
-    .eq("id", appointment.id);
-  if (error) {
-    return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

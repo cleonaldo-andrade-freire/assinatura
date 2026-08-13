@@ -28,7 +28,7 @@ export default async function TemplatesPage() {
       subtitle="Cada modelo é uma lista de perguntas — escolha qual usar ao iniciar uma anamnese nova"
       actions={
         <div style={{ display: "flex", gap: 10 }}>
-          <Link href="/dashboard" className={`${styles.btn} ${styles.btnGhost}`}>
+          <Link href="/dashboard/anamneses" className={`${styles.btn} ${styles.btnGhost}`}>
             ← Anamneses
           </Link>
           <Link href="/dashboard/templates/new" className={`${styles.btn} ${styles.btnPrimary}`}>

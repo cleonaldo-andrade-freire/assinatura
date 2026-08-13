@@ -136,5 +136,32 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     console.error("Falha ao enviar confirmação de agendamento por WhatsApp:", err);
   }
 
+  // "À medida que for reagendando, sair da lista" — se este paciente tinha
+  // outras consultas pendentes nas listas de acompanhamento do dashboard
+  // (retorno ou cancelamento), este novo agendamento já cumpre o papel
+  // delas. Best-effort: não pode travar a criação do agendamento.
+  if (patientId) {
+    try {
+      const now = new Date().toISOString();
+      await supabase
+        .from("appointments")
+        .update({ return_dismissed_at: now })
+        .eq("clinic_id", clinic.id)
+        .eq("patient_id", patientId)
+        .not("return_due_date", "is", null)
+        .is("return_dismissed_at", null);
+
+      await supabase
+        .from("appointments")
+        .update({ cancellation_dismissed_at: now })
+        .eq("clinic_id", clinic.id)
+        .eq("patient_id", patientId)
+        .in("status", ["cancelado_paciente", "cancelado_dentista"])
+        .is("cancellation_dismissed_at", null);
+    } catch (err) {
+      console.error("Falha ao tirar o paciente das listas de acompanhamento após reagendar:", err);
+    }
+  }
+
   return NextResponse.json({ appointment }, { status: 201 });
 }

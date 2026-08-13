@@ -33,6 +33,9 @@ export function NewAppointmentForm({
   professionalName,
   initialDate,
   initialTime,
+  initialPatientId,
+  initialPatientName,
+  initialPatientPhone,
   onSuccess,
   bare,
 }: {
@@ -40,6 +43,11 @@ export function NewAppointmentForm({
   professionalName: string;
   initialDate: string;
   initialTime?: string;
+  /** Pré-preenche o paciente (ex.: botão "Agendar" dos painéis de Retornos/Cancelamentos
+   * do dashboard) — pula a busca, já vem pronto pra escolher só data/horário. */
+  initialPatientId?: string | null;
+  initialPatientName?: string;
+  initialPatientPhone?: string;
   /** Usado quando o formulário roda dentro de um modal (ex.: duplo clique na grade
    * semanal) — no lugar de navegar pra página de detalhe, devolve o agendamento
    * criado pro chamador decidir o que fazer (fechar o modal, atualizar a lista). */
@@ -49,9 +57,9 @@ export function NewAppointmentForm({
 }) {
   const router = useRouter();
 
-  const [patientId, setPatientId] = useState<string | null>(null);
-  const [patientName, setPatientName] = useState("");
-  const [patientPhone, setPatientPhone] = useState("");
+  const [patientId, setPatientId] = useState<string | null>(initialPatientId ?? null);
+  const [patientName, setPatientName] = useState(initialPatientName ?? "");
+  const [patientPhone, setPatientPhone] = useState(initialPatientPhone ? formatBRPhoneLocal(initialPatientPhone) : "");
   const [suggestions, setSuggestions] = useState<PatientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

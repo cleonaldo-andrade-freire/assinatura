@@ -4,6 +4,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import styles from "@/styles/shell.module.css";
 
+function DashboardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 function AgendaIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -142,16 +153,12 @@ function CollapseIcon() {
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
-// Agenda entra na barra fixa — pra quem faz recepção é provavelmente a tela
-// mais checada do dia, junto de Anamneses. Próteses e Configurações vão pro
-// "Mais": com 7 destinos reais não cabem todos com rótulo por extenso na
-// barra do celular (é o mesmo estouro que já aconteceu uma vez com 6 itens),
-// e os dois são de uso mais esporádico que as cinco abas primárias.
 // Ordem canônica — vale pra sidebar de desktop, que mostra tudo inline sem
-// distinção (tem espaço de sobra pros sete destinos).
+// distinção (tem espaço de sobra pros oito destinos).
 const NAV_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
   { href: "/dashboard/agenda", label: "Agenda", icon: AgendaIcon },
-  { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
+  { href: "/dashboard/anamneses", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },

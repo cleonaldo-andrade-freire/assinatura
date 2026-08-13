@@ -11,6 +11,9 @@ export function NewAppointmentTrigger({
   professionalName,
   date,
   time,
+  patientId,
+  patientName,
+  patientPhone,
   className,
   children,
 }: {
@@ -18,6 +21,10 @@ export function NewAppointmentTrigger({
   professionalName: string;
   date: string;
   time?: string;
+  /** Pré-preenche o paciente — usado pelo botão "Agendar" dos painéis de Retornos/Cancelamentos do dashboard. */
+  patientId?: string | null;
+  patientName?: string;
+  patientPhone?: string;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -35,6 +42,9 @@ export function NewAppointmentTrigger({
         professionalName={professionalName}
         date={date}
         time={time}
+        patientId={patientId}
+        patientName={patientName}
+        patientPhone={patientPhone}
       />
     </>
   );

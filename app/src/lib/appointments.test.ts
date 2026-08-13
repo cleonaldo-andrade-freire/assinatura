@@ -28,6 +28,8 @@ function fakeAppointment(overrides: Partial<Appointment>): Appointment {
     reminder_final_sent_at: null,
     return_due_date: null,
     return_notified_at: null,
+    return_dismissed_at: null,
+    cancellation_dismissed_at: null,
     created_by: null,
     created_at: "2026-08-01T00:00:00+00:00",
     updated_at: "2026-08-01T00:00:00+00:00",

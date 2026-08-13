@@ -11,6 +11,7 @@ export const TEMPLATE_TYPES: AppointmentMessageTemplateType[] = [
   "cancelado",
   "remarcado",
   "retorno_lembrete",
+  "cancelamento_contato",
 ];
 
 export const TEMPLATE_TYPE_LABEL: Record<AppointmentMessageTemplateType, string> = {
@@ -21,6 +22,7 @@ export const TEMPLATE_TYPE_LABEL: Record<AppointmentMessageTemplateType, string>
   cancelado: "Resposta ao paciente cancelar",
   remarcado: "Aviso de remarcação",
   retorno_lembrete: "Lembrete de retorno (retornos próximos)",
+  cancelamento_contato: "Contato pós-cancelamento (dashboard)",
 };
 
 export interface TemplateVariable {
@@ -63,6 +65,9 @@ export const DEFAULT_TEMPLATE_BODY: Record<AppointmentMessageTemplateType, strin
     "Olá, {{paciente_nome}}! Já faz um tempo desde sua última consulta na {{clinica_nome}} — " +
     "chegou perto da data que a gente combinou pro seu retorno ({{data_retorno}}). " +
     "Quer marcar? É só responder aqui ou chamar no {{celular_clinica}}.",
+  cancelamento_contato:
+    "Olá, {{paciente_nome}}! Vimos que sua consulta de {{data_consulta}} na {{clinica_nome}} foi cancelada. " +
+    "Quer remarcar pra outro dia? É só responder aqui ou chamar no {{celular_clinica}}.",
 };
 
 function confirmationLink(token: string): string {

@@ -44,7 +44,7 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
       title={typedAnamnesis.patient_name}
       subtitle={`Anamnese registrada em ${formatBRDate(typedAnamnesis.created_at)}`}
       actions={
-        <Link href="/dashboard" className={`${styles.btn} ${styles.btnGhost}`}>
+        <Link href="/dashboard/anamneses" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar
         </Link>
       }

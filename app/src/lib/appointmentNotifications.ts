@@ -72,6 +72,18 @@ export async function sendAppointmentReturnReminder(supabase: SupabaseClient, cl
 }
 
 /**
+ * Contato de reengajamento pra quem cancelou — disparado manualmente pelo
+ * painel "Cancelamentos" do dashboard. Não marca nada sozinho (a lista só
+ * sai quando o paciente é reagendado de verdade ou a recepção descarta
+ * manualmente — mandar mensagem é só uma tentativa, não uma garantia).
+ */
+export async function sendCancellationOutreach(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const text = await getAppointmentMessageBody(supabase, clinic.id, "cancelamento_contato", vars);
+  await sendText(clinic, appointment.patient_phone, text);
+}
+
+/**
  * Lembrete escalonado — mesmo link de sempre, só muda o texto conforme o
  * nível ("amanhã" vs. "hoje"). Quem decide QUANDO mandar é o cron
  * (`/api/cron/appointment-reminders`, 1x/dia — granularidade de dia, não de

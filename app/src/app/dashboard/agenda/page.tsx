@@ -9,7 +9,6 @@ import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
 import { AgendaLegend } from "@/components/AgendaLegend";
 import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import { PatientAvatar } from "@/components/PatientAvatar";
-import { UpcomingReturns } from "@/components/UpcomingReturns";
 import {
   APPOINTMENT_STATUS_CLASS,
   buildContinuationMap,
@@ -107,21 +106,6 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
   }
   const professionalName = clinic.dentist_name || clinic.name;
 
-  // "Retornos próximos" — sinal de "Retornar em" (não cria consulta
-  // sozinho, ver NewAppointmentForm), independente do período em exibição
-  // na grade: sempre busca os próximos 14 dias (mais atrasados primeiro),
-  // pra recepção nunca perder um retorno só porque navegou pra outra semana.
-  const { data: upcomingReturnsData } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("clinic_id", clinic.id)
-    .not("return_due_date", "is", null)
-    .is("return_notified_at", null)
-    .lte("return_due_date", addDaysToDateStr(today, 14))
-    .order("return_due_date", { ascending: true })
-    .limit(20);
-  const upcomingReturns = (upcomingReturnsData as Appointment[]) ?? [];
-
   function viewHref(v: "week" | "month") {
     return `/dashboard/agenda?date=${date}&view=${v}`;
   }
@@ -157,8 +141,6 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
       }
     >
       <AgendaRealtimeRefresh clinicId={clinic.id} />
-
-      <UpcomingReturns clinicId={clinic.id} returns={upcomingReturns} />
 
       {/* ---- diária, só visível no celular ---- */}
       <div className={styles.agendaDayView}>
