@@ -14,6 +14,7 @@ import {
 } from "@/lib/appointments";
 import { formatBRDate, formatBRTime } from "@/lib/date";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import type { Appointment } from "@/lib/database.types";
 import shellStyles from "@/styles/shell.module.css";
 
@@ -300,9 +301,10 @@ export function AgendaWeekGrid({
                               }}
                               className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
                               title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}${draggable ? " (arraste pra remarcar, borda inferior pra mudar duração)" : ""}`}
-                              style={{ display: "block", height: "100%", cursor: draggable ? "grab" : undefined }}
+                              style={{ display: "flex", alignItems: "center", gap: 4, height: "100%", cursor: draggable ? "grab" : undefined }}
                             >
-                              {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
+                              <PatientAvatar clinicId={clinicId} patientId={a.patient_id} name={a.patient_name} size={16} />
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.patient_name}</span>
                             </Link>
                             {resizable && (
                               <div

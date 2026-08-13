@@ -259,6 +259,15 @@
   padding: 0 40px 48px;
 }
 
+/* Telas "documento" (detalhe de um único registro: agendamento, prótese) —
+   linhas de label/valor com justify-content:space-between esticam de forma
+   estranha na largura cheia do monitor (o valor foge lá pra direita, longe
+   do label). Tabelas/grade/board continuam sem limite (.content), só essas
+   telas de detalhe ganham um teto de leitura confortável. */
+.narrowContent {
+  max-width: 720px;
+}
+
 @media (min-width: 768px) and (max-width: 900px) {
   /* Tablet retrato (a própria largura de 820px pedida na auditoria cai
      aqui): a sidebar não vira barra inferior de celular, colapsa pra uma
@@ -872,7 +881,7 @@
 
 .label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink);
 }
 

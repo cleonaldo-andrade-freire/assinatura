@@ -65,70 +65,72 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
         </Link>
       }
     >
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Agendamento</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <AppointmentStatusBadge status={a.status} />
-            {a.urgent && <UrgentBadge />}
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
-            <PatientAvatar clinicId={clinic.id} patientId={a.patient_id} name={a.patient_name} size={52} />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{a.patient_name}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+      <div className={styles.narrowContent}>
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Agendamento</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <AppointmentStatusBadge status={a.status} />
+              {a.urgent && <UrgentBadge />}
             </div>
           </div>
-          {!a.patient_id && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-              <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>
-                Ainda não é paciente cadastrado nesta clínica.
-              </span>
+          <div className={styles.panelBody}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
+              <PatientAvatar clinicId={clinic.id} patientId={a.patient_id} name={a.patient_name} size={52} />
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{a.patient_name}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+              </div>
             </div>
-          )}
-          {detailRow("Profissional", a.professional_name)}
-          {detailRow("Data e horário", formatBRDateTime(a.scheduled_at, "medium"))}
-          {detailRow("Duração", `${a.duration_minutes} min`)}
-          {a.notes && detailRow("Observação", a.notes)}
+            {!a.patient_id && (
+              <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>
+                  Ainda não é paciente cadastrado nesta clínica.
+                </span>
+              </div>
+            )}
+            {detailRow("Profissional", a.professional_name)}
+            {detailRow("Data e horário", formatBRDateTime(a.scheduled_at, "medium"))}
+            {detailRow("Duração", `${a.duration_minutes} min`)}
+            {a.notes && detailRow("Observação", a.notes)}
+          </div>
         </div>
-      </div>
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Ações</p>
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Ações</p>
+          </div>
+          <div className={styles.panelBody}>
+            <AppointmentActions
+              clinicId={clinic.id}
+              appointmentId={a.id}
+              status={a.status}
+              urgent={a.urgent}
+              scheduledAt={a.scheduled_at}
+              durationMinutes={a.duration_minutes}
+            />
+          </div>
         </div>
-        <div className={styles.panelBody}>
-          <AppointmentActions
-            clinicId={clinic.id}
-            appointmentId={a.id}
-            status={a.status}
-            urgent={a.urgent}
-            scheduledAt={a.scheduled_at}
-            durationMinutes={a.duration_minutes}
-          />
-        </div>
-      </div>
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Histórico</p>
-        </div>
-        <div className={styles.panelBody}>
-          {events.length === 0 ? (
-            <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: 0 }}>Sem eventos registrados ainda.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {events.map((e) => (
-                <div key={e.id} style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                  <strong style={{ color: "var(--ink)" }}>{(EVENT_LABEL[e.event_type] ?? (() => e.event_type))(e)}</strong>
-                  {" — "}
-                  {formatBRDateTime(e.created_at, "medium")} · {ACTOR_LABEL[e.actor] ?? e.actor}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Histórico</p>
+          </div>
+          <div className={styles.panelBody}>
+            {events.length === 0 ? (
+              <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: 0 }}>Sem eventos registrados ainda.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {events.map((e) => (
+                  <div key={e.id} style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    <strong style={{ color: "var(--ink)" }}>{(EVENT_LABEL[e.event_type] ?? (() => e.event_type))(e)}</strong>
+                    {" — "}
+                    {formatBRDateTime(e.created_at, "medium")} · {ACTOR_LABEL[e.actor] ?? e.actor}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </ClinicShell>

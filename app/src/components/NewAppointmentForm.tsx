@@ -208,7 +208,7 @@ export function NewAppointmentForm({
     }
   }
 
-  const content = (
+  const alerts = (
     <>
       {error && <div className="error-box">{error}</div>}
 
@@ -225,8 +225,17 @@ export function NewAppointmentForm({
           </button>
         </div>
       )}
+    </>
+  );
 
-      <form onSubmit={handleSubmit} className={styles.form} style={bare ? { gap: 12 } : undefined}>
+  const submitButton = (
+    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending} style={{ width: "100%" }}>
+      {sending ? "Agendando…" : "Criar agendamento"}
+    </button>
+  );
+
+  const fieldGroups = (
+    <>
         <div className={styles.fgroup}>
           <p className={styles.fgroupLabel}>Paciente</p>
           <div className={styles.field} style={{ position: "relative" }}>
@@ -478,21 +487,49 @@ export function NewAppointmentForm({
             />
           </div>
         </div>
-
-        <div className={styles.formActions}>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-              {sending ? "Agendando…" : "Criar agendamento"}
-            </button>
-          </div>
-        </form>
     </>
   );
 
-  if (bare) return content;
+  if (bare) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flexShrink: 0 }}>{alerts}</div>
+        <form
+          onSubmit={handleSubmit}
+          className={styles.form}
+          style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 0 }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+              paddingRight: 6,
+              paddingBottom: 2,
+            }}
+          >
+            {fieldGroups}
+          </div>
+          <div style={{ flexShrink: 0, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)" }}>
+            {submitButton}
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.panel}>
-      <div className={styles.panelBody}>{content}</div>
+      <div className={styles.panelBody}>
+        {alerts}
+        <form onSubmit={handleSubmit} className={styles.form}>
+          {fieldGroups}
+          <div className={styles.formActions}>{submitButton}</div>
+        </form>
+      </div>
     </div>
   );
 }

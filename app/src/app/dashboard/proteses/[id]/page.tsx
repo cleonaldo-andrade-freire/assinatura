@@ -53,60 +53,62 @@ export default async function ProsthesisOrderDetailPage({ params }: { params: { 
         </Link>
       }
     >
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Serviço</p>
-        </div>
-        <div className={styles.panelBody}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
-            <PatientAvatar clinicId={clinic.id} patientId={o.patient_id} name={o.patient_name} size={52} />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{o.patient_name}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(o.patient_phone)}</div>
-            </div>
+      <div className={styles.narrowContent}>
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Serviço</p>
           </div>
-          {!o.patient_id && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-              <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>Ainda não é paciente cadastrado nesta clínica.</span>
+          <div className={styles.panelBody}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
+              <PatientAvatar clinicId={clinic.id} patientId={o.patient_id} name={o.patient_name} size={52} />
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{o.patient_name}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(o.patient_phone)}</div>
+              </div>
             </div>
-          )}
-          {detailRow("Descrição", o.description)}
-          {detailRow("Estágio atual", PROSTHESIS_STAGE_LABEL[o.stage])}
-          {detailRow("Neste estágio desde", formatBRDateTime(o.stage_since, "medium"))}
-          {detailRow("Previsão de entrega", o.expected_delivery_date ? formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`) : "Não informada")}
-          {o.notes && detailRow("Observação", o.notes)}
+            {!o.patient_id && (
+              <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>Ainda não é paciente cadastrado nesta clínica.</span>
+              </div>
+            )}
+            {detailRow("Descrição", o.description)}
+            {detailRow("Estágio atual", PROSTHESIS_STAGE_LABEL[o.stage])}
+            {detailRow("Neste estágio desde", formatBRDateTime(o.stage_since, "medium"))}
+            {detailRow("Previsão de entrega", o.expected_delivery_date ? formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`) : "Não informada")}
+            {o.notes && detailRow("Observação", o.notes)}
+          </div>
         </div>
-      </div>
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Mover de estágio</p>
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Mover de estágio</p>
+          </div>
+          <div className={styles.panelBody}>
+            <ProsthesisOrderActions clinicId={clinic.id} orderId={o.id} stage={o.stage} />
+          </div>
         </div>
-        <div className={styles.panelBody}>
-          <ProsthesisOrderActions clinicId={clinic.id} orderId={o.id} stage={o.stage} />
-        </div>
-      </div>
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Histórico</p>
-        </div>
-        <div className={styles.panelBody}>
-          {events.length === 0 ? (
-            <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: 0 }}>Sem eventos registrados ainda.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {events.map((e) => (
-                <div key={e.id} style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                  <strong style={{ color: "var(--ink)" }}>
-                    {e.from_stage ? `${PROSTHESIS_STAGE_LABEL[e.from_stage]} → ${PROSTHESIS_STAGE_LABEL[e.to_stage]}` : `Entrou em ${PROSTHESIS_STAGE_LABEL[e.to_stage]}`}
-                  </strong>
-                  {" — "}
-                  {formatBRDateTime(e.created_at, "medium")}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Histórico</p>
+          </div>
+          <div className={styles.panelBody}>
+            {events.length === 0 ? (
+              <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: 0 }}>Sem eventos registrados ainda.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {events.map((e) => (
+                  <div key={e.id} style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                    <strong style={{ color: "var(--ink)" }}>
+                      {e.from_stage ? `${PROSTHESIS_STAGE_LABEL[e.from_stage]} → ${PROSTHESIS_STAGE_LABEL[e.to_stage]}` : `Entrou em ${PROSTHESIS_STAGE_LABEL[e.to_stage]}`}
+                    </strong>
+                    {" — "}
+                    {formatBRDateTime(e.created_at, "medium")}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </ClinicShell>

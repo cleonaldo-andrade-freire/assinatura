@@ -44,10 +44,10 @@ export function NewAppointmentModal({
   return createPortal(
     <div className={uiStyles.overlay} onClick={onClose}>
       <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <div>
             <h3 className={uiStyles.dialogTitle}>Novo agendamento</h3>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--ink-soft)" }}>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
               {formatBRWeekday(`${date}T12:00:00-03:00`, "long")}, {formatBRDate(`${date}T12:00:00-03:00`)}
               {time ? ` às ${formatBRTime(time)}` : ""}
             </p>

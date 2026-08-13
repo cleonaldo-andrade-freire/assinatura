@@ -35,8 +35,10 @@
    viewport, então rola dentro do próprio diálogo em vez de estourar a tela. */
 .dialogWide {
   max-width: 620px;
-  max-height: 92vh;
-  overflow-y: auto;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 @keyframes dialogIn {
