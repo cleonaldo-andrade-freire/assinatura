@@ -14,12 +14,27 @@ function daysInStage(stageSince: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(stageSince).getTime()) / 86400000));
 }
 
+const SHOW_REALIZADO_KEY = "prosthesis-show-realizado";
+
 export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders: ProsthesisOrder[] }) {
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<ProsthesisStage | null>(null);
   const [moving, setMoving] = useState(false);
+  const [search, setSearch] = useState("");
+  // Serviço já realizado deixa de precisar de atenção no dia a dia — some do
+  // board por padrão, com um toggle pra reabrir quando precisar consultar
+  // (ex.: conferir uma prótese antiga). Preferência lembrada por navegador.
+  const [showRealizado, setShowRealizado] = useState(false);
+  useEffect(() => setShowRealizado(localStorage.getItem(SHOW_REALIZADO_KEY) === "1"), []);
+  function toggleShowRealizado() {
+    setShowRealizado((prev) => {
+      const next = !prev;
+      localStorage.setItem(SHOW_REALIZADO_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
 
   // Estado local otimista: o card muda de coluna assim que solta, sem
   // esperar o PATCH voltar (que inclui o envio da mensagem de WhatsApp —
@@ -29,12 +44,20 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
   const [localOrders, setLocalOrders] = useState(orders);
   useEffect(() => setLocalOrders(orders), [orders]);
 
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? localOrders.filter((o) => o.patient_name.toLowerCase().includes(q)) : localOrders;
+  }, [localOrders, search]);
+
   const byStage = useMemo(() => {
     const map = new Map<ProsthesisStage, ProsthesisOrder[]>();
     for (const stage of PROSTHESIS_STAGES) map.set(stage, []);
-    for (const o of localOrders) map.get(o.stage)?.push(o);
+    for (const o of filteredOrders) map.get(o.stage)?.push(o);
     return map;
-  }, [localOrders]);
+  }, [filteredOrders]);
+
+  const visibleStages = showRealizado ? PROSTHESIS_STAGES : PROSTHESIS_STAGES.filter((s) => s !== "realizado");
+  const hiddenRealizadoCount = showRealizado ? 0 : byStage.get("realizado")?.length ?? 0;
 
   async function handleDrop(orderId: string, stage: ProsthesisStage) {
     setDragOverStage(null);
@@ -64,8 +87,33 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
 
   return (
     <>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+        <div className={styles.searchBox} style={{ minWidth: 240 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.7" />
+            <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Buscar por paciente…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-soft)", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={showRealizado}
+            onChange={toggleShowRealizado}
+            style={{ width: 16, height: 16, accentColor: "var(--brand)" }}
+          />
+          Mostrar realizados{hiddenRealizadoCount > 0 ? ` (${hiddenRealizadoCount})` : ""}
+        </label>
+      </div>
+
       <div className={styles.prosthesisBoard}>
-        {PROSTHESIS_STAGES.map((stage) => {
+        {visibleStages.map((stage) => {
           const items = byStage.get(stage) ?? [];
           return (
             <div
