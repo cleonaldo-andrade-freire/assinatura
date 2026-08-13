@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import { PROSTHESIS_STAGES, PROSTHESIS_STAGE_LABEL } from "@/lib/prosthesisTemplates";
 import { formatBRDate } from "@/lib/date";
 import type { ProsthesisOrder, ProsthesisStage } from "@/lib/database.types";
@@ -20,15 +21,27 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
   const [dragOverStage, setDragOverStage] = useState<ProsthesisStage | null>(null);
   const [moving, setMoving] = useState(false);
 
+  // Estado local otimista: o card muda de coluna assim que solta, sem
+  // esperar o PATCH voltar (que inclui o envio da mensagem de WhatsApp —
+  // podia demorar mais de um segundo e a transição parecia travada).
+  // Ressincroniza com a prop sempre que o servidor manda dado novo
+  // (router.refresh() depois de qualquer movimentação bem-sucedida).
+  const [localOrders, setLocalOrders] = useState(orders);
+  useEffect(() => setLocalOrders(orders), [orders]);
+
   const byStage = useMemo(() => {
     const map = new Map<ProsthesisStage, ProsthesisOrder[]>();
     for (const stage of PROSTHESIS_STAGES) map.set(stage, []);
-    for (const o of orders) map.get(o.stage)?.push(o);
+    for (const o of localOrders) map.get(o.stage)?.push(o);
     return map;
-  }, [orders]);
+  }, [localOrders]);
 
   async function handleDrop(orderId: string, stage: ProsthesisStage) {
     setDragOverStage(null);
+    const previous = localOrders;
+    if (previous.find((o) => o.id === orderId)?.stage === stage) return;
+
+    setLocalOrders((cur) => cur.map((o) => (o.id === orderId ? { ...o, stage } : o)));
     setMoving(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/prosthesis-orders/${orderId}`, {
@@ -38,6 +51,7 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        setLocalOrders(previous);
         push(data?.message || data?.error || "Falha ao mover o serviço.");
         return;
       }
@@ -104,8 +118,13 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
                     className={styles.prosthesisCard}
                     style={{ cursor: moving ? "default" : "grab" }}
                   >
-                    <div className={styles.prosthesisCardTitle}>{o.description}</div>
-                    <div className={styles.prosthesisCardPatient}>{o.patient_name}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <PatientAvatar clinicId={clinicId} patientId={o.patient_id} name={o.patient_name} size={28} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className={styles.prosthesisCardTitle}>{o.description}</div>
+                        <div className={styles.prosthesisCardPatient}>{o.patient_name}</div>
+                      </div>
+                    </div>
                     <div className={styles.prosthesisCardMeta}>
                       {o.expected_delivery_date && <span>Previsão {formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`)}</span>}
                       <span>{daysInStage(o.stage_since)}d neste estágio</span>
