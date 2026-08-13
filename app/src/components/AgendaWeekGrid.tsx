@@ -232,7 +232,7 @@ export function AgendaWeekGrid({
                 return (
                   <div
                     key={cellKey}
-                    className={shellStyles.agendaWeekCell}
+                    className={`${shellStyles.agendaWeekCell} ${d === today ? shellStyles.today : ""}`}
                     onDoubleClick={interactive && !draggingId ? () => setOpenSlot({ date: d, time: slot }) : undefined}
                     role={interactive ? "button" : undefined}
                     tabIndex={interactive ? 0 : undefined}

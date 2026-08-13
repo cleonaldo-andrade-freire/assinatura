@@ -878,7 +878,30 @@
 
 .hint {
   font-size: 12px;
+  font-style: italic;
   color: var(--ink-faint);
+}
+
+/* Agrupamento visual de campos relacionados dentro de um formulário (ex.:
+   "Paciente" vs. "Agendamento" no modal de novo agendamento) — uma borda
+   fina em vez de mais um .panel aninhado, que ficaria pesado demais dentro
+   de um modal. */
+.fgroup {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fgroupLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0;
 }
 
 .input,
@@ -1167,8 +1190,8 @@
 .agendaWeekHeaderCell {
   padding: 10px 8px;
   background: var(--surface-sunken);
-  border-bottom: 1px solid var(--line);
-  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 1px solid var(--line-soft);
   text-align: center;
   font-size: 12px;
   font-weight: 700;
@@ -1182,7 +1205,7 @@
 
 .agendaWeekTimeCell {
   padding: 6px 8px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
   font-size: 11px;
   color: var(--ink-faint);
   text-align: right;
@@ -1192,8 +1215,15 @@
 .agendaWeekCell {
   min-height: 44px;
   padding: 3px;
-  border-bottom: 1px solid var(--line);
-  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 1px solid var(--line-soft);
+}
+
+/* Coluna do dia atual — tinta bem sutil (não é mais forte que o próprio
+   destaque do cabeçalho), só pra guiar o olho na hora de achar "hoje" numa
+   grade de 7 colunas. */
+.agendaWeekCell.today {
+  background: rgba(44, 102, 89, 0.035);
 }
 
 .agendaWeekChip {
@@ -1208,6 +1238,36 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Bloco de cor sólida em vez de pílula pastel — só na grade da agenda
+   (.statusBadge sozinho, usado nos badges de texto do resto do produto,
+   continua com o fundo tintado de sempre). Contraste de cada cor contra
+   texto branco verificado na proposta de redesign (todas ≥4.5:1 exceto
+   "faltou", por isso usa --muted-fill em vez de --ink-faint). */
+.agendaWeekChip.statusOk {
+  background: var(--brand);
+  color: #fff;
+}
+
+.agendaWeekChip.statusWarn {
+  background: var(--warn);
+  color: #fff;
+}
+
+.agendaWeekChip.statusDanger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.agendaWeekChip.statusInfo {
+  background: var(--sign);
+  color: #fff;
+}
+
+.agendaWeekChip.statusMuted {
+  background: var(--muted-fill);
+  color: #fff;
 }
 
 /* Alça de redimensionar (borda inferior do card, arrasta pra mudar a

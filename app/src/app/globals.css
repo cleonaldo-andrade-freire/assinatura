@@ -6,6 +6,10 @@
   --ink-soft: #5b6864;
   --ink-faint: #8b978e;
   --line: #e4ded2;
+  /* Linha mais discreta que --line — só pra grade da agenda (muitas linhas
+     horizontais/verticais numa grade pedem menos contraste que a borda de um
+     card isolado, senão o efeito é "grade forte demais"). */
+  --line-soft: #ece7dc;
   --brand: #2c6659;
   --brand-deep: #1d473d;
   --brand-deeper: #16362f;

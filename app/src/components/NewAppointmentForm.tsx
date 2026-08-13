@@ -227,6 +227,8 @@ export function NewAppointmentForm({
       )}
 
       <form onSubmit={handleSubmit} className={styles.form} style={bare ? { gap: 12 } : undefined}>
+        <div className={styles.fgroup}>
+          <p className={styles.fgroupLabel}>Paciente</p>
           <div className={styles.field} style={{ position: "relative" }}>
             <label htmlFor="patientName" className={styles.label}>
               Nome do paciente
@@ -348,7 +350,10 @@ export function NewAppointmentForm({
             />
             {phoneError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{phoneError}</div>}
           </div>
+        </div>
 
+        <div className={styles.fgroup}>
+          <p className={styles.fgroupLabel}>Agendamento</p>
           <div className={styles.formRow}>
             <div className={styles.field}>
               <label htmlFor="date" className={styles.label}>
@@ -472,8 +477,9 @@ export function NewAppointmentForm({
               placeholder="Motivo da consulta, anotação da recepção…"
             />
           </div>
+        </div>
 
-          <div className={styles.formActions}>
+        <div className={styles.formActions}>
             <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
               {sending ? "Agendando…" : "Criar agendamento"}
             </button>
