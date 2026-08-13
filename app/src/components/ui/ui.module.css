@@ -41,6 +41,14 @@
   overflow: hidden;
 }
 
+/* Ainda mais larga — pro orçamento, cujo conteúdo (linhas de tratamento +
+   odontograma com 8 dentes por quadrante numa linha só) não cabe direito
+   nos 620px do dialogWide comum. */
+.dialogExtraWide {
+  composes: dialogWide;
+  max-width: 780px;
+}
+
 @keyframes dialogIn {
   from {
     opacity: 0;

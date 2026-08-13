@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ToothRegionSelect } from "@/components/budgets/ToothRegionSelect";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { brDateOnly } from "@/lib/date";
+import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -25,18 +26,11 @@ interface DraftItem {
   treatmentName: string;
   toothRegion: string;
   price: number;
-  dentistName: string;
   selected: boolean;
 }
 
 function formatMoney(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
-
-function parseMoney(raw: string): number | null {
-  const normalized = raw.trim().replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function installmentOptions(total: number, max = 12): { count: number; label: string }[] {
@@ -69,14 +63,12 @@ export function NewBudgetModal({
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const [description, setDescription] = useState(`Plano tratamento de ${patientName}`);
-  const [responsibleName, setResponsibleName] = useState(defaultResponsibleName);
   const [budgetDate, setBudgetDate] = useState(brDateOnly());
 
   const [formPriceTableId, setFormPriceTableId] = useState("");
   const [formTreatmentId, setFormTreatmentId] = useState("");
   const [formCustomName, setFormCustomName] = useState("");
   const [formPrice, setFormPrice] = useState("");
-  const [formDentistName, setFormDentistName] = useState(defaultResponsibleName);
   const [formToothRegion, setFormToothRegion] = useState("");
 
   const [items, setItems] = useState<DraftItem[]>([]);
@@ -130,23 +122,21 @@ export function NewBudgetModal({
   const totalValue = items.reduce((sum, i) => sum + i.price, 0);
   const selectedValue = items.filter((i) => i.selected).reduce((sum, i) => sum + i.price, 0);
   const discountAmount = useMemo(() => {
-    const v = parseMoney(discountValue) ?? 0;
+    const v = parseMoneyInput(discountValue);
     return discountType === "percent" ? (selectedValue * v) / 100 : v;
   }, [discountType, discountValue, selectedValue]);
   const total = Math.max(0, selectedValue - discountAmount);
 
-  const downPayment = adicionarEntrada ? parseMoney(downPaymentValue) ?? 0 : 0;
+  const downPayment = adicionarEntrada ? parseMoneyInput(downPaymentValue) : 0;
   const remainingBalance = Math.max(0, total - downPayment);
 
   function resetForm() {
     setDescription(`Plano tratamento de ${patientName}`);
-    setResponsibleName(defaultResponsibleName);
     setBudgetDate(brDateOnly());
     setFormPriceTableId("");
     setFormTreatmentId("");
     setFormCustomName("");
     setFormPrice("");
-    setFormDentistName(defaultResponsibleName);
     setFormToothRegion("");
     setItems([]);
     setDiscountType("fixed");
@@ -167,10 +157,10 @@ export function NewBudgetModal({
   }
 
   function handleAddTreatment() {
-    const price = parseMoney(formPrice);
+    const price = parseMoneyInput(formPrice);
     const treatmentName = isCustomTreatment ? formCustomName.trim() : selectedTable?.items.find((i) => i.id === formTreatmentId)?.name ?? "";
-    if (!treatmentName || price === null || !formDentistName.trim()) {
-      push("Preencha plano, tratamento, valor e dentista.");
+    if (!treatmentName || !formPrice) {
+      push("Preencha plano, tratamento e valor.");
       return;
     }
     setItems((prev) => [
@@ -182,7 +172,6 @@ export function NewBudgetModal({
         treatmentName,
         toothRegion: formToothRegion,
         price,
-        dentistName: formDentistName.trim(),
         selected: true,
       },
     ]);
@@ -201,8 +190,8 @@ export function NewBudgetModal({
   }
 
   async function handleSave(status: "em_aberto" | "aprovado") {
-    if (!description.trim() || !responsibleName.trim() || !budgetDate) {
-      push("Preencha descrição, responsável e data.");
+    if (!description.trim() || !budgetDate) {
+      push("Preencha descrição e data.");
       return;
     }
     if (items.length === 0) {
@@ -216,11 +205,11 @@ export function NewBudgetModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: description.trim(),
-          responsible_name: responsibleName.trim(),
+          responsible_name: defaultResponsibleName,
           budget_date: budgetDate,
           status,
           discount_type: discountType,
-          discount_value: parseMoney(discountValue) ?? 0,
+          discount_value: parseMoneyInput(discountValue),
           installments: adicionarEntrada ? balanceInstallments : parcelar ? installments : 1,
           payment_method: (adicionarEntrada ? downPaymentMethod : paymentMethod) || null,
           down_payment_value: adicionarEntrada ? downPayment : null,
@@ -232,7 +221,7 @@ export function NewBudgetModal({
             treatment_name: i.treatmentName,
             tooth_region: i.toothRegion || null,
             price: i.price,
-            dentist_name: i.dentistName,
+            dentist_name: defaultResponsibleName,
             selected: i.selected,
           })),
         }),
@@ -254,7 +243,7 @@ export function NewBudgetModal({
 
   return createPortal(
     <div className={uiStyles.overlay} onClick={handleClose}>
-      <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className={`${uiStyles.dialog} ${uiStyles.dialogExtraWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Novo orçamento</h3>
           <button type="button" className={uiStyles.toastClose} onClick={handleClose} aria-label="Fechar">
@@ -269,21 +258,20 @@ export function NewBudgetModal({
               <input type="text" className={styles.input} value={description} onChange={(e) => setDescription(e.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label className={styles.label}>Responsável pelo orçamento</label>
-              <input type="text" className={styles.input} value={responsibleName} onChange={(e) => setResponsibleName(e.target.value)} />
-            </div>
-            <div className={styles.field}>
               <label className={styles.label}>Data*</label>
               <input type="date" className={styles.input} value={budgetDate} onChange={(e) => setBudgetDate(e.target.value)} required />
             </div>
           </div>
+          <p className={styles.hint} style={{ margin: "-10px 0 0" }}>
+            Responsável: {defaultResponsibleName} (dentista responsável técnico da clínica)
+          </p>
 
           <div>
             <p className={styles.fgroupLabel} style={{ marginBottom: 10 }}>
               Adicionar tratamento
             </p>
             <div className={styles.formRow}>
-              <div className={styles.field}>
+              <div className={styles.field} style={{ flex: 1 }}>
                 <label className={styles.label}>Plano*</label>
                 <select
                   className={styles.select}
@@ -303,7 +291,7 @@ export function NewBudgetModal({
                   ))}
                 </select>
               </div>
-              <div className={styles.field} style={{ flex: 1.4 }}>
+              <div className={styles.field} style={{ flex: 2.5 }}>
                 <label className={styles.label}>Tratamento*</label>
                 <select
                   className={styles.select}
@@ -315,7 +303,7 @@ export function NewBudgetModal({
                       setFormPrice("");
                     } else {
                       const item = selectedTable?.items.find((i) => i.id === v);
-                      setFormPrice(item ? String(item.price) : "");
+                      setFormPrice(item ? formatMoneyDisplay(item.price) : "");
                     }
                   }}
                   disabled={!formPriceTableId}
@@ -329,20 +317,16 @@ export function NewBudgetModal({
                   <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
                 </select>
               </div>
-              <div className={styles.field}>
+              <div className={styles.field} style={{ flex: 1 }}>
                 <label className={styles.label}>Valor*</label>
                 <input
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   className={styles.input}
                   value={formPrice}
-                  onChange={(e) => setFormPrice(e.target.value)}
+                  onChange={(e) => setFormPrice(formatMoneyInput(e.target.value))}
                   placeholder="0,00"
                 />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Dentista*</label>
-                <input type="text" className={styles.input} value={formDentistName} onChange={(e) => setFormDentistName(e.target.value)} />
               </div>
             </div>
 
@@ -377,10 +361,7 @@ export function NewBudgetModal({
                       {item.toothRegion ? `${item.toothRegion} — ` : ""}
                       {item.treatmentName}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                      Dr(a) {item.dentistName}
-                      {item.priceTableName ? ` — ${item.priceTableName}` : ""}
-                    </div>
+                    {item.priceTableName && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{item.priceTableName}</div>}
                   </div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{formatMoney(item.price)}</div>
                   <button
@@ -416,11 +397,11 @@ export function NewBudgetModal({
                 </select>
                 <input
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   className={styles.input}
                   style={{ width: 100 }}
                   value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
+                  onChange={(e) => setDiscountValue(discountType === "percent" ? e.target.value.replace(/[^\d,]/g, "") : formatMoneyInput(e.target.value))}
                   placeholder="0,00"
                 />
               </div>
@@ -498,10 +479,10 @@ export function NewBudgetModal({
                       <label className={styles.label}>Valor da entrada*</label>
                       <input
                         type="text"
-                        inputMode="decimal"
+                        inputMode="numeric"
                         className={styles.input}
                         value={downPaymentValue}
-                        onChange={(e) => setDownPaymentValue(e.target.value)}
+                        onChange={(e) => setDownPaymentValue(formatMoneyInput(e.target.value))}
                         placeholder="0,00"
                       />
                     </div>
