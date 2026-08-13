@@ -16,6 +16,7 @@ const bodySchema = z.object({
   patient_phone: z.string().refine(isValidBRPhone, { message: "celular inválido" }),
   urgent: z.boolean().optional(),
   notes: z.string().optional(),
+  return_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "data de retorno inválida" }).optional(),
 });
 
 /**
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       patient_phone: input.patient_phone,
       urgent: input.urgent ?? false,
       notes: input.notes ?? null,
+      return_due_date: input.return_due_date ?? null,
     })
     .select("*")
     .single();

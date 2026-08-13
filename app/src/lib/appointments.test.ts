@@ -26,6 +26,8 @@ function fakeAppointment(overrides: Partial<Appointment>): Appointment {
     confirm_token: crypto.randomUUID(),
     reminder_24h_sent_at: null,
     reminder_final_sent_at: null,
+    return_due_date: null,
+    return_notified_at: null,
     created_by: null,
     created_at: "2026-08-01T00:00:00+00:00",
     updated_at: "2026-08-01T00:00:00+00:00",

@@ -60,6 +60,18 @@ export async function sendAppointmentRescheduled(supabase: SupabaseClient, clini
 }
 
 /**
+ * Lembrete de retorno — disparado manualmente pela recepção a partir do
+ * painel "Retornos próximos" (não é automático por cron: o texto convida o
+ * paciente a chamar a clínica pra combinar o horário, não confirma nada
+ * sozinho). Quem chama já marca `return_notified_at` depois de mandar.
+ */
+export async function sendAppointmentReturnReminder(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const text = await getAppointmentMessageBody(supabase, clinic.id, "retorno_lembrete", vars);
+  await sendText(clinic, appointment.patient_phone, text);
+}
+
+/**
  * Lembrete escalonado — mesmo link de sempre, só muda o texto conforme o
  * nível ("amanhã" vs. "hoje"). Quem decide QUANDO mandar é o cron
  * (`/api/cron/appointment-reminders`, 1x/dia — granularidade de dia, não de

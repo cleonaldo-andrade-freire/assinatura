@@ -6,7 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
 import { PatientAvatar } from "@/components/PatientAvatar";
-import { formatBRDateTime } from "@/lib/date";
+import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -91,6 +91,11 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
             {detailRow("Profissional", a.professional_name)}
             {detailRow("Data e horário", formatBRDateTime(a.scheduled_at, "medium"))}
             {detailRow("Duração", `${a.duration_minutes} min`)}
+            {a.return_due_date &&
+              detailRow(
+                "Retorno previsto",
+                `${formatBRDate(`${a.return_due_date}T12:00:00-03:00`)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
+              )}
             {a.notes && detailRow("Observação", a.notes)}
           </div>
         </div>

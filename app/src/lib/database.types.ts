@@ -276,6 +276,11 @@ export interface Appointment {
   confirm_token: string;
   reminder_24h_sent_at: string | null;
   reminder_final_sent_at: string | null;
+  // Data prevista de retorno, marcada na hora do agendamento — não cria uma
+  // segunda consulta sozinha, é só um sinal pra "Retornos próximos"
+  // avisar a recepção quando estiver perto (ver return_notified_at).
+  return_due_date: string | null;
+  return_notified_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -302,7 +307,8 @@ export type AppointmentMessageTemplateType =
   | "lembrete_final"
   | "confirmado"
   | "cancelado"
-  | "remarcado";
+  | "remarcado"
+  | "retorno_lembrete";
 
 export interface AppointmentMessageTemplate {
   id: string;

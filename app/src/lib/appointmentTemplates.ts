@@ -10,6 +10,7 @@ export const TEMPLATE_TYPES: AppointmentMessageTemplateType[] = [
   "confirmado",
   "cancelado",
   "remarcado",
+  "retorno_lembrete",
 ];
 
 export const TEMPLATE_TYPE_LABEL: Record<AppointmentMessageTemplateType, string> = {
@@ -19,6 +20,7 @@ export const TEMPLATE_TYPE_LABEL: Record<AppointmentMessageTemplateType, string>
   confirmado: "Resposta ao paciente confirmar",
   cancelado: "Resposta ao paciente cancelar",
   remarcado: "Aviso de remarcação",
+  retorno_lembrete: "Lembrete de retorno (retornos próximos)",
 };
 
 export interface TemplateVariable {
@@ -38,6 +40,7 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
   { key: "link_confirmacao", label: "Link de confirmação" },
   { key: "endereco_clinica", label: "Endereço da clínica" },
   { key: "celular_clinica", label: "Celular da clínica" },
+  { key: "data_retorno", label: "Data prevista de retorno" },
 ];
 
 /** Texto padrão usado quando a clínica não personalizou o modelo — mesmo texto que já ia fixo no código antes deste recurso existir. */
@@ -56,6 +59,10 @@ export const DEFAULT_TEMPLATE_BODY: Record<AppointmentMessageTemplateType, strin
   remarcado:
     "Sua consulta na {{clinica_nome}} foi remarcada — novo horário: {{data_consulta}} às {{hora_consulta}}.\n\n" +
     "Se precisar confirmar ou cancelar, toque aqui: {{link_confirmacao}}",
+  retorno_lembrete:
+    "Olá, {{paciente_nome}}! Já faz um tempo desde sua última consulta na {{clinica_nome}} — " +
+    "chegou perto da data que a gente combinou pro seu retorno ({{data_retorno}}). " +
+    "Quer marcar? É só responder aqui ou chamar no {{celular_clinica}}.",
 };
 
 function confirmationLink(token: string): string {
@@ -74,6 +81,7 @@ export function buildAppointmentTemplateVars(clinic: Clinic, appointment: Appoin
     link_confirmacao: confirmationLink(appointment.confirm_token),
     endereco_clinica: clinic.clinic_address ?? "",
     celular_clinica: clinic.whatsapp_number ? formatBRPhoneLocal(clinic.whatsapp_number) : clinic.dentist_phone ?? "",
+    data_retorno: appointment.return_due_date ? formatBRDate(`${appointment.return_due_date}T12:00:00-03:00`) : "",
   };
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import { buildDaySlotTimes } from "@/lib/appointments";
-import { addMonthsToDateStr, brDateOnly, formatBRDate, formatBRTime } from "@/lib/date";
+import { addMonthsToDateStr, brDateOnly, formatBRTime } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -69,8 +69,6 @@ export function NewAppointmentForm({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
-  const [returnFailure, setReturnFailure] = useState<string | null>(null);
-  const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null);
 
   // Filtra horários que já passaram — o servidor também recusa (é a garantia
   // de verdade), isso aqui é só pra não oferecer uma opção que vai falhar.
@@ -116,21 +114,16 @@ export function NewAppointmentForm({
     setSuggestions([]);
   }
 
-  /** A partir do horário da consulta recém-criada, calcula o `scheduled_at` do
-   * retorno — mantém o mesmo horário do dia, só desloca a data (mês(es) à
-   * frente ou uma data específica escolhida). `null` quando "Sem retorno". */
-  function computeReturnScheduledAt(primaryIso: string): string | null {
+  /** Data prevista de retorno (só a data, sem horário) a partir da opção
+   * escolhida — relativa à data desta consulta, não a hoje. Não cria
+   * nenhuma consulta sozinha: é só um sinal pra "Retornos próximos" avisar
+   * a recepção quando estiver perto, pra ela chamar o paciente e combinar
+   * o horário de verdade. `null` quando "Sem retorno". */
+  function computeReturnDueDate(): string | null {
     if (returnOption === "none") return null;
-    let targetDateStr: string;
-    if (returnOption === "specific") {
-      if (!returnSpecificDate) return null;
-      targetDateStr = returnSpecificDate;
-    } else {
-      const months = returnOption === "custom" ? Math.max(1, returnCustomMonths || 1) : Number(returnOption);
-      targetDateStr = addMonthsToDateStr(brDateOnly(new Date(primaryIso)), months);
-    }
-    const [hh, mm] = formatBRTime(primaryIso).split(":");
-    return new Date(`${targetDateStr}T${hh}:${mm}:00-03:00`).toISOString();
+    if (returnOption === "specific") return returnSpecificDate || null;
+    const months = returnOption === "custom" ? Math.max(1, returnCustomMonths || 1) : Number(returnOption);
+    return addMonthsToDateStr(date, months);
   }
 
   function goToCreated(appointment: Appointment) {
@@ -146,7 +139,6 @@ export function NewAppointmentForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setReturnFailure(null);
     if (!time || phoneDigits.length < 10) {
       setShowErrors(true);
       return;
@@ -165,6 +157,7 @@ export function NewAppointmentForm({
           patient_phone: toE164BR(patientPhone),
           urgent,
           notes: notes.trim() || undefined,
+          return_due_date: computeReturnDueDate() ?? undefined,
         }),
       });
       const data = await res.json();
@@ -172,61 +165,13 @@ export function NewAppointmentForm({
         setError(data.message || data.error || "Falha ao criar o agendamento.");
         return;
       }
-      const created = data.appointment as Appointment;
-
-      const returnAt = computeReturnScheduledAt(created.scheduled_at);
-      if (returnAt) {
-        const resReturn = await fetch(`/api/clinics/${clinicId}/appointments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scheduled_at: returnAt,
-            duration_minutes: duration,
-            professional_name: professionalName,
-            patient_id: patientId ?? undefined,
-            patient_name: patientName.trim(),
-            patient_phone: toE164BR(patientPhone),
-            notes: "Retorno agendado automaticamente.",
-          }),
-        }).catch(() => null);
-        const dataReturn = resReturn ? await resReturn.json().catch(() => null) : null;
-        if (!resReturn || !resReturn.ok) {
-          // A consulta principal já foi criada — não desfaz por causa do
-          // retorno. Fica na tela mostrando o aviso, em vez de navegar embora
-          // e o usuário nunca saber que precisa remarcar o retorno na mão.
-          setCreatedAppointment(created);
-          setReturnFailure(
-            `Consulta criada, mas não deu pra agendar o retorno automaticamente em ${formatBRDate(returnAt)} (${dataReturn?.message || dataReturn?.error || "horário indisponível"}). Agende manualmente.`
-          );
-          return;
-        }
-      }
-
-      goToCreated(created);
+      goToCreated(data.appointment as Appointment);
     } finally {
       setSending(false);
     }
   }
 
-  const alerts = (
-    <>
-      {error && <div className="error-box">{error}</div>}
-
-      {returnFailure && createdAppointment && (
-        <div className="error-box" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span>{returnFailure}</span>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnPrimary}`}
-            style={{ alignSelf: "flex-start" }}
-            onClick={() => goToCreated(createdAppointment)}
-          >
-            Ver consulta criada
-          </button>
-        </div>
-      )}
-    </>
-  );
+  const alerts = <>{error && <div className="error-box">{error}</div>}</>;
 
   const submitButton = (
     <button
@@ -463,7 +408,10 @@ export function NewAppointmentForm({
                 />
               )}
               {!bare && returnOption !== "none" && (
-                <p className={styles.hint}>Cria automaticamente uma segunda consulta no mesmo horário do dia.</p>
+                <p className={styles.hint}>
+                  Não agenda sozinho — só avisa a recepção em &quot;Retornos próximos&quot; quando estiver perto, pra
+                  combinar o horário com o paciente.
+                </p>
               )}
             </div>
           </div>
