@@ -301,9 +301,9 @@ export function AgendaWeekGrid({
                               }}
                               className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
                               title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}${draggable ? " (arraste pra remarcar, borda inferior pra mudar duração)" : ""}`}
-                              style={{ display: "flex", alignItems: "center", gap: 4, height: "100%", cursor: draggable ? "grab" : undefined }}
+                              style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", cursor: draggable ? "grab" : undefined }}
                             >
-                              <PatientAvatar clinicId={clinicId} patientId={a.patient_id} name={a.patient_name} size={16} />
+                              <PatientAvatar clinicId={clinicId} patientId={a.patient_id} name={a.patient_name} size={24} />
                               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.patient_name}</span>
                             </Link>
                             {resizable && (
