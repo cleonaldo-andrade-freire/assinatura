@@ -3,11 +3,10 @@ import { resolveTemplate } from "@/lib/appointmentTemplates";
 import { formatBRDate } from "@/lib/date";
 import type { Clinic, ProsthesisOrder, ProsthesisStage } from "@/lib/database.types";
 
-export const PROSTHESIS_STAGES: ProsthesisStage[] = ["pre_laboratorio", "envio", "laboratorio", "agenda", "realizado"];
+export const PROSTHESIS_STAGES: ProsthesisStage[] = ["pre_laboratorio", "laboratorio", "agenda", "realizado"];
 
 export const PROSTHESIS_STAGE_LABEL: Record<ProsthesisStage, string> = {
   pre_laboratorio: "Pré-laboratório",
-  envio: "Envio",
   laboratorio: "Laboratório",
   agenda: "Agenda",
   realizado: "Realizado",
@@ -16,8 +15,7 @@ export const PROSTHESIS_STAGE_LABEL: Record<ProsthesisStage, string> = {
 /** Texto padrão mandado por WhatsApp quando o serviço entra em cada estágio — usado se a clínica não personalizou (ver /dashboard/configuracoes/mensagens-protese). */
 export const DEFAULT_STAGE_TEMPLATE_BODY: Record<ProsthesisStage, string> = {
   pre_laboratorio: "Olá! Recebemos o pedido da sua prótese ({{descricao_protese}}) na {{clinica_nome}} — está em preparação.",
-  envio: "Sua prótese ({{descricao_protese}}) foi enviada ao laboratório.",
-  laboratorio: "Sua prótese ({{descricao_protese}}) está sendo confeccionada no laboratório.",
+  laboratorio: "Sua prótese ({{descricao_protese}}) foi enviada e está sendo confeccionada no laboratório.",
   agenda: "Sua prótese ({{descricao_protese}}) ficou pronta e já entrou na agenda pra instalação{{data_prevista}}.",
   realizado: "Prótese ({{descricao_protese}}) instalada com sucesso! Qualquer dúvida, é só chamar a {{clinica_nome}}.",
 };

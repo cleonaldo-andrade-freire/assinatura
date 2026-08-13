@@ -5,13 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordProsthesisOrderEvent, notifyProsthesisStageChange } from "@/lib/prosthesisOrders";
 import type { ProsthesisOrder, ProsthesisStage } from "@/lib/database.types";
 
-const STAGE_VALUES: [ProsthesisStage, ...ProsthesisStage[]] = [
-  "pre_laboratorio",
-  "envio",
-  "laboratorio",
-  "agenda",
-  "realizado",
-];
+const STAGE_VALUES: [ProsthesisStage, ...ProsthesisStage[]] = ["pre_laboratorio", "laboratorio", "agenda", "realizado"];
 
 const patchSchema = z.object({
   stage: z.enum(STAGE_VALUES).optional(),

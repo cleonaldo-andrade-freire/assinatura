@@ -313,7 +313,7 @@ export interface AppointmentMessageTemplate {
   updated_at: string;
 }
 
-export type ProsthesisStage = "pre_laboratorio" | "envio" | "laboratorio" | "agenda" | "realizado";
+export type ProsthesisStage = "pre_laboratorio" | "laboratorio" | "agenda" | "realizado";
 
 export interface ProsthesisOrder {
   id: string;
