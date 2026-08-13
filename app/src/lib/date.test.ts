@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToDateStr, brDayRangeUtc, firstOfMonth, firstOfNextMonth, mondayOfWeek, monthGridDays } from "./date";
+import { addDaysToDateStr, addMonthsToDateStr, brDayRangeUtc, firstOfMonth, firstOfNextMonth, mondayOfWeek, monthGridDays } from "./date";
 
 describe("addDaysToDateStr", () => {
   it("soma dias, inclusive atravessando o fim do mês", () => {
@@ -8,6 +8,24 @@ describe("addDaysToDateStr", () => {
 
   it("subtrai dias com número negativo", () => {
     expect(addDaysToDateStr("2026-08-01", -1)).toBe("2026-07-31");
+  });
+});
+
+describe("addMonthsToDateStr", () => {
+  it("soma meses dentro do mesmo ano", () => {
+    expect(addMonthsToDateStr("2026-08-13", 1)).toBe("2026-09-13");
+  });
+
+  it("vira o ano quando ultrapassa dezembro", () => {
+    expect(addMonthsToDateStr("2026-08-13", 6)).toBe("2027-02-13");
+  });
+
+  it("arredonda pro último dia válido do mês de destino (31/01 + 1 mês)", () => {
+    expect(addMonthsToDateStr("2026-01-31", 1)).toBe("2026-02-28");
+  });
+
+  it("respeita fevereiro bissexto", () => {
+    expect(addMonthsToDateStr("2027-01-31", 13)).toBe("2028-02-29");
   });
 });
 

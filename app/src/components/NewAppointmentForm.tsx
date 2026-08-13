@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import { buildDaySlotTimes } from "@/lib/appointments";
-import { brDateOnly, formatBRTime } from "@/lib/date";
+import { addMonthsToDateStr, brDateOnly, formatBRDate, formatBRTime } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -17,6 +17,16 @@ interface PatientSuggestion {
 }
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
+
+type ReturnOption = "none" | "1" | "6" | "12" | "custom" | "specific";
+const RETURN_OPTIONS: { value: ReturnOption; label: string }[] = [
+  { value: "none", label: "Sem retorno" },
+  { value: "1", label: "1 mês" },
+  { value: "6", label: "6 meses" },
+  { value: "12", label: "12 meses" },
+  { value: "custom", label: "Outro mês" },
+  { value: "specific", label: "Data específica" },
+];
 
 export function NewAppointmentForm({
   clinicId,
@@ -52,9 +62,15 @@ export function NewAppointmentForm({
   const [urgent, setUrgent] = useState(false);
   const [notes, setNotes] = useState("");
 
+  const [returnOption, setReturnOption] = useState<ReturnOption>("none");
+  const [returnCustomMonths, setReturnCustomMonths] = useState(2);
+  const [returnSpecificDate, setReturnSpecificDate] = useState("");
+
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [returnFailure, setReturnFailure] = useState<string | null>(null);
+  const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null);
 
   // Filtra horários que já passaram — o servidor também recusa (é a garantia
   // de verdade), isso aqui é só pra não oferecer uma opção que vai falhar.
@@ -100,9 +116,37 @@ export function NewAppointmentForm({
     setSuggestions([]);
   }
 
+  /** A partir do horário da consulta recém-criada, calcula o `scheduled_at` do
+   * retorno — mantém o mesmo horário do dia, só desloca a data (mês(es) à
+   * frente ou uma data específica escolhida). `null` quando "Sem retorno". */
+  function computeReturnScheduledAt(primaryIso: string): string | null {
+    if (returnOption === "none") return null;
+    let targetDateStr: string;
+    if (returnOption === "specific") {
+      if (!returnSpecificDate) return null;
+      targetDateStr = returnSpecificDate;
+    } else {
+      const months = returnOption === "custom" ? Math.max(1, returnCustomMonths || 1) : Number(returnOption);
+      targetDateStr = addMonthsToDateStr(brDateOnly(new Date(primaryIso)), months);
+    }
+    const [hh, mm] = formatBRTime(primaryIso).split(":");
+    return new Date(`${targetDateStr}T${hh}:${mm}:00-03:00`).toISOString();
+  }
+
+  function goToCreated(appointment: Appointment) {
+    if (onSuccess) {
+      onSuccess(appointment);
+      router.refresh();
+    } else {
+      router.push(`/dashboard/agenda/${appointment.id}`);
+      router.refresh();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setReturnFailure(null);
     if (!time || phoneDigits.length < 10) {
       setShowErrors(true);
       return;
@@ -128,13 +172,37 @@ export function NewAppointmentForm({
         setError(data.message || data.error || "Falha ao criar o agendamento.");
         return;
       }
-      if (onSuccess) {
-        onSuccess(data.appointment);
-        router.refresh();
-      } else {
-        router.push(`/dashboard/agenda/${data.appointment.id}`);
-        router.refresh();
+      const created = data.appointment as Appointment;
+
+      const returnAt = computeReturnScheduledAt(created.scheduled_at);
+      if (returnAt) {
+        const resReturn = await fetch(`/api/clinics/${clinicId}/appointments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduled_at: returnAt,
+            duration_minutes: duration,
+            professional_name: professionalName,
+            patient_id: patientId ?? undefined,
+            patient_name: patientName.trim(),
+            patient_phone: toE164BR(patientPhone),
+            notes: "Retorno agendado automaticamente.",
+          }),
+        }).catch(() => null);
+        const dataReturn = resReturn ? await resReturn.json().catch(() => null) : null;
+        if (!resReturn || !resReturn.ok) {
+          // A consulta principal já foi criada — não desfaz por causa do
+          // retorno. Fica na tela mostrando o aviso, em vez de navegar embora
+          // e o usuário nunca saber que precisa remarcar o retorno na mão.
+          setCreatedAppointment(created);
+          setReturnFailure(
+            `Consulta criada, mas não deu pra agendar o retorno automaticamente em ${formatBRDate(returnAt)} (${dataReturn?.message || dataReturn?.error || "horário indisponível"}). Agende manualmente.`
+          );
+          return;
+        }
       }
+
+      goToCreated(created);
     } finally {
       setSending(false);
     }
@@ -143,6 +211,20 @@ export function NewAppointmentForm({
   const content = (
     <>
       {error && <div className="error-box">{error}</div>}
+
+      {returnFailure && createdAppointment && (
+        <div className="error-box" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span>{returnFailure}</span>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            style={{ alignSelf: "flex-start" }}
+            onClick={() => goToCreated(createdAppointment)}
+          >
+            Ver consulta criada
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field} style={{ position: "relative" }}>
@@ -313,6 +395,54 @@ export function NewAppointmentForm({
               ))}
             </select>
             <p className={styles.hint}>Ajuste conforme o tipo de tratamento — bloqueia os slots seguintes da grade.</p>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="returnOption" className={styles.label}>
+              Retornar em
+            </label>
+            <select
+              id="returnOption"
+              className={styles.select}
+              value={returnOption}
+              onChange={(e) => setReturnOption(e.target.value as ReturnOption)}
+            >
+              {RETURN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {returnOption === "custom" && (
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={36}
+                  className={styles.input}
+                  style={{ width: 90 }}
+                  value={returnCustomMonths}
+                  onChange={(e) => setReturnCustomMonths(Number(e.target.value))}
+                />
+                <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>mês(es) a partir desta consulta</span>
+              </div>
+            )}
+            {returnOption === "specific" && (
+              <input
+                type="date"
+                className={styles.input}
+                style={{ marginTop: 8 }}
+                value={returnSpecificDate}
+                min={brDateOnly()}
+                onChange={(e) => setReturnSpecificDate(e.target.value)}
+                required
+              />
+            )}
+            {returnOption !== "none" && (
+              <p className={styles.hint}>
+                Cria automaticamente uma segunda consulta de retorno pro mesmo paciente, no mesmo horário do dia.
+              </p>
+            )}
           </div>
 
           <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, cursor: "pointer" }}>

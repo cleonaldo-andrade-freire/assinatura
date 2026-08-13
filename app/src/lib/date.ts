@@ -35,6 +35,17 @@ export function addDaysToDateStr(dateStr: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
+/** Soma `months` meses a `dateStr`, arredondando o dia pro último válido do mês de destino (ex.: 31/01 + 1 mês → 28/02 ou 29/02). */
+export function addMonthsToDateStr(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const total = (m - 1) + months;
+  const ny = y + Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12;
+  const daysInTargetMonth = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+  const nd = Math.min(d, daysInTargetMonth);
+  return `${ny}-${String(nm + 1).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
+}
+
 /** Segunda-feira da semana que contém `dateStr` (0 = domingo, como `getUTCDay`). */
 export function mondayOfWeek(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
