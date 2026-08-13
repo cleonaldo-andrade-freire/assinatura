@@ -296,7 +296,13 @@ export interface AppointmentEvent {
   created_at: string;
 }
 
-export type AppointmentMessageTemplateType = "solicitacao" | "lembrete_24h" | "lembrete_final" | "confirmado" | "cancelado";
+export type AppointmentMessageTemplateType =
+  | "solicitacao"
+  | "lembrete_24h"
+  | "lembrete_final"
+  | "confirmado"
+  | "cancelado"
+  | "remarcado";
 
 export interface AppointmentMessageTemplate {
   id: string;

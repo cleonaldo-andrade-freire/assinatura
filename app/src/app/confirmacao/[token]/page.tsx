@@ -5,6 +5,15 @@ import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { ConfirmationActions } from "@/components/ConfirmationActions";
 import type { Appointment } from "@/lib/database.types";
 
+// Sem cookies/headers/searchParams, o Next trataria essa rota como estática
+// por padrão (cacheia o HTML renderizado e as respostas de fetch do
+// Supabase) — errado aqui: status e horário mudam a qualquer momento
+// (paciente confirma, clínica remarca), e "horário já passou" é calculado
+// no render. Sem isso, um link de WhatsApp podia servir pra sempre a
+// primeira resposta que o Next cacheou, nunca refletindo remarcação nem
+// fazendo o link expirar de verdade.
+export const dynamic = "force-dynamic";
+
 export default async function ConfirmacaoPage({ params }: { params: { token: string } }) {
   if (!isValidToken(params.token)) notFound();
 

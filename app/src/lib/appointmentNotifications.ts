@@ -47,6 +47,19 @@ export async function sendAppointmentRequest(supabase: SupabaseClient, clinic: C
 }
 
 /**
+ * Avisa o paciente quando a clínica remarca (seja pela tela de detalhe ou
+ * arrastando o card na grade semanal — os dois passam pelo mesmo PATCH).
+ * `appointment` já precisa vir com o `scheduled_at` NOVO (a linha já
+ * atualizada), pra {{data_consulta}}/{{hora_consulta}} no texto saírem
+ * certos.
+ */
+export async function sendAppointmentRescheduled(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const text = await getAppointmentMessageBody(supabase, clinic.id, "remarcado", vars);
+  await sendText(clinic, appointment.patient_phone, text);
+}
+
+/**
  * Lembrete escalonado — mesmo link de sempre, só muda o texto conforme o
  * nível ("amanhã" vs. "hoje"). Quem decide QUANDO mandar é o cron
  * (`/api/cron/appointment-reminders`, 1x/dia — granularidade de dia, não de

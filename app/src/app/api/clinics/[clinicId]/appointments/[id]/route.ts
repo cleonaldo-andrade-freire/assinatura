@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findOverlappingAppointment, recordAppointmentEvent } from "@/lib/appointments";
+import { sendAppointmentRescheduled } from "@/lib/appointmentNotifications";
 import type { Appointment, AppointmentStatus } from "@/lib/database.types";
 
 const STATUS_VALUES: [AppointmentStatus, ...AppointmentStatus[]] = [
@@ -11,6 +12,7 @@ const STATUS_VALUES: [AppointmentStatus, ...AppointmentStatus[]] = [
   "cancelado_paciente",
   "cancelado_dentista",
   "atendido",
+  "faltou",
 ];
 
 const patchSchema = z.object({
@@ -100,6 +102,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
         to: { scheduled_at: updated.scheduled_at, duration_minutes: updated.duration_minutes },
       },
     });
+    // Best-effort — mesmo padrão do resto do app: uma falha de WhatsApp não
+    // pode impedir a remarcação de ter sido salva.
+    try {
+      await sendAppointmentRescheduled(supabase, clinic, updated as Appointment);
+    } catch (err) {
+      console.error("Falha ao avisar o paciente sobre a remarcação por WhatsApp:", err);
+    }
   }
   if (input.status !== undefined && input.status !== appointment.status) {
     await recordAppointmentEvent(supabase, {
