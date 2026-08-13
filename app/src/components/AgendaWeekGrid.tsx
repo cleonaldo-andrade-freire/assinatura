@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { APPOINTMENT_STATUS_CLASS, buildDaySlotTimes } from "@/lib/appointments";
+import { APPOINTMENT_STATUS_CLASS, buildDaySlotTimes, slotKey } from "@/lib/appointments";
 import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { NewAppointmentForm } from "@/components/NewAppointmentForm";
 import type { Appointment } from "@/lib/database.types";
@@ -36,9 +36,10 @@ export function AgendaWeekGrid({
   const bySlot = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of appointments) {
-      const list = map.get(a.scheduled_at) ?? [];
+      const key = slotKey(a.scheduled_at);
+      const list = map.get(key) ?? [];
       list.push(a);
-      map.set(a.scheduled_at, list);
+      map.set(key, list);
     }
     return map;
   }, [appointments]);

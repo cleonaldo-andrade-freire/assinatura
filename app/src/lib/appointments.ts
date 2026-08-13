@@ -10,6 +10,19 @@ export const APPOINTMENT_SLOT_MINUTES = 30;
 export const AGENDA_START_HOUR = 8;
 export const AGENDA_END_HOUR = 19;
 
+/**
+ * Chave canônica pra casar um `scheduled_at` vindo do banco com um horário de
+ * `buildDaySlotTimes`. O Postgres/PostgREST devolve timestamptz como
+ * "2026-08-13T11:00:00+00:00", enquanto `buildDaySlotTimes` (via
+ * `Date.toISOString()`) gera "2026-08-13T11:00:00.000Z" — strings diferentes
+ * pro mesmo instante. Comparar os dois direto como string (sem passar por
+ * `new Date(...).toISOString()` dos dois lados) faz o agendamento existir no
+ * banco mas nunca aparecer na grade/lista, porque a busca no Map nunca bate.
+ */
+export function slotKey(iso: string): string {
+  return new Date(iso).toISOString();
+}
+
 /** Horários (ISO, em UTC) de cada slot de 30min do dia `dateStr` ("YYYY-MM-DD", calendário do Brasil). */
 export function buildDaySlotTimes(dateStr: string, startHour = AGENDA_START_HOUR, endHour = AGENDA_END_HOUR): string[] {
   const slots: string[] = [];

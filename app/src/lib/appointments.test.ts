@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap } from "./appointments";
+import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap, slotKey } from "./appointments";
+
+describe("slotKey", () => {
+  it("casa o formato que o Postgres/PostgREST devolve (+00:00, sem milissegundos) com o de buildDaySlotTimes (.000Z)", () => {
+    // Regressão: sem essa normalização, um agendamento existia no banco mas
+    // nunca aparecia na grade/lista — a busca no Map nunca batia porque as
+    // duas strings representam o mesmo instante de formas diferentes.
+    const fromPostgrest = "2026-08-13T11:00:00+00:00";
+    const [slot] = buildDaySlotTimes("2026-08-13", 8, 9);
+    expect(slotKey(fromPostgrest)).toBe(slot);
+  });
+
+  it("também casa quando o valor já vem no formato Date.toISOString()", () => {
+    expect(slotKey("2026-08-13T11:00:00.000Z")).toBe("2026-08-13T11:00:00.000Z");
+  });
+});
 
 describe("buildDaySlotTimes", () => {
   it("gera slots de 30 em 30 minutos dentro do horário comercial", () => {

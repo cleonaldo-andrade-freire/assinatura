@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
-import { buildDaySlotTimes } from "@/lib/appointments";
+import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
 import { addDaysToDateStr, brDateOnly, brDayRangeUtc, formatBRTime, formatBRWeekday, mondayOfWeek } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -38,9 +38,10 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
 
   const bySlot = new Map<string, Appointment[]>();
   for (const a of appointments) {
-    const list = bySlot.get(a.scheduled_at) ?? [];
+    const key = slotKey(a.scheduled_at);
+    const list = bySlot.get(key) ?? [];
     list.push(a);
-    bySlot.set(a.scheduled_at, list);
+    bySlot.set(key, list);
   }
 
   const daySlots = buildDaySlotTimes(date);

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { buildDaySlotTimes } from "@/lib/appointments";
-import { formatBRTime } from "@/lib/date";
+import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
+import { brDateOnly, formatBRTime } from "@/lib/date";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -24,8 +24,13 @@ export function AppointmentActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
-  const [newDate, setNewDate] = useState(scheduledAt.slice(0, 10));
-  const [newTime, setNewTime] = useState(scheduledAt);
+  // scheduledAt vem do banco como "...+00:00"; os <option> da grade de
+  // horário são gerados via Date.toISOString() ("...000Z") — precisa
+  // normalizar pros dois lados baterem, senão o select abre sem nada
+  // pré-selecionado (mesmo bug de fundo que fazia o agendamento sumir da
+  // grade/lista).
+  const [newDate, setNewDate] = useState(brDateOnly(new Date(scheduledAt)));
+  const [newTime, setNewTime] = useState(slotKey(scheduledAt));
   const { toasts, push, dismiss } = useToasts();
 
   async function patch(body: Record<string, unknown>, successMessage?: string) {
