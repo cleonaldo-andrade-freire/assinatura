@@ -1,0 +1,37 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getCurrentClinic } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { ProsthesisTemplateEditor } from "@/components/ProsthesisTemplateEditor";
+import type { ProsthesisStage } from "@/lib/database.types";
+import styles from "@/styles/shell.module.css";
+
+export default async function ProsthesisMessageTemplatesPage() {
+  const clinic = await getCurrentClinic();
+  if (!clinic) redirect("/login");
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("prosthesis_stage_templates").select("stage, body").eq("clinic_id", clinic.id);
+
+  const initialCustomized: Partial<Record<ProsthesisStage, string>> = {};
+  for (const row of data ?? []) {
+    initialCustomized[row.stage as ProsthesisStage] = row.body;
+  }
+
+  return (
+    <ClinicShell
+      clinicName={clinic.name}
+      clinicLogoUrl={clinic.logo_url}
+      title="Modelos de mensagem — Prótese"
+      subtitle="Textos enviados por WhatsApp quando o serviço muda de estágio"
+      actions={
+        <Link href="/dashboard/configuracoes" className={`${styles.btn} ${styles.btnGhost}`}>
+          ← Voltar
+        </Link>
+      }
+    >
+      <ProsthesisTemplateEditor clinicId={clinic.id} initialCustomized={initialCustomized} />
+    </ClinicShell>
+  );
+}

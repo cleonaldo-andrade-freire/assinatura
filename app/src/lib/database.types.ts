@@ -313,6 +313,45 @@ export interface AppointmentMessageTemplate {
   updated_at: string;
 }
 
+export type ProsthesisStage = "pre_laboratorio" | "envio" | "laboratorio" | "agenda" | "realizado";
+
+export interface ProsthesisOrder {
+  id: string;
+  clinic_id: string;
+  patient_id: string | null;
+  patient_name: string;
+  patient_phone: string;
+  description: string;
+  expected_delivery_date: string | null;
+  stage: ProsthesisStage;
+  stage_since: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProsthesisOrderEventActor = "recepcao" | "sistema";
+
+export interface ProsthesisOrderEvent {
+  id: string;
+  prosthesis_order_id: string;
+  clinic_id: string;
+  from_stage: ProsthesisStage | null;
+  to_stage: ProsthesisStage;
+  actor: ProsthesisOrderEventActor;
+  created_at: string;
+}
+
+export interface ProsthesisStageTemplate {
+  id: string;
+  clinic_id: string;
+  stage: ProsthesisStage;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PlanRecord {
   id: string;
   name: string;

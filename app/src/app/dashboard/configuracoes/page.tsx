@@ -132,6 +132,21 @@ export default async function SettingsPage() {
         </div>
       </div>
 
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Modelos de mensagem — Prótese</p>
+        </div>
+        <div className={styles.panelBody}>
+          <p className={styles.hint} style={{ marginBottom: 14 }}>
+            Personalize o texto que o paciente recebe a cada mudança de estágio do serviço de prótese — se não
+            personalizar, a clínica usa um texto padrão.
+          </p>
+          <Link href="/dashboard/configuracoes/mensagens-protese" className={`${styles.btn} ${styles.btnGhost}`}>
+            Editar modelos de mensagem
+          </Link>
+        </div>
+      </div>
+
       <div id="assinatura" style={{ scrollMarginTop: 20 }}>
         <h2 className={styles.pageTitle} style={{ fontSize: 20, margin: "8px 0 16px" }}>
           Assinatura

@@ -82,6 +82,21 @@ function PatientsIcon() {
   );
 }
 
+function ProsthesisIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 20l1-6 4-4 4 4 1 6M11 10V5a2 2 0 114 0v5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="13" cy="4" r="1.4" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -117,16 +132,11 @@ function MoreIcon() {
   );
 }
 
-// Assinatura/cobrança agora mora dentro de Configurações (não é mais rota
-// própria), então sobra só um item "extra" — não vale a pena um menu "Mais"
-// pra revelar um único destino. As cinco abas cabem direto na barra do
-// celular (rótulo mais comprido, "Configurações", ainda encolhe com
-// segurança via min-width:0 + reticências no CSS).
 // Agenda entra na barra fixa — pra quem faz recepção é provavelmente a tela
-// mais checada do dia, junto de Anamneses. Configurações volta pro "Mais":
-// com 6 destinos reais não cabem todos com rótulo por extenso na barra do
-// celular (é o mesmo estouro que já aconteceu uma vez com 6 itens), e
-// Configurações continua sendo o de uso mais esporádico dos seis.
+// mais checada do dia, junto de Anamneses. Próteses e Configurações vão pro
+// "Mais": com 7 destinos reais não cabem todos com rótulo por extenso na
+// barra do celular (é o mesmo estouro que já aconteceu uma vez com 6 itens),
+// e os dois são de uso mais esporádico que as cinco abas primárias.
 const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard/agenda", label: "Agenda", icon: AgendaIcon },
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
@@ -135,7 +145,10 @@ const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
 ];
 
-const MORE_NAV_ITEMS = [{ href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon }];
+const MORE_NAV_ITEMS = [
+  { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
+  { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
+];
 
 const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 

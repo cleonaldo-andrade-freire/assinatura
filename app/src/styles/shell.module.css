@@ -1198,3 +1198,87 @@
     display: block;
   }
 }
+
+/* ============================== Prótese (Kanban) ============================== */
+
+.prosthesisBoard {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.prosthesisColumn {
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  min-height: 320px;
+  transition: background 0.1s ease;
+}
+
+.prosthesisColumnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--brand-deep);
+}
+
+.prosthesisColumnCount {
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.prosthesisColumnBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prosthesisEmptyColumn {
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 16px 4px;
+  margin: 0;
+}
+
+.prosthesisCard {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-sm);
+}
+
+.prosthesisCardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.prosthesisCardPatient {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.prosthesisCardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
