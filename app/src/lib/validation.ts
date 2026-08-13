@@ -101,6 +101,13 @@ export function toE164BR(localFormatted: string): string {
   return d.startsWith("55") ? d : `55${d}`;
 }
 
+/** Aceita tanto o formato local (com ou sem DDI 55) quanto já formatado — DDD (2 dígitos) + celular (9) ou fixo (8). */
+export function isValidBRPhone(raw: string): boolean {
+  const d = raw.replace(/\D/g, "");
+  const local = d.startsWith("55") && d.length > 11 ? d.slice(2) : d;
+  return local.length === 10 || local.length === 11;
+}
+
 /**
  * Números de celular brasileiros têm um "9" extra antes do número de 8 dígitos
  * (ex.: 55 79 9 9861-6410), mas o WhatsApp/Baileys às vezes entrega o remoteJid

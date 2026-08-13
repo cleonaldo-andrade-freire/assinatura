@@ -253,6 +253,41 @@ export interface UsageCharge {
   created_at: string;
 }
 
+export type AppointmentStatus = "agendado" | "confirmado" | "cancelado_paciente" | "cancelado_dentista" | "atendido";
+
+export interface Appointment {
+  id: string;
+  clinic_id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: AppointmentStatus;
+  urgent: boolean;
+  patient_id: string | null;
+  patient_name: string;
+  patient_phone: string;
+  professional_name: string;
+  notes: string | null;
+  confirm_token: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppointmentEventType = "created" | "status_changed" | "rescheduled";
+export type AppointmentEventActor = "recepcao" | "paciente" | "sistema";
+
+export interface AppointmentEvent {
+  id: string;
+  appointment_id: string;
+  clinic_id: string;
+  event_type: AppointmentEventType;
+  from_status: AppointmentStatus | null;
+  to_status: AppointmentStatus | null;
+  actor: AppointmentEventActor;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface PlanRecord {
   id: string;
   name: string;

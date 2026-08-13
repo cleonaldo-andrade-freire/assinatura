@@ -5,12 +5,34 @@ import {
   formatCNPJ,
   formatCPF,
   formatCpfCnpj,
+  isValidBRPhone,
   isValidCNPJ,
   isValidCpfCnpj,
   isValidCPF,
   isValidToken,
   toE164BR,
 } from "./validation";
+
+describe("isValidBRPhone", () => {
+  it("aceita celular (9 dígitos) com ou sem DDI 55", () => {
+    expect(isValidBRPhone("79998616410")).toBe(true);
+    expect(isValidBRPhone("5579998616410")).toBe(true);
+    expect(isValidBRPhone("(79) 99861-6410")).toBe(true);
+  });
+
+  it("aceita fixo (8 dígitos)", () => {
+    expect(isValidBRPhone("7932141234")).toBe(true);
+  });
+
+  it("rejeita número curto ou incompleto", () => {
+    expect(isValidBRPhone("799986164")).toBe(false);
+    expect(isValidBRPhone("")).toBe(false);
+  });
+
+  it("rejeita número longo demais", () => {
+    expect(isValidBRPhone("5579998616410123")).toBe(false);
+  });
+});
 
 describe("isValidCPF", () => {
   it("aceita um CPF válido conhecido", () => {
