@@ -246,7 +246,7 @@ export async function recordAppointmentEvent(
     meta?: Record<string, unknown>;
   }
 ): Promise<void> {
-  await supabase.from("appointment_events").insert({
+  const { error } = await supabase.from("appointment_events").insert({
     appointment_id: input.appointmentId,
     clinic_id: input.clinicId,
     event_type: input.eventType,
@@ -255,4 +255,9 @@ export async function recordAppointmentEvent(
     actor: input.actor,
     meta: input.meta ?? null,
   });
+  // Não lança (o registro de histórico não pode travar a ação principal),
+  // mas loga — antes esse erro sumia em silêncio, foi assim que uma policy
+  // de RLS faltando (insert bloqueado pra o cliente da sessão) passou
+  // despercebida: o status mudava, o evento nunca era gravado.
+  if (error) console.error("Falha ao gravar evento de agendamento:", error);
 }

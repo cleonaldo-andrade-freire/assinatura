@@ -13,13 +13,14 @@ export async function recordProsthesisOrderEvent(
     actor: ProsthesisOrderEventActor;
   }
 ): Promise<void> {
-  await supabase.from("prosthesis_order_events").insert({
+  const { error } = await supabase.from("prosthesis_order_events").insert({
     prosthesis_order_id: input.prosthesisOrderId,
     clinic_id: input.clinicId,
     from_stage: input.fromStage,
     to_stage: input.toStage,
     actor: input.actor,
   });
+  if (error) console.error("Falha ao gravar evento de estágio de prótese:", error);
 }
 
 /**

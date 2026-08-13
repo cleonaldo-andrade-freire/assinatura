@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isValidBRPhone } from "@/lib/validation";
 import { recordProsthesisOrderEvent, notifyProsthesisStageChange } from "@/lib/prosthesisOrders";
+import { upsertPatientFromContact } from "@/lib/patients";
 
 const bodySchema = z.object({
   patient_id: z.string().uuid().nullable().optional(),
@@ -44,11 +45,16 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   const input = parsed.data;
 
   const supabase = await createSupabaseServerClient();
+
+  // Mesmo padrão de agenda/atestados/prescrições/anamneses: sem patient_id
+  // (nome digitado na mão), cadastra o paciente automaticamente.
+  const patientId = input.patient_id ?? (await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone));
+
   const { data: order, error } = await supabase
     .from("prosthesis_orders")
     .insert({
       clinic_id: clinic.id,
-      patient_id: input.patient_id ?? null,
+      patient_id: patientId,
       patient_name: input.patient_name,
       patient_phone: input.patient_phone,
       description: input.description,

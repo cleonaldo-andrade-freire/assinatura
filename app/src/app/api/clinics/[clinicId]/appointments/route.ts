@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isValidBRPhone } from "@/lib/validation";
 import { findOverlappingAppointment, recordAppointmentEvent, APPOINTMENT_SLOT_MINUTES } from "@/lib/appointments";
 import { sendAppointmentRequest } from "@/lib/appointmentNotifications";
+import { upsertPatientFromContact } from "@/lib/patients";
 
 const bodySchema = z.object({
   scheduled_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), { message: "data/hora inválida" }),
@@ -82,6 +83,12 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     );
   }
 
+  // Se quem agendou não veio da busca de paciente (sem patient_id — só
+  // digitou nome e celular), cadastra o paciente automaticamente aqui, mesmo
+  // padrão já usado em atestados/prescrições/anamneses — sem isso, marcar
+  // consulta pra alguém novo nunca criava um cadastro, só o agendamento.
+  const patientId = input.patient_id ?? (await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone));
+
   const { data: appointment, error } = await supabase
     .from("appointments")
     .insert({
@@ -89,7 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       scheduled_at: input.scheduled_at,
       duration_minutes: durationMinutes,
       professional_name: input.professional_name,
-      patient_id: input.patient_id ?? null,
+      patient_id: patientId,
       patient_name: input.patient_name,
       patient_phone: input.patient_phone,
       urgent: input.urgent ?? false,
