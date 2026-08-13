@@ -5,19 +5,25 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PatientForm } from "@/components/PatientForm";
 import { Pagination } from "@/components/ui/Pagination";
-import { formatBRDate } from "@/lib/date";
+import { PatientTabs, PATIENT_TABS, type PatientTabKey } from "@/components/PatientTabs";
+import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
-import type { Anamnesis, Certificate, Patient, Prescription } from "@/lib/database.types";
+import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
+import type { Anamnesis, Appointment, Certificate, Patient, Prescription } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
+
+function isTabKey(v: string | undefined): v is PatientTabKey {
+  return !!v && PATIENT_TABS.some((t) => t.key === v);
+}
 
 export default async function EditPatientPage({
   params,
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { page?: string; rxPage?: string };
+  searchParams: { page?: string; rxPage?: string; apPage?: string; tab?: string };
 }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
@@ -31,6 +37,14 @@ export default async function EditPatientPage({
     .maybeSingle();
   if (!data) notFound();
   const patient = data as Patient;
+
+  const activeTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "anamneses";
+  // Preserva a aba atual nos links de paginação — sem isso, paginar dentro
+  // de "Atestados" te devolvia na recarga com a aba "Anamneses" em foco.
+  function pageHref(base: string, extra: Record<string, string | number>) {
+    const p = new URLSearchParams({ ...extra, tab: activeTab } as Record<string, string>);
+    return `${base}?${p.toString()}`;
+  }
 
   const certificatesPage = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const certFrom = (certificatesPage - 1) * DOCS_PAGE_SIZE;
@@ -57,6 +71,19 @@ export default async function EditPatientPage({
     .range(rxFrom, rxTo);
   const prescriptions = (prescriptionsData as Prescription[]) ?? [];
   const prescriptionsTotalPages = Math.max(1, Math.ceil((prescriptionsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  const appointmentsPage = Math.max(1, parseInt(searchParams.apPage ?? "1", 10) || 1);
+  const apFrom = (appointmentsPage - 1) * DOCS_PAGE_SIZE;
+  const apTo = apFrom + DOCS_PAGE_SIZE - 1;
+  const { data: appointmentsData, count: appointmentsCount } = await supabase
+    .from("appointments")
+    .select("*", { count: "exact" })
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .order("scheduled_at", { ascending: false })
+    .range(apFrom, apTo);
+  const appointments = (appointmentsData as Appointment[]) ?? [];
+  const appointmentsTotalPages = Math.max(1, Math.ceil((appointmentsCount ?? 0) / DOCS_PAGE_SIZE));
 
   // Não existe `patient_id` em `anamneses` (tabela bem mais antiga, com histórico
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
@@ -85,143 +112,181 @@ export default async function EditPatientPage({
     }
   }
 
+  const anamnesesPanel = !patient.phone ? (
+    <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra ver as anamneses vinculadas.</div>
+  ) : anamneses.length === 0 ? (
+    <div className={styles.emptyState}>Nenhuma anamnese registrada pra este telefone ainda.</div>
+  ) : (
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {anamneses.map((a) => (
+          <tr key={a.id}>
+            <td>{formatBRDate(a.created_at)}</td>
+            <td>
+              {signedAnamnesisIds.has(a.id) ? (
+                <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
+              ) : (
+                <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
+              )}
+            </td>
+            <td>
+              <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const agendamentosPanel =
+    appointments.length === 0 ? (
+      <div className={styles.emptyState}>Nenhum agendamento pra este paciente ainda.</div>
+    ) : (
+      <>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Data e horário</th>
+              <th>Profissional</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {appointments.map((a) => (
+              <tr key={a.id}>
+                <td>{formatBRDateTime(a.scheduled_at, "medium")}</td>
+                <td>{a.professional_name}</td>
+                <td>
+                  <span className={`${styles.statusDot} ${styles[APPOINTMENT_STATUS_CLASS[a.status]]}`}>
+                    {APPOINTMENT_STATUS_LABEL[a.status]}
+                  </span>
+                </td>
+                <td>
+                  <Link href={`/dashboard/agenda/${a.id}`}>Ver detalhes</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          page={appointmentsPage}
+          totalPages={appointmentsTotalPages}
+          count={appointmentsCount ?? 0}
+          itemLabel="agendamento"
+          hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { apPage: p })}
+        />
+      </>
+    );
+
+  const atestadosPanel =
+    certificates.length === 0 ? (
+      <div className={styles.emptyState}>
+        Nenhum atestado emitido pra este paciente ainda — só aparecem aqui os emitidos buscando ou cadastrando pelo
+        nome dele.
+      </div>
+    ) : (
+      <>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Dias de afastamento</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {certificates.map((c) => (
+              <tr key={c.id}>
+                <td>{formatBRDate(c.created_at)}</td>
+                <td>{c.rest_days}</td>
+                <td>
+                  <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
+                    {DOCUMENT_STATUS_LABEL[c.status]}
+                  </span>
+                </td>
+                <td>
+                  <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          page={certificatesPage}
+          totalPages={certificatesTotalPages}
+          count={certificatesCount ?? 0}
+          itemLabel="atestado"
+          hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { page: p })}
+        />
+      </>
+    );
+
+  const prescricoesPanel =
+    prescriptions.length === 0 ? (
+      <div className={styles.emptyState}>
+        Nenhuma prescrição emitida pra este paciente ainda — só aparecem aqui as emitidas buscando ou cadastrando
+        pelo nome dele.
+      </div>
+    ) : (
+      <>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Itens</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {prescriptions.map((p) => (
+              <tr key={p.id}>
+                <td>{formatBRDate(p.created_at)}</td>
+                <td>{p.items.length}</td>
+                <td>
+                  <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>
+                    {DOCUMENT_STATUS_LABEL[p.status]}
+                  </span>
+                </td>
+                <td>
+                  <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          page={prescriptionsPage}
+          totalPages={prescriptionsTotalPages}
+          count={prescriptionsCount ?? 0}
+          itemLabel="prescrição"
+          hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { rxPage: p })}
+        />
+      </>
+    );
+
   return (
     <ClinicShell clinicName={clinic.name} clinicLogoUrl={clinic.logo_url} title={patient.name}>
       <PatientForm clinicId={clinic.id} patient={patient} />
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Anamneses deste paciente</p>
-        </div>
-        {!patient.phone ? (
-          <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra ver as anamneses vinculadas.</div>
-        ) : anamneses.length === 0 ? (
-          <div className={styles.emptyState}>Nenhuma anamnese registrada pra este telefone ainda.</div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {anamneses.map((a) => (
-                <tr key={a.id}>
-                  <td>{formatBRDate(a.created_at)}</td>
-                  <td>
-                    {signedAnamnesisIds.has(a.id) ? (
-                      <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
-                    ) : (
-                      <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
-                    )}
-                  </td>
-                  <td>
-                    <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Atestados deste paciente</p>
-        </div>
-        {certificates.length === 0 ? (
-          <div className={styles.emptyState}>
-            Nenhum atestado emitido pra este paciente ainda — só aparecem aqui os emitidos buscando ou cadastrando
-            pelo nome dele.
-          </div>
-        ) : (
-          <>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Dias de afastamento</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {certificates.map((c) => (
-                  <tr key={c.id}>
-                    <td>{formatBRDate(c.created_at)}</td>
-                    <td>{c.rest_days}</td>
-                    <td>
-                      <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
-                        {DOCUMENT_STATUS_LABEL[c.status]}
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination
-              page={certificatesPage}
-              totalPages={certificatesTotalPages}
-              count={certificatesCount ?? 0}
-              itemLabel="atestado"
-              hrefFor={(p) => `/dashboard/pacientes/${patient.id}?page=${p}`}
-            />
-          </>
-        )}
-      </div>
-
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Prescrições deste paciente</p>
-        </div>
-        {prescriptions.length === 0 ? (
-          <div className={styles.emptyState}>
-            Nenhuma prescrição emitida pra este paciente ainda — só aparecem aqui as emitidas buscando ou
-            cadastrando pelo nome dele.
-          </div>
-        ) : (
-          <>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Itens</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {prescriptions.map((p) => (
-                  <tr key={p.id}>
-                    <td>{formatBRDate(p.created_at)}</td>
-                    <td>{p.items.length}</td>
-                    <td>
-                      <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>
-                        {DOCUMENT_STATUS_LABEL[p.status]}
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination
-              page={prescriptionsPage}
-              totalPages={prescriptionsTotalPages}
-              count={prescriptionsCount ?? 0}
-              itemLabel="prescrição"
-              hrefFor={(p) => `/dashboard/pacientes/${patient.id}?rxPage=${p}`}
-            />
-          </>
-        )}
-      </div>
+      <PatientTabs
+        initialTab={activeTab}
+        panels={{
+          anamneses: anamnesesPanel,
+          agendamentos: agendamentosPanel,
+          atestados: atestadosPanel,
+          prescricoes: prescricoesPanel,
+        }}
+      />
     </ClinicShell>
   );
 }
