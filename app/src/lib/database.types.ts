@@ -378,3 +378,69 @@ export interface PlanRecord {
   created_at: string;
   updated_at: string;
 }
+
+/** "Plano" de tratamento/convênio da clínica (ex.: "Particular", "Unimed Odonto") — não confundir com `Plan` (assinatura do SaaS). */
+export interface PriceTable {
+  id: string;
+  clinic_id: string;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PriceTableItem {
+  id: string;
+  clinic_id: string;
+  price_table_id: string;
+  specialty: string | null;
+  name: string;
+  price: number;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BudgetStatus = "em_aberto" | "aprovado";
+export type BudgetDiscountType = "fixed" | "percent";
+
+export interface Budget {
+  id: string;
+  clinic_id: string;
+  patient_id: string | null;
+  patient_name: string;
+  patient_phone: string;
+  description: string;
+  responsible_name: string;
+  budget_date: string;
+  status: BudgetStatus;
+  discount_type: BudgetDiscountType;
+  discount_value: number;
+  installments: number;
+  payment_method: string | null;
+  down_payment_value: number | null;
+  down_payment_method: string | null;
+  notes: string | null;
+  token: string;
+  pdf_storage_key: string | null;
+  sha256: string | null;
+  sent_whatsapp_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetItem {
+  id: string;
+  clinic_id: string;
+  budget_id: string;
+  price_table_item_id: string | null;
+  price_table_name: string | null;
+  treatment_name: string;
+  tooth_region: string | null;
+  price: number;
+  dentist_name: string;
+  selected: boolean;
+  display_order: number;
+  created_at: string;
+}

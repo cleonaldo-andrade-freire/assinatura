@@ -147,6 +147,20 @@ export default async function SettingsPage() {
         </div>
       </div>
 
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Tabelas de tratamento</p>
+        </div>
+        <div className={styles.panelBody}>
+          <p className={styles.hint} style={{ marginBottom: 14 }}>
+            Preços por plano (particular, convênios) usados ao montar um orçamento na ficha do paciente.
+          </p>
+          <Link href="/dashboard/configuracoes/tabelas-tratamento" className={`${styles.btn} ${styles.btnGhost}`}>
+            Gerenciar tabelas de tratamento
+          </Link>
+        </div>
+      </div>
+
       <div id="assinatura" style={{ scrollMarginTop: 20 }}>
         <h2 className={styles.pageTitle} style={{ fontSize: 20, margin: "8px 0 16px" }}>
           Assinatura
