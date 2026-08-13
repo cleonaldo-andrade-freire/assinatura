@@ -53,10 +53,11 @@ export async function sendAppointmentRequest(clinic: Clinic, appointment: Appoin
 }
 
 /**
- * Lembrete escalonado — mesmo link de sempre, só muda o texto conforme a
- * urgência (24h antes vs. poucas horas antes). Quem decide QUANDO mandar é
- * o cron (`/api/cron/appointment-reminders`); esta função só manda e marca
- * o timestamp de controle, pra não reenviar o mesmo lembrete de novo.
+ * Lembrete escalonado — mesmo link de sempre, só muda o texto conforme o
+ * nível ("amanhã" vs. "hoje"). Quem decide QUANDO mandar é o cron
+ * (`/api/cron/appointment-reminders`, 1x/dia — granularidade de dia, não de
+ * hora, ver o comentário lá); esta função só manda e marca o timestamp de
+ * controle, pra não reenviar o mesmo lembrete de novo.
  */
 export async function sendAppointmentReminder(
   supabase: SupabaseClient,
@@ -69,7 +70,7 @@ export async function sendAppointmentReminder(
       ? `Lembrete: você tem consulta amanhã, ${formatBRWeekday(appointment.scheduled_at, "long")} às ` +
         `${formatBRTime(appointment.scheduled_at)}, na ${clinic.name}. Ainda não vimos sua confirmação — ` +
         `pra confirmar ou cancelar, toque aqui: ${confirmationLink(appointment.confirm_token)}`
-      : `Sua consulta na ${clinic.name} é daqui a pouco, hoje às ${formatBRTime(appointment.scheduled_at)}. ` +
+      : `Sua consulta na ${clinic.name} é hoje às ${formatBRTime(appointment.scheduled_at)}. ` +
         `Ainda não recebemos sua confirmação — toque aqui: ${confirmationLink(appointment.confirm_token)}`;
 
   await sendText(clinic, appointment.patient_phone, text);

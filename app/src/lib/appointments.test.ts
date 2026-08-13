@@ -83,10 +83,13 @@ describe("summarizeAppointmentsByDay", () => {
     const elapsed = performance.now() - start;
 
     expect(summary.size).toBe(28);
-    // Generoso de propósito (formatação de data via Intl não é grátis por
-    // item) — o objetivo é pegar uma regressão de algoritmo (ex.: virar
-    // O(n²) sem querer), não cronometrar com precisão.
-    expect(elapsed).toBeLessThan(1500);
+    // Bem generoso de propósito (já flakou em 200ms e em 1500ms sob
+    // máquina ocupada — formatação de data via Intl não é grátis por item,
+    // e essa suíte às vezes roda em paralelo com outro build/typecheck).
+    // O objetivo é só pegar uma regressão de algoritmo real (ex.: virar
+    // O(n²) sem querer, que apareceria como segundos/minutos, não como
+    // alguns milissegundos de diferença por carga de máquina).
+    expect(elapsed).toBeLessThan(10_000);
   });
 });
 
