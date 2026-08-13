@@ -830,21 +830,29 @@
 
 /* ============================== Agenda ============================== */
 
-/* Indicador de urgência — de propósito sem nenhuma cor de status: textura
-   (borda tracejada) + ícone + texto, três sinais redundantes que não
-   dependem de matiz (ver plano de design da agenda). */
+/* Indicador de urgência — nunca usa as cores de status (verde/âmbar/
+   vermelho/azul); tem a própria cor (violeta), bem mais chamativa que a
+   primeira versão (que era só uma borda tracejada cinza e ficou sutil
+   demais). Anel via box-shadow (não border/background) de propósito: não
+   entra em disputa de especificidade CSS com o fundo colorido do status no
+   mesmo elemento (cartão da diária, chip da grade semanal), então funciona
+   igual em qualquer um dos dois sem !important. Cor + ícone + texto —
+   continuam redundantes entre si, só que agora o canal de cor também ajuda
+   em vez de ficar de fora. */
 .urgentMark {
-  border-left: 3px dashed var(--ink-faint);
-  padding-left: 9px;
+  box-shadow: inset 0 0 0 2px var(--urgent), 0 0 0 3px var(--urgent-tint);
 }
 
 .urgentBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--ink-soft);
+  color: var(--urgent);
+  background: var(--urgent-tint);
 }
 
 .agendaNav {
@@ -951,10 +959,40 @@
   color: var(--ink-faint);
 }
 
-/* ---- semanal (desktop) ---- */
+/* ---- semanal e mensal (desktop) ---- */
 
-.agendaWeekView {
+/* Contêiner genérico pra qualquer uma das duas visões de desktop — qual das
+   duas renderiza dentro é decidido no servidor (?view=semana|mes), esta
+   classe só cuida de "só existe a partir de 860px". */
+.agendaDesktopView {
   display: none;
+}
+
+.viewToggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.viewToggleBtn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink-soft);
+}
+
+.viewToggleBtn:hover {
+  color: var(--ink);
+}
+
+.viewToggleBtnActive {
+  background: var(--surface);
+  color: var(--brand-deep);
+  box-shadow: var(--shadow-sm);
 }
 
 .agendaWeekGrid {
@@ -1012,11 +1050,75 @@
   white-space: nowrap;
 }
 
+/* ---- mensal (desktop) ---- */
+
+.agendaMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.agendaMonthCell {
+  min-height: 100px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agendaMonthCell:hover {
+  background: var(--surface-sunken);
+}
+
+.agendaMonthCell.outside {
+  color: var(--ink-faint);
+  background: var(--surface-sunken);
+  pointer-events: none;
+}
+
+.agendaMonthCell.today .agendaMonthDayNum {
+  color: var(--brand-deep);
+}
+
+.agendaMonthDayNum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.agendaMonthSummary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.agendaMonthDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.agendaMonthCount {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
 @media (min-width: 860px) {
   .agendaDayView {
     display: none;
   }
-  .agendaWeekView {
+  .agendaDesktopView {
     display: block;
   }
 }

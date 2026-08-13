@@ -18,6 +18,12 @@
   --warn-tint: #f7ecd9;
   --danger: #b23b3b;
   --danger-tint: #fbeaea;
+  /* Ameixa/violeta — só pra urgência (agenda). De propósito o mais distante
+     possível, em matiz, dos 4 tons de status (verde/âmbar/vermelho/azul),
+     pra nunca ler como "é urgente ou é status?" mesmo à distância. */
+  --urgent: #6d3f96;
+  --urgent-tint: #f1e9f8;
+  --urgent-line: #d9c3ea;
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 20px;

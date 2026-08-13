@@ -56,3 +56,30 @@ export function brDayRangeUtc(dateStr: string): { fromIso: string; toIso: string
     toIso: new Date(`${addDaysToDateStr(dateStr, 1)}T00:00:00-03:00`).toISOString(),
   };
 }
+
+export function firstOfMonth(dateStr: string): string {
+  return `${dateStr.slice(0, 7)}-01`;
+}
+
+export function firstOfNextMonth(dateStr: string): string {
+  const [y, m] = dateStr.slice(0, 7).split("-").map(Number);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return `${ny}-${String(nm).padStart(2, "0")}-01`;
+}
+
+/** Todos os dias ("YYYY-MM-DD") que formam a grade de calendário do mês de `dateStr` — de segunda a domingo, incluindo os dias de encaixe do mês anterior/seguinte pra completar a primeira e a última semana. */
+export function monthGridDays(dateStr: string): string[] {
+  const monthStart = firstOfMonth(dateStr);
+  const lastDay = addDaysToDateStr(firstOfNextMonth(dateStr), -1);
+  const gridStart = mondayOfWeek(monthStart);
+  const gridEnd = addDaysToDateStr(mondayOfWeek(lastDay), 6);
+
+  const days: string[] = [];
+  let cursor = gridStart;
+  while (cursor <= gridEnd) {
+    days.push(cursor);
+    cursor = addDaysToDateStr(cursor, 1);
+  }
+  return days;
+}

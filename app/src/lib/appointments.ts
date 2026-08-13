@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { brDateOnly } from "@/lib/date";
 import type { Appointment, AppointmentEventActor, AppointmentStatus } from "@/lib/database.types";
 
 export const APPOINTMENT_SLOT_MINUTES = 30;
@@ -36,6 +37,33 @@ export function buildDaySlotTimes(dateStr: string, startHour = AGENDA_START_HOUR
   return slots;
 }
 
+export interface DaySummary {
+  total: number;
+  byStatus: Partial<Record<AppointmentStatus, number>>;
+  anyUrgent: boolean;
+}
+
+/**
+ * Agrega agendamentos por dia (calendário do Brasil) — é o que sustenta a
+ * célula da visão mensal (não cabe o detalhe de cada agendamento numa
+ * célula pequena, então vira contagem + distribuição de status + marcador
+ * de urgência). Função pura, O(n) sobre a lista recebida — quem chama já
+ * filtrou por período (nunca a tabela inteira), então n aqui é no máximo
+ * "agendamentos de um mês", não o histórico completo da clínica.
+ */
+export function summarizeAppointmentsByDay(appointments: Appointment[]): Map<string, DaySummary> {
+  const map = new Map<string, DaySummary>();
+  for (const a of appointments) {
+    const day = brDateOnly(new Date(a.scheduled_at));
+    const entry = map.get(day) ?? { total: 0, byStatus: {}, anyUrgent: false };
+    entry.total += 1;
+    entry.byStatus[a.status] = (entry.byStatus[a.status] ?? 0) + 1;
+    if (a.urgent) entry.anyUrgent = true;
+    map.set(day, entry);
+  }
+  return map;
+}
+
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   agendado: "Agendado",
   confirmado: "Confirmado",
@@ -51,6 +79,15 @@ export const APPOINTMENT_STATUS_CLASS: Record<AppointmentStatus, string> = {
   cancelado_paciente: "statusDanger",
   cancelado_dentista: "statusDanger",
   atendido: "statusInfo",
+};
+
+/** Pra desenhar os pontinhos de resumo da célula do mês — mesmas 4 cores de `APPOINTMENT_STATUS_CLASS`, só que como valor de `background` em vez de `color`. */
+export const APPOINTMENT_STATUS_DOT_COLOR: Record<AppointmentStatus, string> = {
+  agendado: "var(--warn)",
+  confirmado: "var(--brand)",
+  cancelado_paciente: "var(--danger)",
+  cancelado_dentista: "var(--danger)",
+  atendido: "var(--sign)",
 };
 
 /** Status que liberam o horário pra realocação — não entram na exclusão de sobreposição no banco (ver migration 022). */

@@ -1,5 +1,84 @@
 import { describe, expect, it } from "vitest";
-import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap, slotKey } from "./appointments";
+import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap, slotKey, summarizeAppointmentsByDay } from "./appointments";
+import type { Appointment } from "./database.types";
+
+function fakeAppointment(overrides: Partial<Appointment>): Appointment {
+  return {
+    id: crypto.randomUUID(),
+    clinic_id: "clinic-1",
+    scheduled_at: "2026-08-12T11:00:00+00:00",
+    duration_minutes: 30,
+    status: "agendado",
+    urgent: false,
+    patient_id: null,
+    patient_name: "Paciente Teste",
+    patient_phone: "5579999999999",
+    professional_name: "Dra. Exemplo",
+    notes: null,
+    confirm_token: crypto.randomUUID(),
+    created_by: null,
+    created_at: "2026-08-01T00:00:00+00:00",
+    updated_at: "2026-08-01T00:00:00+00:00",
+    ...overrides,
+  };
+}
+
+describe("summarizeAppointmentsByDay", () => {
+  it("agrupa por dia local do Brasil, conta por status e marca urgência", () => {
+    const appointments = [
+      fakeAppointment({ scheduled_at: "2026-08-12T11:00:00+00:00", status: "confirmado" }),
+      fakeAppointment({ scheduled_at: "2026-08-12T14:00:00+00:00", status: "agendado", urgent: true }),
+      fakeAppointment({ scheduled_at: "2026-08-13T11:00:00+00:00", status: "cancelado_paciente" }),
+    ];
+    const summary = summarizeAppointmentsByDay(appointments);
+
+    expect(summary.get("2026-08-12")).toEqual({
+      total: 2,
+      byStatus: { confirmado: 1, agendado: 1 },
+      anyUrgent: true,
+    });
+    expect(summary.get("2026-08-13")).toEqual({
+      total: 1,
+      byStatus: { cancelado_paciente: 1 },
+      anyUrgent: false,
+    });
+    expect(summary.has("2026-08-14")).toBe(false);
+  });
+
+  it("horário perto da virada do dia (21h+ BR) cai no dia local certo, não no dia UTC", () => {
+    // 22:30 em 12/08 no Brasil (-03:00) é 01:30 UTC do dia 13 — sem converter
+    // pro fuso do Brasil antes de agrupar, isso cairia no dia errado.
+    const appointments = [fakeAppointment({ scheduled_at: "2026-08-13T01:30:00+00:00" })];
+    const summary = summarizeAppointmentsByDay(appointments);
+    expect(summary.has("2026-08-12")).toBe(true);
+    expect(summary.has("2026-08-13")).toBe(false);
+  });
+
+  it("aguenta um volume alto (várias clínicas/profissionais, mês cheio) sem degradar", () => {
+    const many: Appointment[] = [];
+    for (let day = 1; day <= 28; day++) {
+      for (let i = 0; i < 80; i++) {
+        many.push(
+          fakeAppointment({
+            scheduled_at: `2026-08-${String(day).padStart(2, "0")}T${String(11 + (i % 8)).padStart(2, "0")}:00:00+00:00`,
+            status: (["agendado", "confirmado", "atendido", "cancelado_paciente"] as const)[i % 4],
+          })
+        );
+      }
+    }
+    expect(many.length).toBe(2240);
+
+    const start = performance.now();
+    const summary = summarizeAppointmentsByDay(many);
+    const elapsed = performance.now() - start;
+
+    expect(summary.size).toBe(28);
+    // Generoso de propósito (formatação de data via Intl não é grátis por
+    // item) — o objetivo é pegar uma regressão de algoritmo (ex.: virar
+    // O(n²) sem querer), não cronometrar com precisão.
+    expect(elapsed).toBeLessThan(1500);
+  });
+});
 
 describe("slotKey", () => {
   it("casa o formato que o Postgres/PostgREST devolve (+00:00, sem milissegundos) com o de buildDaySlotTimes (.000Z)", () => {
