@@ -36,7 +36,23 @@ export function AppointmentActions({
   const [newDate, setNewDate] = useState(brDateOnly(new Date(scheduledAt)));
   const [newTime, setNewTime] = useState(slotKey(scheduledAt));
   const [newDuration, setNewDuration] = useState(durationMinutes);
+  const [resending, setResending] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+
+  async function handleResend() {
+    setResending(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}/resend`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.error === "send_failed" ? "Falha ao enviar — confira se o WhatsApp da clínica está conectado." : "Falha ao enviar a mensagem.");
+        return;
+      }
+      push("Mensagem de confirmação enviada por WhatsApp.", "success");
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function patch(body: Record<string, unknown>, successMessage?: string) {
     setBusy(true);
@@ -71,6 +87,11 @@ export function AppointmentActions({
   return (
     <div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {status === "agendado" && (
+          <button type="button" disabled={busy || resending} onClick={handleResend} className={`${styles.btn} ${styles.btnGhost}`}>
+            {resending ? "Enviando…" : "📲 Enviar confirmação por WhatsApp"}
+          </button>
+        )}
         {status !== "confirmado" && !isTerminal && (
           <button type="button" disabled={busy} onClick={() => patch({ status: "confirmado" }, "Agendamento confirmado.")} className={`${styles.btn} ${styles.btnPrimary}`}>
             Confirmar
