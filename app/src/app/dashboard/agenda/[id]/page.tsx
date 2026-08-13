@@ -57,8 +57,7 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
-      title={a.patient_name}
-      subtitle={formatBRDateTime(a.scheduled_at, "medium")}
+      title="Agendamento"
       actions={
         <Link href="/dashboard/agenda" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

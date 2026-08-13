@@ -1,11 +1,20 @@
-import { APPOINTMENT_STATUS_DOT_COLOR, APPOINTMENT_STATUS_LABEL, APPOINTMENT_STATUS_SYMBOL } from "@/lib/appointments";
+import { APPOINTMENT_STATUS_DOT_COLOR, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-// Cancelado por paciente/clínica cai na mesma cor e símbolo — a legenda
-// mostra uma linha só ("Cancelado") em vez de repetir a mesma explicação
-// duas vezes.
+// Cancelado por paciente/clínica cai na mesma cor — a legenda mostra uma
+// linha só ("Cancelado") em vez de repetir a mesma explicação duas vezes.
 const LEGEND_STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "cancelado_paciente", "atendido", "faltou"];
+
+// Mesma cor que o bloco sólido da grade usa de verdade (ver .agendaWeekChip
+// em shell.module.css) — "faltou" usa --muted-fill ali (mais escuro, pro
+// texto branco em cima manter contraste), não o --ink-faint mais claro que
+// APPOINTMENT_STATUS_DOT_COLOR usa pro pontinho de outros lugares. Sem isso
+// a legenda mostrava uma cor que não batia com o que aparece na grade.
+const SWATCH_COLOR: Record<AppointmentStatus, string> = {
+  ...APPOINTMENT_STATUS_DOT_COLOR,
+  faltou: "var(--muted-fill)",
+};
 
 /**
  * A grade semanal e o resumo mensal (desktop) comunicam status só por cor —
@@ -19,16 +28,12 @@ export function AgendaLegend() {
     <div className={styles.agendaLegend}>
       {LEGEND_STATUSES.map((status) => (
         <span key={status} className={styles.agendaLegendItem}>
-          <span className={styles.agendaLegendSymbol} style={{ color: APPOINTMENT_STATUS_DOT_COLOR[status] }}>
-            {APPOINTMENT_STATUS_SYMBOL[status]}
-          </span>
+          <span className={styles.agendaLegendSwatch} style={{ background: SWATCH_COLOR[status] }} />
           {status === "cancelado_paciente" ? "Cancelado" : APPOINTMENT_STATUS_LABEL[status]}
         </span>
       ))}
       <span className={styles.agendaLegendItem}>
-        <span className={styles.agendaLegendSymbol} style={{ color: "var(--urgent)" }}>
-          ▲
-        </span>
+        <span className={styles.agendaLegendSwatch} style={{ background: "var(--surface)", boxShadow: "inset 0 0 0 2px var(--urgent)" }} />
         Urgência
       </span>
     </div>

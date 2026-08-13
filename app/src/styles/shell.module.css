@@ -1075,26 +1075,30 @@
 .agendaLegend {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: 8px 18px;
   align-items: center;
-  padding: 12px 4px;
-  margin-bottom: 4px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
 }
 
 .agendaLegendItem {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 12.5px;
+  font-weight: 500;
   color: var(--ink-soft);
 }
 
-.agendaLegendSymbol {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  font-weight: 700;
+.agendaLegendSwatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .agendaCard {
