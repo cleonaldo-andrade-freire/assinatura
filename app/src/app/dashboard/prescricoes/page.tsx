@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { StopPropagationLink } from "@/components/ui/StopPropagation";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
@@ -126,9 +127,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
                       </span>
                     </td>
                     <td>
-                      <Link href={`/dashboard/prescricoes/${p.id}`} onClick={(e) => e.stopPropagation()}>
-                        Ver detalhes
-                      </Link>
+                      <StopPropagationLink href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</StopPropagationLink>
                     </td>
                   </ClickableRow>
                 ))}

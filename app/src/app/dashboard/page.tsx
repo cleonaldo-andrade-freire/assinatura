@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { getPlanById } from "@/lib/plans";
@@ -281,7 +282,7 @@ export default async function DashboardPage({
                           <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                         )}
                       </td>
-                      <td onClick={(e) => e.stopPropagation()}>
+                      <StopPropagationTd>
                         <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
                         {" · "}
                         {signatureId ? (
@@ -293,7 +294,7 @@ export default async function DashboardPage({
                             Link de assinatura
                           </a>
                         )}
-                      </td>
+                      </StopPropagationTd>
                     </ClickableRow>
                   );
                 })}
