@@ -99,9 +99,19 @@ export function AppointmentActions({
             {resending ? "Enviando…" : "📲 Enviar confirmação por WhatsApp"}
           </button>
         )}
-        {status !== "confirmado" && !isTerminal && (
+        {status !== "confirmado" && status !== "em_atendimento" && !isTerminal && (
           <button type="button" disabled={busy} onClick={() => patch({ status: "confirmado" }, "Agendamento confirmado.")} className={`${styles.btn} ${styles.btnPrimary}`}>
             Confirmar
+          </button>
+        )}
+        {status !== "em_atendimento" && !isTerminal && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => patch({ status: "em_atendimento" }, "Atendimento iniciado.")}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+          >
+            Iniciar atendimento
           </button>
         )}
         {status !== "atendido" && !isTerminal && (

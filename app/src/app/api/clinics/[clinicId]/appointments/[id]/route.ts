@@ -9,6 +9,7 @@ import type { Appointment, AppointmentStatus } from "@/lib/database.types";
 const STATUS_VALUES: [AppointmentStatus, ...AppointmentStatus[]] = [
   "agendado",
   "confirmado",
+  "em_atendimento",
   "cancelado_paciente",
   "cancelado_dentista",
   "atendido",

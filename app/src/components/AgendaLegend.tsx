@@ -4,16 +4,23 @@ import styles from "@/styles/shell.module.css";
 
 // Cancelado por paciente/clínica cai na mesma cor — a legenda mostra uma
 // linha só ("Cancelado") em vez de repetir a mesma explicação duas vezes.
-const LEGEND_STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "cancelado_paciente", "atendido", "faltou"];
+const LEGEND_STATUSES: AppointmentStatus[] = [
+  "agendado",
+  "confirmado",
+  "em_atendimento",
+  "atendido",
+  "cancelado_paciente",
+  "faltou",
+];
 
 // Mesma cor que o bloco sólido da grade usa de verdade (ver .agendaWeekChip
-// em shell.module.css) — "faltou" usa --muted-fill ali (mais escuro, pro
-// texto branco em cima manter contraste), não o --ink-faint mais claro que
+// em shell.module.css) — "agendado" usa --muted-fill ali (mais escuro, pro
+// texto branco em cima manter contraste), não o --ink-soft mais claro que
 // APPOINTMENT_STATUS_DOT_COLOR usa pro pontinho de outros lugares. Sem isso
 // a legenda mostrava uma cor que não batia com o que aparece na grade.
 const SWATCH_COLOR: Record<AppointmentStatus, string> = {
   ...APPOINTMENT_STATUS_DOT_COLOR,
-  faltou: "var(--muted-fill)",
+  agendado: "var(--muted-fill)",
 };
 
 /**

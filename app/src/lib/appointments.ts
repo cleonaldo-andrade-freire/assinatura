@@ -68,6 +68,7 @@ export function summarizeAppointmentsByDay(appointments: Appointment[]): Map<str
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   agendado: "Agendado",
   confirmado: "Confirmado",
+  em_atendimento: "Em atendimento",
   cancelado_paciente: "Cancelado (paciente)",
   cancelado_dentista: "Cancelado (clínica)",
   atendido: "Atendido",
@@ -75,20 +76,19 @@ export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
 };
 
 /**
- * Nomes de classe de `shell.module.css` — ver plano de design da agenda:
- * cancelamento (por quem for) compartilha uma cor, "atendido" reaproveita o
- * azul-assinatura em vez de inventar tom novo. "Faltou" é diferente dos
- * dois: não é uma decisão avisada (cancelado) nem um resultado positivo
- * (atendido) — cinza neutro (nem alarme, nem sucesso), único status que não
- * usa uma das 4 cores "cheias" da paleta.
+ * Nomes de classe de `shell.module.css` — paleta revisada a pedido: agendado
+ * vira cinza neutro (era âmbar), em_atendimento entra em amarelo, faltou
+ * passa a compartilhar o vermelho de cancelado (antes era cinza) —
+ * confirmado/atendido/urgência continuam iguais.
  */
 export const APPOINTMENT_STATUS_CLASS: Record<AppointmentStatus, string> = {
-  agendado: "statusWarn",
+  agendado: "statusNeutral",
   confirmado: "statusOk",
+  em_atendimento: "statusAttending",
   cancelado_paciente: "statusDanger",
   cancelado_dentista: "statusDanger",
   atendido: "statusInfo",
-  faltou: "statusMuted",
+  faltou: "statusDanger",
 };
 
 /**
@@ -100,6 +100,7 @@ export const APPOINTMENT_STATUS_CLASS: Record<AppointmentStatus, string> = {
 export const APPOINTMENT_STATUS_SYMBOL: Record<AppointmentStatus, string> = {
   agendado: "○",
   confirmado: "✓",
+  em_atendimento: "◐",
   cancelado_paciente: "✕",
   cancelado_dentista: "✕",
   atendido: "●",
@@ -108,12 +109,13 @@ export const APPOINTMENT_STATUS_SYMBOL: Record<AppointmentStatus, string> = {
 
 /** Pra desenhar os pontinhos de resumo da célula do mês — mesmas cores de `APPOINTMENT_STATUS_CLASS`, só que como valor de `background` em vez de `color`. */
 export const APPOINTMENT_STATUS_DOT_COLOR: Record<AppointmentStatus, string> = {
-  agendado: "var(--warn)",
+  agendado: "var(--ink-soft)",
   confirmado: "var(--brand)",
+  em_atendimento: "var(--attending)",
   cancelado_paciente: "var(--danger)",
   cancelado_dentista: "var(--danger)",
   atendido: "var(--sign)",
-  faltou: "var(--ink-faint)",
+  faltou: "var(--danger)",
 };
 
 /**

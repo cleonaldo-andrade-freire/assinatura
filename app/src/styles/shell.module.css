@@ -730,6 +730,17 @@
   color: var(--ink-soft);
 }
 
+/* "Agendado" — cinza neutro (ainda não aconteceu nada digno de cor forte). */
+.statusNeutral {
+  color: var(--ink-soft);
+}
+
+/* "Em atendimento" — amarelo, único status com texto escuro no bloco
+   sólido (fundo claro demais pra branco manter contraste). */
+.statusAttending {
+  color: var(--attending);
+}
+
 .statusBadge {
   display: inline-flex;
   align-items: center;
@@ -758,6 +769,14 @@
 
 .statusBadge.statusMuted {
   background: var(--surface-sunken);
+}
+
+.statusBadge.statusNeutral {
+  background: var(--surface-sunken);
+}
+
+.statusBadge.statusAttending {
+  background: var(--attending-tint);
 }
 
 /* ============================== Buttons ============================== */
@@ -1278,9 +1297,14 @@
   color: #fff;
 }
 
-.agendaWeekChip.statusMuted {
+.agendaWeekChip.statusNeutral {
   background: var(--muted-fill);
   color: #fff;
+}
+
+.agendaWeekChip.statusAttending {
+  background: var(--attending-solid);
+  color: var(--ink);
 }
 
 /* Alça de redimensionar (borda inferior do card, arrasta pra mudar a
@@ -1363,6 +1387,27 @@
 .agendaMonthCount {
   font-size: 11px;
   color: var(--ink-faint);
+}
+
+.agendaMonthApptList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.agendaMonthAppt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 2px;
+}
+
+.agendaMonthApptName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
 }
 
 @media (min-width: 860px) {

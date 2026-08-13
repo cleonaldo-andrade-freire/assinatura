@@ -11,7 +11,7 @@ import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { UpcomingReturns } from "@/components/UpcomingReturns";
 import {
-  APPOINTMENT_STATUS_DOT_COLOR,
+  APPOINTMENT_STATUS_CLASS,
   buildContinuationMap,
   buildDaySlotTimes,
   needsManualFollowUp,
@@ -94,6 +94,17 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
   const prevMonthDate = addDaysToDateStr(monthDays[0], -1);
   const nextMonthDate = monthRangeEnd;
   const daySummary = view === "month" ? summarizeAppointmentsByDay(appointments) : new Map();
+  // Foto + nome por agendamento na célula do mês (em vez de só pontinhos de
+  // cor) — agrupa pelo dia local do Brasil, já que scheduled_at vem em UTC.
+  const monthByDay = new Map<string, Appointment[]>();
+  if (view === "month") {
+    for (const a of appointments) {
+      const day = brDateOnly(new Date(a.scheduled_at));
+      const list = monthByDay.get(day) ?? [];
+      list.push(a);
+      monthByDay.set(day, list);
+    }
+  }
   const professionalName = clinic.dentist_name || clinic.name;
 
   // "Retornos próximos" — sinal de "Retornar em" (não cria consulta
@@ -271,6 +282,10 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
               {monthDays.map((d) => {
                 const outside = d.slice(0, 7) !== date.slice(0, 7);
                 const summary = daySummary.get(d);
+                const dayAppointments = monthByDay.get(d) ?? [];
+                const MAX_VISIBLE = 3;
+                const visible = dayAppointments.slice(0, MAX_VISIBLE);
+                const hiddenCount = dayAppointments.length - visible.length;
                 const cellClass = `${styles.agendaMonthCell} ${outside ? styles.outside : ""} ${d === today ? styles.today : ""}`;
                 const content = (
                   <>
@@ -278,21 +293,19 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                       {Number(d.slice(8, 10))}
                       {summary?.anyUrgent && <UrgentBadge />}
                     </div>
-                    {summary && summary.total > 0 && (
-                      <>
-                        <div className={styles.agendaMonthSummary}>
-                          {Object.keys(summary.byStatus).map((status) => (
-                            <span
-                              key={status}
-                              className={styles.agendaMonthDot}
-                              style={{ background: APPOINTMENT_STATUS_DOT_COLOR[status as keyof typeof APPOINTMENT_STATUS_DOT_COLOR] }}
-                            />
-                          ))}
-                        </div>
-                        <span className={styles.agendaMonthCount}>
-                          {summary.total} agendamento{summary.total === 1 ? "" : "s"}
-                        </span>
-                      </>
+                    {visible.length > 0 && (
+                      <div className={styles.agendaMonthApptList}>
+                        {visible.map((a) => (
+                          <span
+                            key={a.id}
+                            className={`${styles.agendaWeekChip} ${styles.agendaMonthAppt} ${styles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? styles.urgentMark : ""}`}
+                          >
+                            <PatientAvatar clinicId={clinic.id} patientId={a.patient_id} name={a.patient_name} size={16} />
+                            <span className={styles.agendaMonthApptName}>{a.patient_name}</span>
+                          </span>
+                        ))}
+                        {hiddenCount > 0 && <span className={styles.agendaMonthCount}>+{hiddenCount} mais</span>}
+                      </div>
                     )}
                   </>
                 );

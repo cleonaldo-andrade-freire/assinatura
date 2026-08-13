@@ -256,6 +256,7 @@ export interface UsageCharge {
 export type AppointmentStatus =
   | "agendado"
   | "confirmado"
+  | "em_atendimento"
   | "cancelado_paciente"
   | "cancelado_dentista"
   | "atendido"

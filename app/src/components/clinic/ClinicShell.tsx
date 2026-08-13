@@ -147,20 +147,25 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 // "Mais": com 7 destinos reais não cabem todos com rótulo por extenso na
 // barra do celular (é o mesmo estouro que já aconteceu uma vez com 6 itens),
 // e os dois são de uso mais esporádico que as cinco abas primárias.
-const PRIMARY_NAV_ITEMS = [
+// Ordem canônica — vale pra sidebar de desktop, que mostra tudo inline sem
+// distinção (tem espaço de sobra pros sete destinos).
+const NAV_ITEMS = [
   { href: "/dashboard/agenda", label: "Agenda", icon: AgendaIcon },
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
-];
-
-const MORE_NAV_ITEMS = [
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 
-const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
+// No celular a barra fixa só tem espaço confortável pra 3 destinos + "Mais"
+// — Agenda e Pacientes são as telas mais checadas na correria da recepção,
+// Configurações entra fixa por pedido explícito. O resto (Anamneses,
+// Atestados, Prescrições, Próteses) vive atrás do "Mais" só no celular; no
+// desktop a sidebar mostra todo mundo inline, sem essa distinção.
+const MOBILE_PRIMARY_HREFS = new Set(["/dashboard/agenda", "/dashboard/pacientes", "/dashboard/configuracoes"]);
+const MORE_NAV_ITEMS = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href));
 
 function initials(name: string): string {
   return name
@@ -242,8 +247,7 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         </div>
 
         <nav className={styles.nav}>
-          {PRIMARY_NAV_ITEMS.map((item) => renderNavLink(item))}
-          {MORE_NAV_ITEMS.map((item) => renderNavLink(item, styles.navExtra))}
+          {NAV_ITEMS.map((item) => renderNavLink(item, MOBILE_PRIMARY_HREFS.has(item.href) ? undefined : styles.navExtra))}
           {MORE_NAV_ITEMS.length > 0 && (
             <button
               type="button"

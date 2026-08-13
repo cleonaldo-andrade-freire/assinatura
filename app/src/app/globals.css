@@ -33,10 +33,16 @@
   --urgent: #6d3f96;
   --urgent-tint: #f1e9f8;
   --urgent-line: #d9c3ea;
-  /* "Faltou" em preenchimento sólido (grade da agenda) precisa de um cinza
+  /* "Agendado" em preenchimento sólido (grade da agenda) precisa de um cinza
      mais escuro que --ink-faint pra manter contraste AA com texto branco em
-     cima (--ink-faint sozinho dá só 3:1) — ver proposta de redesign. */
+     cima (--ink-faint sozinho dá só 3:1). Também usado no dot/badge do
+     status (mais claro ali, ver .statusNeutral). */
   --muted-fill: #6b7570;
+  /* "Em atendimento" — amarelo, único status que usa texto escuro em cima
+     (bloco sólido claro demais pra branco manter contraste). */
+  --attending: #a86f00;
+  --attending-tint: #fdf1d6;
+  --attending-solid: #f6c343;
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 20px;

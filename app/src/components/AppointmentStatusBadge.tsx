@@ -28,9 +28,10 @@ export function UrgentBadge() {
 }
 
 /**
- * "Sem resposta" — reforça o próprio status `agendado` (mesma cor âmbar),
- * não é um estado novo: só chama atenção de que a consulta está perto e
- * ainda sem confirmação, pra recepção ligar como último recurso.
+ * "Sem resposta" — âmbar de alerta próprio (independente da cor que
+ * `agendado` estiver usando no momento), pra chamar atenção de que a
+ * consulta está perto e ainda sem confirmação, pra recepção ligar como
+ * último recurso.
  */
 export function NeedsFollowUpBadge() {
   return (
