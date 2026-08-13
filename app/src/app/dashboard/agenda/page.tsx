@@ -283,7 +283,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                 const outside = d.slice(0, 7) !== date.slice(0, 7);
                 const summary = daySummary.get(d);
                 const dayAppointments = monthByDay.get(d) ?? [];
-                const MAX_VISIBLE = 3;
+                const MAX_VISIBLE = 10;
                 const visible = dayAppointments.slice(0, MAX_VISIBLE);
                 const hiddenCount = dayAppointments.length - visible.length;
                 const cellClass = `${styles.agendaMonthCell} ${outside ? styles.outside : ""} ${d === today ? styles.today : ""}`;
