@@ -39,7 +39,8 @@ export function UpcomingReturnsPanel({
   page,
   totalPages,
   count,
-  hrefFor,
+  otherPageParam,
+  otherPageValue,
 }: {
   clinicId: string;
   professionalName: string;
@@ -48,9 +49,21 @@ export function UpcomingReturnsPanel({
   page: number;
   totalPages: number;
   count: number;
-  hrefFor: (page: number) => string;
+  /** Nome do parâmetro de página do OUTRO painel (preservado ao trocar de página aqui) e seu valor atual. */
+  otherPageParam: "cancelPage" | "returnPage";
+  otherPageValue: number;
 }) {
   const router = useRouter();
+
+  // Função criada aqui dentro (não recebida via prop) de propósito — passar uma
+  // função de um Server Component pra um Client Component quebra a serialização
+  // do RSC ("Event handlers cannot be passed to Client Component props").
+  function hrefFor(p: number) {
+    const params = new URLSearchParams();
+    params.set("returnPage", String(p));
+    if (otherPageValue > 1) params.set(otherPageParam, String(otherPageValue));
+    return `/dashboard?${params.toString()}`;
+  }
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [dismissingId, setDismissingId] = useState<string | null>(null);

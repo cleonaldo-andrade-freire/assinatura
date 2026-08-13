@@ -55,16 +55,6 @@ export default async function DashboardPage({
   const upcomingReturns = (returnsData as Appointment[]) ?? [];
   const returnsTotalPages = Math.max(1, Math.ceil((returnsCount ?? 0) / PAGE_SIZE));
 
-  function hrefFor(param: "cancelPage" | "returnPage", otherValue: number) {
-    return (page: number) => {
-      const params = new URLSearchParams();
-      params.set(param, String(page));
-      const other = param === "cancelPage" ? "returnPage" : "cancelPage";
-      if (otherValue > 1) params.set(other, String(otherValue));
-      return `/dashboard?${params.toString()}`;
-    };
-  }
-
   return (
     <ClinicShell
       clinicName={clinic.name}
@@ -80,7 +70,8 @@ export default async function DashboardPage({
         page={cancelPage}
         totalPages={cancelledTotalPages}
         count={cancelledCount ?? 0}
-        hrefFor={hrefFor("cancelPage", returnPage)}
+        otherPageParam="returnPage"
+        otherPageValue={returnPage}
       />
 
       <UpcomingReturnsPanel
@@ -91,7 +82,8 @@ export default async function DashboardPage({
         page={returnPage}
         totalPages={returnsTotalPages}
         count={returnsCount ?? 0}
-        hrefFor={hrefFor("returnPage", cancelPage)}
+        otherPageParam="cancelPage"
+        otherPageValue={cancelPage}
       />
     </ClinicShell>
   );
