@@ -166,11 +166,19 @@ export function NewBudgetModal({
     setTreatmentModalOpen(true);
   }
 
-  function handleTreatmentSave(values: TreatmentFormValues) {
+  function handleTreatmentSave(valuesList: TreatmentFormValues[]) {
+    const newItems: DraftItem[] = valuesList.map((v) => ({ ...v, key: crypto.randomUUID(), selected: true }));
     if (editingItemKey) {
-      setItems((prev) => prev.map((i) => (i.key === editingItemKey ? { ...i, ...values } : i)));
+      // Substitui a linha editada pelas novas — se a seleção de
+      // dentes/região mudou pra mais de um, uma linha vira várias, cada
+      // uma no lugar que a original ocupava na lista.
+      setItems((prev) => {
+        const idx = prev.findIndex((i) => i.key === editingItemKey);
+        if (idx === -1) return [...prev, ...newItems];
+        return [...prev.slice(0, idx), ...newItems, ...prev.slice(idx + 1)];
+      });
     } else {
-      setItems((prev) => [...prev, { ...values, key: crypto.randomUUID(), selected: true }]);
+      setItems((prev) => [...prev, ...newItems]);
     }
     setTreatmentModalOpen(false);
     setEditingItemKey(null);

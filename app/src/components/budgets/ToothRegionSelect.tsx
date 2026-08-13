@@ -35,21 +35,18 @@ function ToothButton({ number, selected, onClick }: { number: string; selected: 
 }
 
 /**
- * Seletor de dente/região pra cada linha de tratamento do orçamento —
- * odontograma completo (permanentes + decíduos, notação FDI), sem a aba HOF
- * (fora de escopo por decisão explícita). Cada dente/região vira um valor de
- * texto simples (ex.: "11" ou "Arcada Superior"), igual ao campo que o
- * orçamento salva por linha.
+ * Seletor de dente/região pra uma linha de tratamento — multi-seleção
+ * (odontograma completo: permanentes + decíduos, notação FDI, sem a aba HOF
+ * por decisão explícita). Cada dente/região clicado entra numa lista; quem
+ * chama (`TreatmentFormModal`) gera UMA linha de orçamento por item
+ * selecionado, cada uma com o valor cheio — mesmo padrão da referência
+ * (tratamento igual em 2 dentes = 2 linhas, não o valor dividido).
  */
-export function ToothRegionSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
+export function ToothRegionSelect({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
   const [tab, setTab] = useState<Tab>("permanent");
-  const [search, setSearch] = useState("");
 
-  function pick(v: string) {
-    onChange(v);
-    setOpen(false);
-    setSearch("");
+  function toggle(v: string) {
+    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   }
 
   const upperRight = tab === "permanent" ? PERMANENT_UPPER_RIGHT : DECIDUOUS_UPPER_RIGHT;
@@ -57,84 +54,90 @@ export function ToothRegionSelect({ value, onChange }: { value: string; onChange
   const lowerRight = tab === "permanent" ? PERMANENT_LOWER_RIGHT : DECIDUOUS_LOWER_RIGHT;
   const lowerLeft = tab === "permanent" ? PERMANENT_LOWER_LEFT : DECIDUOUS_LOWER_LEFT;
 
-  const filteredRegions = search.trim() ? REGIONS.filter((r) => r.toLowerCase().includes(search.trim().toLowerCase())) : REGIONS;
-
   return (
-    <div className={odontoStyles.wrap}>
-      <label className={styles.label}>Selecionar dente/região</label>
-      <input
-        type="text"
-        className={styles.input}
-        value={open ? search : value}
-        onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setOpen(true);
-        }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Inserir dente…"
-        autoComplete="off"
-      />
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+        <label className={styles.label} style={{ marginBottom: 0 }}>
+          Selecionar dente/região <span style={{ fontWeight: 400, color: "var(--ink-faint)" }}>(pode marcar mais de um)</span>
+        </label>
+        <span style={{ fontSize: 12.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 8 }}>
+          {value.length > 0 ? (
+            <>
+              Selecionados ({value.length}): <strong style={{ color: "var(--ink)" }}>{value.join(", ")}</strong>
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12.5, padding: 0 }}
+              >
+                Limpar
+              </button>
+            </>
+          ) : (
+            "Nenhum selecionado (opcional)"
+          )}
+        </span>
+      </div>
 
-      {open && (
-        <div className={odontoStyles.panel} onMouseDown={(e) => e.preventDefault()}>
-          {filteredRegions.length > 0 && (
-            <div className={odontoStyles.regionList}>
-              {filteredRegions.map((r) => (
-                <button key={r} type="button" className={odontoStyles.regionItem} onClick={() => pick(r)}>
-                  {r}
-                </button>
+      <div className={odontoStyles.panel}>
+        <div className={odontoStyles.regionList}>
+          {REGIONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => toggle(r)}
+              className={`${odontoStyles.regionChip} ${value.includes(r) ? odontoStyles.regionChipActive : ""}`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        <div className={odontoStyles.tabBar}>
+          <button
+            type="button"
+            className={`${odontoStyles.tabBtn} ${tab === "permanent" ? odontoStyles.tabBtnActive : ""}`}
+            onClick={() => setTab("permanent")}
+          >
+            Permanentes
+          </button>
+          <button
+            type="button"
+            className={`${odontoStyles.tabBtn} ${tab === "deciduous" ? odontoStyles.tabBtnActive : ""}`}
+            onClick={() => setTab("deciduous")}
+          >
+            Decíduos
+          </button>
+        </div>
+
+        <div className={odontoStyles.chart}>
+          <div className={odontoStyles.row}>
+            <div className={odontoStyles.quadrant}>
+              {upperRight.map((n) => (
+                <ToothButton key={n} number={n} selected={value.includes(n)} onClick={() => toggle(n)} />
               ))}
             </div>
-          )}
-
-          <div className={odontoStyles.tabBar}>
-            <button
-              type="button"
-              className={`${odontoStyles.tabBtn} ${tab === "permanent" ? odontoStyles.tabBtnActive : ""}`}
-              onClick={() => setTab("permanent")}
-            >
-              Permanentes
-            </button>
-            <button
-              type="button"
-              className={`${odontoStyles.tabBtn} ${tab === "deciduous" ? odontoStyles.tabBtnActive : ""}`}
-              onClick={() => setTab("deciduous")}
-            >
-              Decíduos
-            </button>
-          </div>
-
-          <div className={odontoStyles.chart}>
-            <div className={odontoStyles.row}>
-              <div className={odontoStyles.quadrant}>
-                {upperRight.map((n) => (
-                  <ToothButton key={n} number={n} selected={value === n} onClick={() => pick(n)} />
-                ))}
-              </div>
-              <div className={odontoStyles.midline} />
-              <div className={odontoStyles.quadrant}>
-                {upperLeft.map((n) => (
-                  <ToothButton key={n} number={n} selected={value === n} onClick={() => pick(n)} />
-                ))}
-              </div>
+            <div className={odontoStyles.midline} />
+            <div className={odontoStyles.quadrant}>
+              {upperLeft.map((n) => (
+                <ToothButton key={n} number={n} selected={value.includes(n)} onClick={() => toggle(n)} />
+              ))}
             </div>
-            <div className={odontoStyles.row}>
-              <div className={odontoStyles.quadrant}>
-                {lowerRight.map((n) => (
-                  <ToothButton key={n} number={n} selected={value === n} onClick={() => pick(n)} />
-                ))}
-              </div>
-              <div className={odontoStyles.midline} />
-              <div className={odontoStyles.quadrant}>
-                {lowerLeft.map((n) => (
-                  <ToothButton key={n} number={n} selected={value === n} onClick={() => pick(n)} />
-                ))}
-              </div>
+          </div>
+          <div className={odontoStyles.row}>
+            <div className={odontoStyles.quadrant}>
+              {lowerRight.map((n) => (
+                <ToothButton key={n} number={n} selected={value.includes(n)} onClick={() => toggle(n)} />
+              ))}
+            </div>
+            <div className={odontoStyles.midline} />
+            <div className={odontoStyles.quadrant}>
+              {lowerLeft.map((n) => (
+                <ToothButton key={n} number={n} selected={value.includes(n)} onClick={() => toggle(n)} />
+              ))}
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

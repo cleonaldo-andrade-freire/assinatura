@@ -40,7 +40,10 @@ export function TreatmentFormModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (values: TreatmentFormValues) => void;
+  /** Uma entrada por dente/região marcado (ou uma só, sem dente, se nenhum
+   * foi marcado) — mesmo tratamento em vários dentes vira uma linha cada,
+   * com o valor cheio em cada uma (não dividido). */
+  onSave: (values: TreatmentFormValues[]) => void;
   catalog: CatalogTable[];
   loadingCatalog: boolean;
   /** Presente = editando uma linha existente; null = adicionando uma nova. */
@@ -50,7 +53,7 @@ export function TreatmentFormModal({
   const [treatmentId, setTreatmentId] = useState("");
   const [customName, setCustomName] = useState("");
   const [price, setPrice] = useState("");
-  const [toothRegion, setToothRegion] = useState("");
+  const [toothSelection, setToothSelection] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -59,13 +62,13 @@ export function TreatmentFormModal({
       setTreatmentId(initial.priceTableItemId ?? (initial.priceTableId ? CUSTOM_TREATMENT_VALUE : ""));
       setCustomName(initial.priceTableItemId ? "" : initial.treatmentName);
       setPrice(formatMoneyDisplay(initial.price));
-      setToothRegion(initial.toothRegion);
+      setToothSelection(initial.toothRegion ? [initial.toothRegion] : []);
     } else {
       setPriceTableId("");
       setTreatmentId("");
       setCustomName("");
       setPrice("");
-      setToothRegion("");
+      setToothSelection([]);
     }
   }, [open, initial]);
 
@@ -75,14 +78,15 @@ export function TreatmentFormModal({
   function handleSave() {
     const treatmentName = isCustomTreatment ? customName.trim() : selectedTable?.items.find((i) => i.id === treatmentId)?.name ?? "";
     if (!treatmentName || !price) return;
-    onSave({
+    const base = {
       priceTableId: priceTableId || null,
       priceTableItemId: isCustomTreatment ? null : treatmentId || null,
       priceTableName: selectedTable?.name ?? null,
       treatmentName,
-      toothRegion,
       price: parseMoneyInput(price),
-    });
+    };
+    const regions = toothSelection.length > 0 ? toothSelection : [""];
+    onSave(regions.map((toothRegion) => ({ ...base, toothRegion })));
   }
 
   if (!open || typeof document === "undefined") return null;
@@ -128,32 +132,6 @@ export function TreatmentFormModal({
                 ))}
               </select>
             </div>
-            <div className={styles.field} style={{ flex: 1.8 }}>
-              <label className={styles.label}>Tratamento*</label>
-              <select
-                className={styles.select}
-                value={treatmentId}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setTreatmentId(v);
-                  if (v === CUSTOM_TREATMENT_VALUE) {
-                    setPrice("");
-                  } else {
-                    const item = selectedTable?.items.find((i) => i.id === v);
-                    setPrice(item ? formatMoneyDisplay(item.price) : "");
-                  }
-                }}
-                disabled={!priceTableId}
-              >
-                <option value="">Selecione…</option>
-                {selectedTable?.items.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
-                  </option>
-                ))}
-                <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
-              </select>
-            </div>
             <div className={styles.field} style={{ width: 140 }}>
               <label className={styles.label}>Valor*</label>
               <input
@@ -167,6 +145,36 @@ export function TreatmentFormModal({
             </div>
           </div>
 
+          {/* Sozinho na própria linha, de propósito — um select só mostra o
+              texto que couber na própria largura; ao lado de outros campos
+              (Plano/Valor) o nome do tratamento cortava. */}
+          <div className={styles.field}>
+            <label className={styles.label}>Tratamento*</label>
+            <select
+              className={styles.select}
+              value={treatmentId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTreatmentId(v);
+                if (v === CUSTOM_TREATMENT_VALUE) {
+                  setPrice("");
+                } else {
+                  const item = selectedTable?.items.find((i) => i.id === v);
+                  setPrice(item ? formatMoneyDisplay(item.price) : "");
+                }
+              }}
+              disabled={!priceTableId}
+            >
+              <option value="">Selecione…</option>
+              {selectedTable?.items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
+                </option>
+              ))}
+              <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
+            </select>
+          </div>
+
           {isCustomTreatment && (
             <div className={styles.field}>
               <label className={styles.label}>Nome do tratamento*</label>
@@ -174,7 +182,7 @@ export function TreatmentFormModal({
             </div>
           )}
 
-          <ToothRegionSelect value={toothRegion} onChange={setToothRegion} />
+          <ToothRegionSelect value={toothSelection} onChange={setToothSelection} />
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)", flexShrink: 0 }}>
@@ -182,7 +190,7 @@ export function TreatmentFormModal({
             Cancelar
           </button>
           <button type="button" onClick={handleSave} className={`${styles.btn} ${styles.btnPrimary}`}>
-            {initial ? "Salvar" : "Adicionar"}
+            {initial ? "Salvar" : toothSelection.length > 1 ? `Adicionar ${toothSelection.length} tratamentos` : "Adicionar"}
           </button>
         </div>
       </div>
