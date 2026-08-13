@@ -16,6 +16,30 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: hidden;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s ease;
+}
+
+/* Recolhida (toggle manual, ver ClinicShell) — só ícones, centralizados.
+   Preferência lembrada por navegador (localStorage), não por clínica. */
+.sidebarCollapsed {
+  width: 76px;
+  padding: 24px 14px;
+}
+
+.sidebarCollapsed .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebarCollapsed .navLink {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.sidebarCollapsed .brandName,
+.sidebarCollapsed .navLabel {
+  display: none;
 }
 
 .brand {
@@ -59,6 +83,7 @@
 }
 
 .navLink {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -76,9 +101,28 @@
   color: #fff;
 }
 
+/* Indicador de item ativo: barra lateral + fundo translúcido em vez de um
+   bloco sólido inteiro — mais discreto ao escanear a lista (proposta de
+   redesign da Agenda). */
 .navLinkActive {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+
+.navLinkActive::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand-bright);
+}
+
+.sidebarCollapsed .navLinkActive::before {
+  left: -12px;
 }
 
 /* Botão "Mais" só existe na barra inferior do celular — na sidebar vertical
@@ -156,6 +200,32 @@
 .logoutLink:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebarToggle {
+  margin-bottom: 4px;
+}
+
+.sidebarToggle svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebarToggleCollapsed {
+  justify-content: center;
+}
+
+.sidebarToggleCollapsed svg {
+  transform: rotate(180deg);
+}
+
+/* O toggle manual só existe em telas de verdade desktop — no tablet
+   (768–900px) a sidebar já colapsa sozinha (ver media query abaixo), e no
+   celular a sidebar vira barra horizontal (não faz sentido "recolher"). */
+@media (max-width: 900px) {
+  .sidebarToggle {
+    display: none;
+  }
 }
 
 .main {

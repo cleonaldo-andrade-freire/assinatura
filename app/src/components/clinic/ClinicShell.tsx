@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import styles from "@/styles/shell.module.css";
 
 function AgendaIcon() {
@@ -132,6 +132,16 @@ function MoreIcon() {
   );
 }
 
+function CollapseIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
+
 // Agenda entra na barra fixa — pra quem faz recepção é provavelmente a tela
 // mais checada do dia, junto de Anamneses. Próteses e Configurações vão pro
 // "Mais": com 7 destinos reais não cabem todos com rótulo por extenso na
@@ -174,6 +184,21 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
   const router = useRouter();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Só lê localStorage depois de montar (evita mismatch de hidratação entre
+  // servidor e cliente — o servidor não tem como saber a preferência salva).
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -203,7 +228,7 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
 
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ""}`}>
         <div className={styles.brand}>
           <div className={styles.brandMark}>
             {clinicLogoUrl ? (
@@ -248,6 +273,15 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         )}
 
         <div className={styles.sidebarFooter}>
+          <button
+            type="button"
+            title={collapsed ? "Expandir menu" : "Recolher menu"}
+            className={`${styles.logoutLink} ${styles.sidebarToggle} ${collapsed ? styles.sidebarToggleCollapsed : ""}`}
+            onClick={toggleCollapsed}
+          >
+            <CollapseIcon />
+            <span className={styles.navLabel}>Recolher menu</span>
+          </button>
           <button type="button" title="Sair" className={styles.logoutLink} onClick={handleLogout}>
             <LogoutIcon />
             <span className={styles.navLabel}>Sair</span>
