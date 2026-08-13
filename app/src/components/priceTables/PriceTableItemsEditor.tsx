@@ -5,21 +5,10 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { SpecialtyCombobox } from "@/components/priceTables/SpecialtyCombobox";
+import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import type { PriceTableItem } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 import pt from "./priceTables.module.css";
-
-function formatPrice(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
-
-/** Aceita "150", "150,00" ou "150.00" e devolve um número — mesma tolerância
- * de digitação que o resto do app já dá em campos de dinheiro. */
-function parsePrice(raw: string): number | null {
-  const normalized = raw.trim().replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 /** Agrupa preservando a ordem de chegada (já vem ordenado por especialidade
  * do servidor) — sem reordenar por conta própria aqui. */
@@ -67,6 +56,8 @@ export function PriceTableItemsEditor({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [bulkTogglingSpecialty, setBulkTogglingSpecialty] = useState<string | null>(null);
+  const [deletingSpecialty, setDeletingSpecialty] = useState<string | null>(null);
+  const [confirmDeleteSpecialty, setConfirmDeleteSpecialty] = useState<{ specialty: string | null } | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [confirmSeedOpen, setConfirmSeedOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
@@ -92,9 +83,9 @@ export function PriceTableItemsEditor({
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    const price = parsePrice(newPrice);
-    if (!newName.trim() || price === null) {
-      push("Preencha o tratamento e um valor válido.");
+    const price = parseMoneyInput(newPrice);
+    if (!newName.trim()) {
+      push("Preencha o tratamento.");
       return;
     }
     setAdding(true);
@@ -123,13 +114,13 @@ export function PriceTableItemsEditor({
     setEditingId(item.id);
     setEditSpecialty(item.specialty ?? "");
     setEditName(item.name);
-    setEditPrice(String(item.price));
+    setEditPrice(formatMoneyDisplay(item.price));
   }
 
   async function handleSaveEdit(itemId: string) {
-    const price = parsePrice(editPrice);
-    if (!editName.trim() || price === null) {
-      push("Preencha o tratamento e um valor válido.");
+    const price = parseMoneyInput(editPrice);
+    if (!editName.trim()) {
+      push("Preencha o tratamento.");
       return;
     }
     setSavingEdit(true);
@@ -204,6 +195,28 @@ export function PriceTableItemsEditor({
       refresh();
     } finally {
       setBulkTogglingSpecialty(null);
+    }
+  }
+
+  async function handleDeleteSpecialty(specialty: string | null) {
+    setDeletingSpecialty(specialty ?? "");
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/price-tables/${priceTableId}/items/bulk-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ specialty }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        push(data.message || "Falha ao excluir. Tenta de novo.");
+        return;
+      }
+      setItems((prev) => prev.filter((it) => it.specialty !== specialty));
+      push(`Especialidade excluída (${data.deleted} tratamento${data.deleted === 1 ? "" : "s"}).`, "success");
+      setConfirmDeleteSpecialty(null);
+      refresh();
+    } finally {
+      setDeletingSpecialty(null);
     }
   }
 
@@ -293,6 +306,14 @@ export function PriceTableItemsEditor({
                         >
                           Desativar todos
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteSpecialty({ specialty: group.specialty })}
+                          className={pt.groupActionBtn}
+                          style={{ color: "var(--danger)" }}
+                        >
+                          Excluir especialidade
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -308,7 +329,15 @@ export function PriceTableItemsEditor({
                         <input type="text" className={styles.input} value={editName} onChange={(e) => setEditName(e.target.value)} required />
                       </td>
                       <td style={{ maxWidth: 120 }}>
-                        <input type="text" inputMode="decimal" className={styles.input} value={editPrice} onChange={(e) => setEditPrice(e.target.value)} required />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className={styles.input}
+                          value={editPrice}
+                          onChange={(e) => setEditPrice(formatMoneyInput(e.target.value))}
+                          placeholder="0,00"
+                          required
+                        />
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -333,7 +362,7 @@ export function PriceTableItemsEditor({
                       </td>
                       <td data-label="Especialidade">{item.specialty || "—"}</td>
                       <td className={styles.rowTitle}>{item.name}</td>
-                      <td data-label="Valor">{formatPrice(item.price)}</td>
+                      <td data-label="Valor">{formatMoneyDisplay(item.price)}</td>
                       <td>
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                           <button type="button" onClick={() => startEdit(item)} className={`${styles.btn} ${styles.btnGhost}`}>
@@ -390,11 +419,11 @@ export function PriceTableItemsEditor({
             <input
               id="newPrice"
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               className={styles.input}
               value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-              placeholder="150,00"
+              onChange={(e) => setNewPrice(formatMoneyInput(e.target.value))}
+              placeholder="0,00"
               required
             />
           </div>
@@ -413,6 +442,18 @@ export function PriceTableItemsEditor({
         loading={seeding}
         onConfirm={handleSeed}
         onCancel={() => setConfirmSeedOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteSpecialty !== null}
+        title="Excluir especialidade"
+        message={`Isso remove "${confirmDeleteSpecialty?.specialty || "Sem especialidade"}" e todos os tratamentos dela desta tabela — só funciona se nenhum já tiver sido usado num orçamento.`}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        danger
+        loading={deletingSpecialty !== null}
+        onConfirm={() => confirmDeleteSpecialty && handleDeleteSpecialty(confirmDeleteSpecialty.specialty)}
+        onCancel={() => setConfirmDeleteSpecialty(null)}
       />
 
       <ConfirmDialog
