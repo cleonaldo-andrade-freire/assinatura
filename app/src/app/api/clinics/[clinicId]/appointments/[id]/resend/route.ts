@@ -31,7 +31,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
   }
 
   try {
-    await sendAppointmentRequest(clinic, appointment as Appointment);
+    await sendAppointmentRequest(supabase, clinic, appointment as Appointment);
   } catch (err) {
     console.error("Falha ao reenviar confirmação de agendamento por WhatsApp:", err);
     return NextResponse.json({ error: "send_failed" }, { status: 502 });

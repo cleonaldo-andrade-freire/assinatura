@@ -253,7 +253,13 @@ export interface UsageCharge {
   created_at: string;
 }
 
-export type AppointmentStatus = "agendado" | "confirmado" | "cancelado_paciente" | "cancelado_dentista" | "atendido";
+export type AppointmentStatus =
+  | "agendado"
+  | "confirmado"
+  | "cancelado_paciente"
+  | "cancelado_dentista"
+  | "atendido"
+  | "faltou";
 
 export interface Appointment {
   id: string;
@@ -288,6 +294,17 @@ export interface AppointmentEvent {
   actor: AppointmentEventActor;
   meta: Record<string, unknown> | null;
   created_at: string;
+}
+
+export type AppointmentMessageTemplateType = "solicitacao" | "lembrete_24h" | "lembrete_final" | "confirmado" | "cancelado";
+
+export interface AppointmentMessageTemplate {
+  id: string;
+  clinic_id: string;
+  template_type: AppointmentMessageTemplateType;
+  body: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PlanRecord {

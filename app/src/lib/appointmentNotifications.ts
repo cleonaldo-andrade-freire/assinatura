@@ -1,12 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendText } from "@/lib/evolution";
 import { recordAppointmentEvent } from "@/lib/appointments";
-import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
+import { buildAppointmentTemplateVars, getAppointmentMessageBody } from "@/lib/appointmentTemplates";
 import type { Appointment, AppointmentEventActor, AppointmentStatus, Clinic } from "@/lib/database.types";
-
-function confirmationLink(token: string): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL}/confirmacao/${token}`;
-}
 
 const CONFIRM_WORDS = new Set(["confirmar", "confirmo", "confirmado", "sim", "s", "1", "ok", "okay", "beleza", "certo"]);
 const CANCEL_WORDS = new Set(["cancelar", "cancelo", "cancelado", "nao", "n", "2"]);
@@ -41,14 +37,12 @@ export function matchConfirmCancel(raw: string): "confirm" | "cancel" | null {
  * Um link só (não um botão por link) — a página é que mostra as duas ações;
  * evita o risco de o preview de link do WhatsApp (que busca a URL no
  * servidor pra montar a prévia) disparar a ação sozinho antes do paciente
- * clicar em qualquer coisa.
+ * clicar em qualquer coisa. Usa o modelo customizado da clínica se existir
+ * (ver /dashboard/configuracoes/mensagens), senão o texto padrão.
  */
-export async function sendAppointmentRequest(clinic: Clinic, appointment: Appointment): Promise<void> {
-  const text =
-    `Olá! Sua consulta na ${clinic.name} está marcada pra ` +
-    `${formatBRWeekday(appointment.scheduled_at, "long")}, ${formatBRDate(appointment.scheduled_at)} ` +
-    `às ${formatBRTime(appointment.scheduled_at)}.\n\n` +
-    `Pra confirmar ou cancelar, toque aqui: ${confirmationLink(appointment.confirm_token)}`;
+export async function sendAppointmentRequest(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const text = await getAppointmentMessageBody(supabase, clinic.id, "solicitacao", vars);
   await sendText(clinic, appointment.patient_phone, text);
 }
 
@@ -65,13 +59,8 @@ export async function sendAppointmentReminder(
   appointment: Appointment,
   tier: "24h" | "final"
 ): Promise<void> {
-  const text =
-    tier === "24h"
-      ? `Lembrete: você tem consulta amanhã, ${formatBRWeekday(appointment.scheduled_at, "long")} às ` +
-        `${formatBRTime(appointment.scheduled_at)}, na ${clinic.name}. Ainda não vimos sua confirmação — ` +
-        `pra confirmar ou cancelar, toque aqui: ${confirmationLink(appointment.confirm_token)}`
-      : `Sua consulta na ${clinic.name} é hoje às ${formatBRTime(appointment.scheduled_at)}. ` +
-        `Ainda não recebemos sua confirmação — toque aqui: ${confirmationLink(appointment.confirm_token)}`;
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const text = await getAppointmentMessageBody(supabase, clinic.id, tier === "24h" ? "lembrete_24h" : "lembrete_final", vars);
 
   await sendText(clinic, appointment.patient_phone, text);
   await supabase
@@ -132,11 +121,8 @@ export async function processAppointmentResponse(
     actor,
   });
 
-  const reply =
-    action === "confirm"
-      ? `Combinado! Te esperamos ${formatBRWeekday(appointment.scheduled_at, "long")}, ` +
-        `${formatBRDate(appointment.scheduled_at)} às ${formatBRTime(appointment.scheduled_at)}.`
-      : "Tudo bem, seu agendamento foi cancelado. Se quiser remarcar, é só chamar a gente por aqui.";
+  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const reply = await getAppointmentMessageBody(supabase, clinic.id, action === "confirm" ? "confirmado" : "cancelado", vars);
   await sendText(clinic, appointment.patient_phone, reply);
 
   return { ok: true, status: newStatus };

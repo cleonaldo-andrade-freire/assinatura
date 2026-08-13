@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_SYMBOL, buildContinuationMap, buildDaySlotTimes, slotKey } from "@/lib/appointments";
 import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { NewAppointmentForm } from "@/components/NewAppointmentForm";
@@ -11,6 +13,10 @@ import shellStyles from "@/styles/shell.module.css";
 import uiStyles from "@/components/ui/ui.module.css";
 
 const WEEKDAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+// Só faz sentido arrastar pra remarcar um agendamento que ainda vai
+// acontecer — atendido/cancelado/falta ficam parados no lugar.
+const DRAGGABLE_STATUSES = new Set(["agendado", "confirmado"]);
 
 interface Slot {
   date: string;
@@ -33,6 +39,9 @@ export function AgendaWeekGrid({
   today: string;
   appointments: Appointment[];
 }) {
+  const router = useRouter();
+  const { toasts, push, dismiss } = useToasts();
+
   const bySlot = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of appointments) {
@@ -55,6 +64,9 @@ export function AgendaWeekGrid({
   }, [appointments, weekDays, dayTimes]);
 
   const [openSlot, setOpenSlot] = useState<Slot | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     if (!openSlot) return;
@@ -64,6 +76,27 @@ export function AgendaWeekGrid({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openSlot]);
+
+  async function handleDrop(appointmentId: string, newTime: string) {
+    setDragOverKey(null);
+    setMoving(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_at: newTime }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || data?.error || "Falha ao remarcar arrastando — tente pela tela de detalhe.");
+        return;
+      }
+      push("Agendamento remarcado.", "success");
+      router.refresh();
+    } finally {
+      setMoving(false);
+    }
+  }
 
   return (
     <>
@@ -88,16 +121,18 @@ export function AgendaWeekGrid({
                 const items = bySlot.get(slot) ?? [];
                 const continuedBy = items.length === 0 ? continuationSlots.get(slot) : undefined;
                 const empty = items.length === 0 && !continuedBy;
+                const cellKey = `${d}-${slotIndex}`;
+                const droppable = empty && draggingId && !moving;
                 return (
                   <div
-                    key={`${d}-${slotIndex}`}
+                    key={cellKey}
                     className={shellStyles.agendaWeekCell}
-                    onDoubleClick={empty ? () => setOpenSlot({ date: d, time: slot }) : undefined}
+                    onDoubleClick={empty && !draggingId ? () => setOpenSlot({ date: d, time: slot }) : undefined}
                     role={empty ? "button" : undefined}
                     tabIndex={empty ? 0 : undefined}
                     aria-label={empty ? `Agendar em ${formatBRDate(slot)} às ${formatBRTime(slot)}` : undefined}
                     onKeyDown={
-                      empty
+                      empty && !draggingId
                         ? (e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
@@ -106,18 +141,60 @@ export function AgendaWeekGrid({
                           }
                         : undefined
                     }
-                    style={empty ? { cursor: "pointer" } : undefined}
+                    onDragOver={
+                      droppable
+                        ? (e) => {
+                            e.preventDefault();
+                            if (dragOverKey !== cellKey) setDragOverKey(cellKey);
+                          }
+                        : undefined
+                    }
+                    onDragLeave={droppable ? () => setDragOverKey((k) => (k === cellKey ? null : k)) : undefined}
+                    onDrop={
+                      droppable
+                        ? (e) => {
+                            e.preventDefault();
+                            const id = e.dataTransfer.getData("text/plain");
+                            setDraggingId(null);
+                            if (id) handleDrop(id, slot);
+                          }
+                        : undefined
+                    }
+                    style={{
+                      cursor: empty && !draggingId ? "pointer" : undefined,
+                      background: dragOverKey === cellKey ? "var(--brand-tint)" : undefined,
+                      outline: dragOverKey === cellKey ? "2px dashed var(--brand)" : undefined,
+                      outlineOffset: dragOverKey === cellKey ? "-2px" : undefined,
+                    }}
                   >
-                    {items.map((a) => (
-                      <Link
-                        key={a.id}
-                        href={`/dashboard/agenda/${a.id}`}
-                        className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
-                        title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}`}
-                      >
-                        {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
-                      </Link>
-                    ))}
+                    {items.map((a) => {
+                      const draggable = DRAGGABLE_STATUSES.has(a.status) && !moving;
+                      return (
+                        <Link
+                          key={a.id}
+                          href={`/dashboard/agenda/${a.id}`}
+                          draggable={draggable}
+                          onDragStart={
+                            draggable
+                              ? (e) => {
+                                  e.dataTransfer.setData("text/plain", a.id);
+                                  e.dataTransfer.effectAllowed = "move";
+                                  setDraggingId(a.id);
+                                }
+                              : undefined
+                          }
+                          onDragEnd={() => {
+                            setDraggingId(null);
+                            setDragOverKey(null);
+                          }}
+                          className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
+                          title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}${draggable ? " (arraste pra remarcar)" : ""}`}
+                          style={draggable ? { cursor: "grab" } : undefined}
+                        >
+                          {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
+                        </Link>
+                      );
+                    })}
                     {continuedBy && (
                       <Link
                         href={`/dashboard/agenda/${continuedBy.id}`}
@@ -170,6 +247,8 @@ export function AgendaWeekGrid({
           </div>,
           document.body
         )}
+
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   );
 }

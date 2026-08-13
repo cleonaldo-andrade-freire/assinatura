@@ -71,15 +71,24 @@ export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   cancelado_paciente: "Cancelado (paciente)",
   cancelado_dentista: "Cancelado (clínica)",
   atendido: "Atendido",
+  faltou: "Faltou",
 };
 
-/** Nomes de classe de `shell.module.css` — ver plano de design da agenda: cancelamento (por quem for) compartilha uma cor, "atendido" reaproveita o azul-assinatura em vez de inventar um 5º tom. */
+/**
+ * Nomes de classe de `shell.module.css` — ver plano de design da agenda:
+ * cancelamento (por quem for) compartilha uma cor, "atendido" reaproveita o
+ * azul-assinatura em vez de inventar tom novo. "Faltou" é diferente dos
+ * dois: não é uma decisão avisada (cancelado) nem um resultado positivo
+ * (atendido) — cinza neutro (nem alarme, nem sucesso), único status que não
+ * usa uma das 4 cores "cheias" da paleta.
+ */
 export const APPOINTMENT_STATUS_CLASS: Record<AppointmentStatus, string> = {
   agendado: "statusWarn",
   confirmado: "statusOk",
   cancelado_paciente: "statusDanger",
   cancelado_dentista: "statusDanger",
   atendido: "statusInfo",
+  faltou: "statusMuted",
 };
 
 /**
@@ -94,15 +103,17 @@ export const APPOINTMENT_STATUS_SYMBOL: Record<AppointmentStatus, string> = {
   cancelado_paciente: "✕",
   cancelado_dentista: "✕",
   atendido: "●",
+  faltou: "–",
 };
 
-/** Pra desenhar os pontinhos de resumo da célula do mês — mesmas 4 cores de `APPOINTMENT_STATUS_CLASS`, só que como valor de `background` em vez de `color`. */
+/** Pra desenhar os pontinhos de resumo da célula do mês — mesmas cores de `APPOINTMENT_STATUS_CLASS`, só que como valor de `background` em vez de `color`. */
 export const APPOINTMENT_STATUS_DOT_COLOR: Record<AppointmentStatus, string> = {
   agendado: "var(--warn)",
   confirmado: "var(--brand)",
   cancelado_paciente: "var(--danger)",
   cancelado_dentista: "var(--danger)",
   atendido: "var(--sign)",
+  faltou: "var(--ink-faint)",
 };
 
 /**

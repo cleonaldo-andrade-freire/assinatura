@@ -115,7 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   // Best-effort — mesmo padrão do resto do app (ex.: notifyClinicSigned):
   // uma falha de WhatsApp não pode impedir o agendamento de ser criado.
   try {
-    await sendAppointmentRequest(clinic, appointment);
+    await sendAppointmentRequest(supabase, clinic, appointment);
   } catch (err) {
     console.error("Falha ao enviar confirmação de agendamento por WhatsApp:", err);
   }

@@ -646,6 +646,13 @@
   color: var(--sign);
 }
 
+/* "Faltou" — cinza neutro de propósito: não é alarme (vermelho) nem
+   sucesso (verde), é só "não aconteceu". Único status fora das 4 cores
+   cheias da paleta. */
+.statusMuted {
+  color: var(--ink-soft);
+}
+
 .statusBadge {
   display: inline-flex;
   align-items: center;
@@ -670,6 +677,10 @@
 
 .statusBadge.statusInfo {
   background: var(--sign-tint);
+}
+
+.statusBadge.statusMuted {
+  background: var(--surface-sunken);
 }
 
 /* ============================== Buttons ============================== */

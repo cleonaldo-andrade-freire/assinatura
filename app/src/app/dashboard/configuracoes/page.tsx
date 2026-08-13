@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClinicProfileForm } from "@/components/ClinicProfileForm";
@@ -113,6 +114,21 @@ export default async function SettingsPage() {
             que saem as notificações da clínica (link de assinatura, atestado emitido, lembretes).
           </p>
           <ConnectWhatsApp clinicId={clinic.id} initialWhatsappNumber={clinic.whatsapp_number} />
+        </div>
+      </div>
+
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Modelos de mensagem da agenda</p>
+        </div>
+        <div className={styles.panelBody}>
+          <p className={styles.hint} style={{ marginBottom: 14 }}>
+            Personalize o texto que o paciente recebe ao agendar, nos lembretes e nas respostas de
+            confirmação/cancelamento — se não personalizar, a clínica usa um texto padrão.
+          </p>
+          <Link href="/dashboard/configuracoes/mensagens" className={`${styles.btn} ${styles.btnGhost}`}>
+            Editar modelos de mensagem
+          </Link>
         </div>
       </div>
 

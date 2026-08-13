@@ -5,7 +5,7 @@ import styles from "@/styles/shell.module.css";
 // Cancelado por paciente/clínica cai na mesma cor e símbolo — a legenda
 // mostra uma linha só ("Cancelado") em vez de repetir a mesma explicação
 // duas vezes.
-const LEGEND_STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "cancelado_paciente", "atendido"];
+const LEGEND_STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "cancelado_paciente", "atendido", "faltou"];
 
 /**
  * A grade semanal e o resumo mensal (desktop) comunicam status só por cor —

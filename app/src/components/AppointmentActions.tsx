@@ -82,7 +82,7 @@ export function AppointmentActions({
   }
 
   const slots = buildDaySlotTimes(newDate);
-  const isTerminal = status === "atendido" || status === "cancelado_paciente" || status === "cancelado_dentista";
+  const isTerminal = status === "atendido" || status === "cancelado_paciente" || status === "cancelado_dentista" || status === "faltou";
 
   return (
     <div>
@@ -100,6 +100,11 @@ export function AppointmentActions({
         {status !== "atendido" && !isTerminal && (
           <button type="button" disabled={busy} onClick={() => patch({ status: "atendido" }, "Marcado como atendido.")} className={`${styles.btn} ${styles.btnGhost}`}>
             Marcar como atendido
+          </button>
+        )}
+        {!isTerminal && (
+          <button type="button" disabled={busy} onClick={() => patch({ status: "faltou" }, "Marcado como falta.")} className={`${styles.btn} ${styles.btnGhost}`}>
+            Marcar falta
           </button>
         )}
         {!isTerminal && (
@@ -131,7 +136,11 @@ export function AppointmentActions({
 
       {isTerminal && (
         <p style={{ color: "var(--ink-faint)", fontSize: 12.5, margin: "10px 0 0" }}>
-          {status === "atendido" ? "Consulta já concluída — sem mais ações de status." : "Horário liberado — crie um novo agendamento pra realocá-lo."}
+          {status === "atendido"
+            ? "Consulta já concluída — sem mais ações de status."
+            : status === "faltou"
+              ? "Paciente não compareceu — sem mais ações de status."
+              : "Horário liberado — crie um novo agendamento pra realocá-lo."}
         </p>
       )}
 
