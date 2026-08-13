@@ -4,8 +4,8 @@ import { useState, type ReactNode } from "react";
 import styles from "@/styles/shell.module.css";
 
 export const PATIENT_TABS = [
-  { key: "anamneses", label: "Anamneses" },
   { key: "agendamentos", label: "Agendamentos" },
+  { key: "anamneses", label: "Anamneses" },
   { key: "atestados", label: "Atestados" },
   { key: "prescricoes", label: "Prescrições" },
 ] as const;

@@ -23,7 +23,7 @@ export default async function EditPatientPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { page?: string; rxPage?: string; apPage?: string; tab?: string };
+  searchParams: { page?: string; rxPage?: string; apPage?: string; anPage?: string; tab?: string };
 }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
@@ -38,7 +38,7 @@ export default async function EditPatientPage({
   if (!data) notFound();
   const patient = data as Patient;
 
-  const activeTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "anamneses";
+  const activeTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "agendamentos";
   // Preserva a aba atual nos links de paginação — sem isso, paginar dentro
   // de "Atestados" te devolvia na recarga com a aba "Anamneses" em foco.
   function pageHref(base: string, extra: Record<string, string | number>) {
@@ -89,16 +89,22 @@ export default async function EditPatientPage({
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
   // telefone, que já é a mesma chave usada por `upsertPatientFromContact` pra
   // não duplicar paciente ao iniciar uma anamnese nova.
+  const anamnesesPage = Math.max(1, parseInt(searchParams.anPage ?? "1", 10) || 1);
+  const anFrom = (anamnesesPage - 1) * DOCS_PAGE_SIZE;
+  const anTo = anFrom + DOCS_PAGE_SIZE - 1;
   let anamneses: Anamnesis[] = [];
+  let anamnesesCount = 0;
   let signedAnamnesisIds = new Set<string>();
   if (patient.phone) {
-    const { data: anamnesesData } = await supabase
+    const { data: anamnesesData, count } = await supabase
       .from("anamneses")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("clinic_id", clinic.id)
       .eq("patient_phone", patient.phone)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(anFrom, anTo);
     anamneses = (anamnesesData as Anamnesis[]) ?? [];
+    anamnesesCount = count ?? 0;
 
     if (anamneses.length > 0) {
       const { data: signaturesData } = await supabase
@@ -111,38 +117,49 @@ export default async function EditPatientPage({
       signedAnamnesisIds = new Set((signaturesData ?? []).map((s) => s.anamnesis_id));
     }
   }
+  const anamnesesTotalPages = Math.max(1, Math.ceil(anamnesesCount / DOCS_PAGE_SIZE));
 
   const anamnesesPanel = !patient.phone ? (
     <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra ver as anamneses vinculadas.</div>
   ) : anamneses.length === 0 ? (
     <div className={styles.emptyState}>Nenhuma anamnese registrada pra este telefone ainda.</div>
   ) : (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {anamneses.map((a) => (
-          <tr key={a.id}>
-            <td>{formatBRDate(a.created_at)}</td>
-            <td>
-              {signedAnamnesisIds.has(a.id) ? (
-                <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
-              ) : (
-                <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
-              )}
-            </td>
-            <td>
-              <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
-            </td>
+    <>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Status</th>
+            <th></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {anamneses.map((a) => (
+            <tr key={a.id}>
+              <td>{formatBRDate(a.created_at)}</td>
+              <td>
+                {signedAnamnesisIds.has(a.id) ? (
+                  <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
+                ) : (
+                  <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
+                )}
+              </td>
+              <td>
+                <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination
+        page={anamnesesPage}
+        totalPages={anamnesesTotalPages}
+        count={anamnesesCount}
+        itemLabel="anamnese"
+        itemLabelPlural="anamneses"
+        hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { anPage: p })}
+      />
+    </>
   );
 
   const agendamentosPanel =
