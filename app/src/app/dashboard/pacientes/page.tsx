@@ -6,6 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PatientRowActions } from "@/components/PatientRowActions";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -88,7 +89,12 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
               <tbody>
                 {patients.map((p) => (
                   <ClickableRow key={p.id} href={`/dashboard/pacientes/${p.id}`}>
-                    <td className={styles.rowTitle}>{p.name}</td>
+                    <td className={styles.rowTitle}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <PatientAvatar clinicId={clinic.id} patientId={p.id} name={p.name} size={30} />
+                        {p.name}
+                      </span>
+                    </td>
                     <td data-label="CPF">{p.cpf ?? "—"}</td>
                     <td data-label="WhatsApp">{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
                     <td>
