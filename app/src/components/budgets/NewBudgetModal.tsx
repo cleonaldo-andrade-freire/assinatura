@@ -3,15 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ToothRegionSelect } from "@/components/budgets/ToothRegionSelect";
+import { TreatmentFormModal, type TreatmentFormValues } from "@/components/budgets/TreatmentFormModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { brDateOnly } from "@/lib/date";
-import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
-
-const CUSTOM_TREATMENT_VALUE = "__custom__";
+import nb from "./newBudget.module.css";
 
 const PAYMENT_METHODS = ["Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"];
 
@@ -19,13 +18,8 @@ interface CatalogTable extends PriceTable {
   items: PriceTableItem[];
 }
 
-interface DraftItem {
+interface DraftItem extends TreatmentFormValues {
   key: string;
-  priceTableItemId: string | null;
-  priceTableName: string | null;
-  treatmentName: string;
-  toothRegion: string;
-  price: number;
   selected: boolean;
 }
 
@@ -41,6 +35,12 @@ function installmentOptions(total: number, max = 12): { count: number; label: st
   }));
 }
 
+/**
+ * Modal "Novo orçamento" — só descrição/data, a lista de tratamentos já
+ * adicionados (com total/desconto/parcelamento) e observações. Adicionar ou
+ * editar uma linha de tratamento abre `TreatmentFormModal` por cima (nested)
+ * — mantém este modal enxuto em vez de misturar os dois formulários num só.
+ */
 export function NewBudgetModal({
   open,
   onClose,
@@ -65,13 +65,9 @@ export function NewBudgetModal({
   const [description, setDescription] = useState(`Plano tratamento de ${patientName}`);
   const [budgetDate, setBudgetDate] = useState(brDateOnly());
 
-  const [formPriceTableId, setFormPriceTableId] = useState("");
-  const [formTreatmentId, setFormTreatmentId] = useState("");
-  const [formCustomName, setFormCustomName] = useState("");
-  const [formPrice, setFormPrice] = useState("");
-  const [formToothRegion, setFormToothRegion] = useState("");
-
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [treatmentModalOpen, setTreatmentModalOpen] = useState(false);
+  const [editingItemKey, setEditingItemKey] = useState<string | null>(null);
 
   const [discountType, setDiscountType] = useState<"fixed" | "percent">("fixed");
   const [discountValue, setDiscountValue] = useState("");
@@ -101,11 +97,19 @@ export function NewBudgetModal({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Se o modal de tratamento (nested) está aberto, Esc fecha só ele —
+      // sem isso, os dois modais fechariam juntos e o orçamento perderia
+      // tudo por causa de um Esc que era só pra cancelar a linha.
+      if (treatmentModalOpen) {
+        setTreatmentModalOpen(false);
+        return;
+      }
+      onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, treatmentModalOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,9 +119,6 @@ export function NewBudgetModal({
       document.body.style.overflow = previous;
     };
   }, [open]);
-
-  const selectedTable = catalog.find((t) => t.id === formPriceTableId);
-  const isCustomTreatment = formTreatmentId === CUSTOM_TREATMENT_VALUE;
 
   const totalValue = items.reduce((sum, i) => sum + i.price, 0);
   const selectedValue = items.filter((i) => i.selected).reduce((sum, i) => sum + i.price, 0);
@@ -130,15 +131,14 @@ export function NewBudgetModal({
   const downPayment = adicionarEntrada ? parseMoneyInput(downPaymentValue) : 0;
   const remainingBalance = Math.max(0, total - downPayment);
 
+  const editingItem = editingItemKey ? items.find((i) => i.key === editingItemKey) ?? null : null;
+
   function resetForm() {
     setDescription(`Plano tratamento de ${patientName}`);
     setBudgetDate(brDateOnly());
-    setFormPriceTableId("");
-    setFormTreatmentId("");
-    setFormCustomName("");
-    setFormPrice("");
-    setFormToothRegion("");
     setItems([]);
+    setTreatmentModalOpen(false);
+    setEditingItemKey(null);
     setDiscountType("fixed");
     setDiscountValue("");
     setParcelar(false);
@@ -156,29 +156,24 @@ export function NewBudgetModal({
     onClose();
   }
 
-  function handleAddTreatment() {
-    const price = parseMoneyInput(formPrice);
-    const treatmentName = isCustomTreatment ? formCustomName.trim() : selectedTable?.items.find((i) => i.id === formTreatmentId)?.name ?? "";
-    if (!treatmentName || !formPrice) {
-      push("Preencha plano, tratamento e valor.");
-      return;
+  function openAddTreatment() {
+    setEditingItemKey(null);
+    setTreatmentModalOpen(true);
+  }
+
+  function openEditTreatment(key: string) {
+    setEditingItemKey(key);
+    setTreatmentModalOpen(true);
+  }
+
+  function handleTreatmentSave(values: TreatmentFormValues) {
+    if (editingItemKey) {
+      setItems((prev) => prev.map((i) => (i.key === editingItemKey ? { ...i, ...values } : i)));
+    } else {
+      setItems((prev) => [...prev, { ...values, key: crypto.randomUUID(), selected: true }]);
     }
-    setItems((prev) => [
-      ...prev,
-      {
-        key: crypto.randomUUID(),
-        priceTableItemId: isCustomTreatment ? null : formTreatmentId || null,
-        priceTableName: selectedTable?.name ?? null,
-        treatmentName,
-        toothRegion: formToothRegion,
-        price,
-        selected: true,
-      },
-    ]);
-    setFormTreatmentId("");
-    setFormCustomName("");
-    setFormPrice("");
-    setFormToothRegion("");
+    setTreatmentModalOpen(false);
+    setEditingItemKey(null);
   }
 
   function toggleItemSelected(key: string) {
@@ -243,7 +238,7 @@ export function NewBudgetModal({
 
   return createPortal(
     <div className={uiStyles.overlay} onClick={handleClose}>
-      <div className={`${uiStyles.dialog} ${uiStyles.dialogExtraWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Novo orçamento</h3>
           <button type="button" className={uiStyles.toastClose} onClick={handleClose} aria-label="Fechar">
@@ -268,116 +263,40 @@ export function NewBudgetModal({
 
           <div>
             <p className={styles.fgroupLabel} style={{ marginBottom: 10 }}>
-              Adicionar tratamento
+              Tratamentos
             </p>
-            <div className={styles.formRow}>
-              <div className={styles.field} style={{ flex: 1 }}>
-                <label className={styles.label}>Plano*</label>
-                <select
-                  className={styles.select}
-                  value={formPriceTableId}
-                  onChange={(e) => {
-                    setFormPriceTableId(e.target.value);
-                    setFormTreatmentId("");
-                    setFormPrice("");
-                  }}
-                  disabled={loadingCatalog}
-                >
-                  <option value="">Selecione…</option>
-                  {catalog.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.field} style={{ flex: 2.5 }}>
-                <label className={styles.label}>Tratamento*</label>
-                <select
-                  className={styles.select}
-                  value={formTreatmentId}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setFormTreatmentId(v);
-                    if (v === CUSTOM_TREATMENT_VALUE) {
-                      setFormPrice("");
-                    } else {
-                      const item = selectedTable?.items.find((i) => i.id === v);
-                      setFormPrice(item ? formatMoneyDisplay(item.price) : "");
-                    }
-                  }}
-                  disabled={!formPriceTableId}
-                >
-                  <option value="">Selecione…</option>
-                  {selectedTable?.items.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
-                </select>
-              </div>
-              <div className={styles.field} style={{ flex: 1 }}>
-                <label className={styles.label}>Valor*</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className={styles.input}
-                  value={formPrice}
-                  onChange={(e) => setFormPrice(formatMoneyInput(e.target.value))}
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
 
-            {isCustomTreatment && (
-              <div className={styles.field} style={{ marginTop: 10 }}>
-                <label className={styles.label}>Nome do tratamento*</label>
-                <input type="text" className={styles.input} value={formCustomName} onChange={(e) => setFormCustomName(e.target.value)} />
+            {items.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                {items.map((item) => (
+                  <div key={item.key} className={nb.itemRow}>
+                    <input
+                      type="checkbox"
+                      checked={item.selected}
+                      onChange={() => toggleItemSelected(item.key)}
+                      title={item.selected ? "Incluído no total" : "Fora do total"}
+                      style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <button type="button" className={nb.itemName} onClick={() => openEditTreatment(item.key)}>
+                        {item.toothRegion ? `${item.toothRegion} — ` : ""}
+                        {item.treatmentName}
+                      </button>
+                      {item.priceTableName && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{item.priceTableName}</div>}
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(item.price)}</div>
+                    <button type="button" onClick={() => removeItem(item.key)} className={nb.removeBtn} aria-label="Remover tratamento" title="Remover">
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
-            <div style={{ marginTop: 10 }}>
-              <ToothRegionSelect value={formToothRegion} onChange={setFormToothRegion} />
-            </div>
-
-            <button type="button" onClick={handleAddTreatment} className={`${styles.btn} ${styles.btnGhost}`} style={{ marginTop: 12, width: "100%", justifyContent: "center" }}>
+            <button type="button" onClick={openAddTreatment} className={nb.addTreatmentBtn}>
               + Adicionar tratamento
             </button>
           </div>
-
-          {items.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {items.map((item) => (
-                <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--line-soft)" }}>
-                  <input
-                    type="checkbox"
-                    checked={item.selected}
-                    onChange={() => toggleItemSelected(item.key)}
-                    style={{ width: 18, height: 18, accentColor: "var(--brand)" }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-                      {item.toothRegion ? `${item.toothRegion} — ` : ""}
-                      {item.treatmentName}
-                    </div>
-                    {item.priceTableName && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{item.priceTableName}</div>}
-                  </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{formatMoney(item.price)}</div>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    className={styles.toastClose}
-                    aria-label="Remover"
-                    title="Remover"
-                    style={{ color: "var(--danger)" }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 320, fontSize: 13.5 }}>
@@ -534,6 +453,19 @@ export function NewBudgetModal({
           </button>
         </div>
       </div>
+
+      <TreatmentFormModal
+        open={treatmentModalOpen}
+        onClose={() => {
+          setTreatmentModalOpen(false);
+          setEditingItemKey(null);
+        }}
+        onSave={handleTreatmentSave}
+        catalog={catalog}
+        loadingCatalog={loadingCatalog}
+        initial={editingItem}
+      />
+
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>,
     document.body
