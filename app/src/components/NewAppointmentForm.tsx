@@ -229,7 +229,12 @@ export function NewAppointmentForm({
   );
 
   const submitButton = (
-    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending} style={{ width: "100%" }}>
+    <button
+      className={`${styles.btn} ${styles.btnPrimary}`}
+      type="submit"
+      disabled={sending}
+      style={{ width: "100%", justifyContent: "center" }}
+    >
       {sending ? "Agendando…" : "Criar agendamento"}
     </button>
   );
