@@ -38,14 +38,20 @@ export function AppointmentDetailBody({
   clinicId,
   appointment: a,
   events,
+  compact,
 }: {
   clinicId: string;
   appointment: Appointment;
   events: AppointmentEvent[];
+  /** Usado dentro do modal — o wrapper lá já espaça os cards por `gap`, então
+   * cancela o `margin-bottom` próprio do `.panel` (senão soma os dois e
+   * sobra espaço em branco entre os cards). */
+  compact?: boolean;
 }) {
+  const panelStyle = compact ? { marginBottom: 0 } : undefined;
   return (
     <>
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Agendamento</p>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -80,7 +86,7 @@ export function AppointmentDetailBody({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Ações</p>
         </div>
@@ -96,7 +102,7 @@ export function AppointmentDetailBody({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Histórico</p>
         </div>

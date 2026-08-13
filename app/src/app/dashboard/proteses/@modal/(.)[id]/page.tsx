@@ -35,7 +35,7 @@ export default async function ProsthesisOrderDetailModal({ params }: { params: {
 
   return (
     <DetailModalShell title={o.description} subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}>
-      <ProsthesisOrderDetailBody clinicId={clinic.id} order={o} events={events} />
+      <ProsthesisOrderDetailBody clinicId={clinic.id} order={o} events={events} compact />
     </DetailModalShell>
   );
 }

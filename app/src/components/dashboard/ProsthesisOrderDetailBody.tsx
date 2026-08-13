@@ -25,14 +25,20 @@ export function ProsthesisOrderDetailBody({
   clinicId,
   order: o,
   events,
+  compact,
 }: {
   clinicId: string;
   order: ProsthesisOrder;
   events: ProsthesisOrderEvent[];
+  /** Usado dentro do modal — o wrapper lá já espaça os cards por `gap`, então
+   * cancela o `margin-bottom` próprio do `.panel` (senão soma os dois e
+   * sobra espaço em branco entre os cards). */
+  compact?: boolean;
 }) {
+  const panelStyle = compact ? { marginBottom: 0 } : undefined;
   return (
     <>
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Serviço</p>
         </div>
@@ -57,7 +63,7 @@ export function ProsthesisOrderDetailBody({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Mover de estágio</p>
         </div>
@@ -66,7 +72,7 @@ export function ProsthesisOrderDetailBody({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Histórico</p>
         </div>

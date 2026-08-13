@@ -46,6 +46,17 @@ export function NewAppointmentModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Sem travar o scroll do body, rolar a página por trás do overlay (fixed)
+  // vaza pro conteúdo de trás em vez de rolar o modal.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(

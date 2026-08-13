@@ -30,6 +30,17 @@ export function DetailModalShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [router]);
 
+  // Sem travar o scroll do body, rolar a página por trás do overlay (fixed)
+  // "vaza" pro conteúdo de trás em vez de rolar o modal — é exatamente o
+  // "mexe a tela de fundo e não o modal" reportado.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return (
     <div className={uiStyles.overlay} onClick={() => router.back()}>
       <div
@@ -47,7 +58,7 @@ export function DetailModalShell({
             ×
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 6 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>
           {children}
         </div>
       </div>

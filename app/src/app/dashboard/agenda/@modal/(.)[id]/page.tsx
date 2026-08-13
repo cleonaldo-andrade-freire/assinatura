@@ -34,7 +34,7 @@ export default async function AppointmentDetailModal({ params }: { params: { id:
 
   return (
     <DetailModalShell title="Agendamento">
-      <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} />
+      <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} compact />
     </DetailModalShell>
   );
 }
