@@ -4,7 +4,14 @@ import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_SYMBOL, buildContinuationMap, buildDaySlotTimes, slotKey } from "@/lib/appointments";
+import {
+  APPOINTMENT_SLOT_MINUTES,
+  APPOINTMENT_STATUS_CLASS,
+  APPOINTMENT_STATUS_SYMBOL,
+  buildContinuationMap,
+  buildDaySlotTimes,
+  slotKey,
+} from "@/lib/appointments";
 import { formatBRDate, formatBRTime } from "@/lib/date";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import type { Appointment } from "@/lib/database.types";
@@ -12,8 +19,9 @@ import shellStyles from "@/styles/shell.module.css";
 
 const WEEKDAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
-// Só faz sentido arrastar pra remarcar um agendamento que ainda vai
-// acontecer — atendido/cancelado/falta ficam parados no lugar.
+// Só faz sentido arrastar (remarcar) ou redimensionar (mudar duração) um
+// agendamento que ainda vai acontecer — atendido/cancelado/falta ficam
+// parados no lugar.
 const DRAGGABLE_STATUSES = new Set(["agendado", "confirmado"]);
 
 interface Slot {
@@ -66,6 +74,13 @@ export function AgendaWeekGrid({
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
 
+  // Redimensionar arrastando a borda inferior do card: só muda duração
+  // (nunca scheduled_at) — não é uma remarcação. resizePreviewSlots é o
+  // tamanho "ao vivo" enquanto o ponteiro está sendo arrastado, antes de
+  // soltar e confirmar no servidor.
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [resizePreviewSlots, setResizePreviewSlots] = useState<number | null>(null);
+
   async function handleDrop(appointmentId: string, newTime: string) {
     setDragOverKey(null);
     setMoving(true);
@@ -85,6 +100,78 @@ export function AgendaWeekGrid({
     } finally {
       setMoving(false);
     }
+  }
+
+  async function handleResizeCommit(appointmentId: string, durationMinutes: number) {
+    setMoving(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration_minutes: durationMinutes }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || data?.error || "Falha ao ajustar a duração — tente pela tela de detalhe.");
+        return;
+      }
+      push("Duração ajustada.", "success");
+      router.refresh();
+    } finally {
+      setMoving(false);
+    }
+  }
+
+  /** Quantos slots de 30min dá pra esticar a partir de `startSlotIndex` no dia
+   * `d`, sem invadir o início de outro agendamento — pra que o "solto" do
+   * redimensionamento nunca proponha um valor que o servidor vai recusar por
+   * conflito de horário. */
+  function maxExtendableSlots(d: string, startSlotIndex: number): number {
+    const times = dayTimes.get(d)!;
+    let count = 1;
+    for (let i = startSlotIndex + 1; i < times.length; i++) {
+      const occupiedByOther = (bySlot.get(times[i])?.length ?? 0) > 0;
+      if (occupiedByOther) break;
+      count++;
+    }
+    return count;
+  }
+
+  function handleResizeStart(
+    e: React.PointerEvent,
+    appointment: Appointment,
+    originalSlots: number,
+    maxSlots: number
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const cellEl = (e.currentTarget as HTMLElement).parentElement;
+    const slotPx = (cellEl?.offsetHeight ?? 44 * originalSlots) / originalSlots;
+    setResizingId(appointment.id);
+    setResizePreviewSlots(originalSlots);
+
+    function clamp(slots: number) {
+      return Math.min(maxSlots, Math.max(1, slots));
+    }
+
+    function onMove(ev: PointerEvent) {
+      const deltaSlots = Math.round((ev.clientY - startY) / slotPx);
+      setResizePreviewSlots(clamp(originalSlots + deltaSlots));
+    }
+    function onUp(ev: PointerEvent) {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const deltaSlots = Math.round((ev.clientY - startY) / slotPx);
+      const finalSlots = clamp(originalSlots + deltaSlots);
+      setResizingId(null);
+      setResizePreviewSlots(null);
+      if (finalSlots !== originalSlots) {
+        handleResizeCommit(appointment.id, finalSlots * APPOINTMENT_SLOT_MINUTES);
+      }
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   }
 
   return (
@@ -109,7 +196,16 @@ export function AgendaWeekGrid({
                 const slot = dayTimes.get(d)![slotIndex];
                 const items = bySlot.get(slot) ?? [];
                 const continuedBy = items.length === 0 ? continuationSlots.get(slot) : undefined;
-                const empty = items.length === 0 && !continuedBy;
+
+                // Célula coberta por um agendamento que começou numa linha
+                // anterior — não renderiza nada aqui: o card que começou
+                // antes ocupa esse espaço via `grid-row: span`, cobrindo
+                // esta célula visualmente (auto-placement do CSS Grid pula
+                // células já reservadas por um span, então as colunas
+                // seguintes continuam caindo no lugar certo).
+                if (continuedBy) return null;
+
+                const empty = items.length === 0;
                 // Horário que já passou não pode virar agendamento novo nem
                 // receber um card arrastado — mesma regra do servidor, só que
                 // aqui evita nem oferecer a interação.
@@ -117,6 +213,22 @@ export function AgendaWeekGrid({
                 const interactive = empty && !isPast;
                 const cellKey = `${d}-${slotIndex}`;
                 const droppable = interactive && draggingId && !moving;
+
+                // Card único ocupando a célula: pode esticar pra baixo
+                // representando a duração real (60min = 2 slots, etc.) e
+                // ganha a alça de redimensionar. Duas consultas exatamente
+                // no mesmo horário (não deveria acontecer — o banco recusa
+                // sobreposição pro mesmo profissional) caem no fallback
+                // empilhado de sempre, sem span.
+                const single = items.length === 1 ? items[0] : null;
+                const maxSlots = single ? maxExtendableSlots(d, slotIndex) : 1;
+                const naturalSlots = single
+                  ? Math.min(maxSlots, Math.max(1, Math.round(single.duration_minutes / APPOINTMENT_SLOT_MINUTES)))
+                  : 1;
+                const isResizingThis = single ? resizingId === single.id : false;
+                const spanSlots = isResizingThis && resizePreviewSlots ? resizePreviewSlots : naturalSlots;
+                const resizable = single ? DRAGGABLE_STATUSES.has(single.status) && !moving : false;
+
                 return (
                   <div
                     key={cellKey}
@@ -155,50 +267,84 @@ export function AgendaWeekGrid({
                         : undefined
                     }
                     style={{
+                      gridRow: spanSlots > 1 ? `span ${spanSlots}` : undefined,
+                      position: single ? "relative" : undefined,
+                      zIndex: isResizingThis ? 2 : undefined,
                       cursor: interactive && !draggingId ? "pointer" : undefined,
                       background: dragOverKey === cellKey ? "var(--brand-tint)" : undefined,
                       outline: dragOverKey === cellKey ? "2px dashed var(--brand)" : undefined,
                       outlineOffset: dragOverKey === cellKey ? "-2px" : undefined,
                     }}
                   >
-                    {items.map((a) => {
-                      const draggable = DRAGGABLE_STATUSES.has(a.status) && !moving;
-                      return (
-                        <Link
-                          key={a.id}
-                          href={`/dashboard/agenda/${a.id}`}
-                          draggable={draggable}
-                          onDragStart={
-                            draggable
-                              ? (e) => {
-                                  e.dataTransfer.setData("text/plain", a.id);
-                                  e.dataTransfer.effectAllowed = "move";
-                                  setDraggingId(a.id);
-                                }
-                              : undefined
-                          }
-                          onDragEnd={() => {
-                            setDraggingId(null);
-                            setDragOverKey(null);
-                          }}
-                          className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
-                          title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}${draggable ? " (arraste pra remarcar)" : ""}`}
-                          style={draggable ? { cursor: "grab" } : undefined}
-                        >
-                          {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
-                        </Link>
-                      );
-                    })}
-                    {continuedBy && (
-                      <Link
-                        href={`/dashboard/agenda/${continuedBy.id}`}
-                        className={shellStyles.agendaWeekChip}
-                        style={{ color: "var(--ink-faint)", background: "var(--surface-sunken)" }}
-                        title={`${continuedBy.patient_name} — continuação`}
-                      >
-                        ↳ continua
-                      </Link>
-                    )}
+                    {single &&
+                      (() => {
+                        const a = single;
+                        const draggable = DRAGGABLE_STATUSES.has(a.status) && !moving && !isResizingThis;
+                        return (
+                          <>
+                            <Link
+                              href={`/dashboard/agenda/${a.id}`}
+                              draggable={draggable}
+                              onDragStart={
+                                draggable
+                                  ? (e) => {
+                                      e.dataTransfer.setData("text/plain", a.id);
+                                      e.dataTransfer.effectAllowed = "move";
+                                      setDraggingId(a.id);
+                                    }
+                                  : undefined
+                              }
+                              onDragEnd={() => {
+                                setDraggingId(null);
+                                setDragOverKey(null);
+                              }}
+                              className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
+                              title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}${draggable ? " (arraste pra remarcar, borda inferior pra mudar duração)" : ""}`}
+                              style={{ display: "block", height: "100%", cursor: draggable ? "grab" : undefined }}
+                            >
+                              {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
+                            </Link>
+                            {resizable && (
+                              <div
+                                className={shellStyles.agendaResizeHandle}
+                                draggable={false}
+                                onDragStart={(e) => e.preventDefault()}
+                                onPointerDown={(e) => handleResizeStart(e, a, naturalSlots, maxSlots)}
+                                title="Arraste pra mudar a duração"
+                              />
+                            )}
+                          </>
+                        );
+                      })()}
+                    {items.length > 1 &&
+                      items.map((a) => {
+                        const draggable = DRAGGABLE_STATUSES.has(a.status) && !moving;
+                        return (
+                          <Link
+                            key={a.id}
+                            href={`/dashboard/agenda/${a.id}`}
+                            draggable={draggable}
+                            onDragStart={
+                              draggable
+                                ? (e) => {
+                                    e.dataTransfer.setData("text/plain", a.id);
+                                    e.dataTransfer.effectAllowed = "move";
+                                    setDraggingId(a.id);
+                                  }
+                                : undefined
+                            }
+                            onDragEnd={() => {
+                              setDraggingId(null);
+                              setDragOverKey(null);
+                            }}
+                            className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
+                            title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgência" : ""}`}
+                            style={draggable ? { cursor: "grab" } : undefined}
+                          >
+                            {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
+                          </Link>
+                        );
+                      })}
                   </div>
                 );
               })}

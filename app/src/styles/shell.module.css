@@ -1108,6 +1108,24 @@
   white-space: nowrap;
 }
 
+/* Alça de redimensionar (borda inferior do card, arrasta pra mudar a
+   duração) — só aparece de fato ao passar o mouse, pra não poluir a grade
+   com uma faixa visível em todo agendamento o tempo todo. */
+.agendaResizeHandle {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 7px;
+  cursor: ns-resize;
+  border-radius: 0 0 4px 4px;
+  touch-action: none;
+}
+
+.agendaResizeHandle:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+
 /* ---- mensal (desktop) ---- */
 
 .agendaMonthGrid {
