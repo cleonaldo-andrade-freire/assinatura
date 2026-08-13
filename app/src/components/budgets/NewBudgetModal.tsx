@@ -265,9 +265,6 @@ export function NewBudgetModal({
               <input type="date" className={styles.input} value={budgetDate} onChange={(e) => setBudgetDate(e.target.value)} required />
             </div>
           </div>
-          <p className={styles.hint} style={{ margin: "-10px 0 0" }}>
-            Responsável: {defaultResponsibleName} (dentista responsável técnico da clínica)
-          </p>
 
           <div>
             <p className={styles.fgroupLabel} style={{ marginBottom: 10 }}>

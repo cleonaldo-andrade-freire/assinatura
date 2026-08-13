@@ -59,7 +59,12 @@ export function BudgetRowActions({
   return (
     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
       {hasPdf && (
-        <a href={`/api/clinics/${clinicId}/budgets/${budgetId}/pdf`} target="_blank" rel="noreferrer">
+        <a
+          href={`/api/clinics/${clinicId}/budgets/${budgetId}/pdf`}
+          target="_blank"
+          rel="noreferrer"
+          className={`${styles.btn} ${styles.btnGhost}`}
+        >
           Ver PDF
         </a>
       )}

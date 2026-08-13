@@ -84,8 +84,7 @@ export async function buildBudgetPdf(
     const priceText = formatMoney(item.price);
     const priceWidth = font.widthOfTextAtSize(priceText, 11);
     page.drawText(priceText, { x: PAGE_WIDTH - MARGIN - priceWidth, y: y + 15, size: 11, font, color: rgb(0.08, 0.08, 0.08) });
-    page.drawText(`Dr(a) ${item.dentist_name}`, { x: MARGIN, y, size: 9.5, font, color: rgb(0.4, 0.4, 0.4) });
-    y -= 16;
+    y -= 8;
   }
 
   const selectedValue = selectedItems.reduce((sum, i) => sum + i.price, 0);
@@ -107,7 +106,6 @@ export async function buildBudgetPdf(
     y -= big ? 20 : 16;
   }
 
-  totalRow("Valor selecionado", formatMoney(selectedValue));
   if (discountAmount > 0) totalRow("Desconto", `- ${formatMoney(discountAmount)}`);
   totalRow("Total", formatMoney(total), true);
 
