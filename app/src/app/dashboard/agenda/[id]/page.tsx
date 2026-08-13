@@ -94,7 +94,14 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
           <p className={styles.panelHeaderTitle}>Ações</p>
         </div>
         <div className={styles.panelBody}>
-          <AppointmentActions clinicId={clinic.id} appointmentId={a.id} status={a.status} urgent={a.urgent} scheduledAt={a.scheduled_at} />
+          <AppointmentActions
+            clinicId={clinic.id}
+            appointmentId={a.id}
+            status={a.status}
+            urgent={a.urgent}
+            scheduledAt={a.scheduled_at}
+            durationMinutes={a.duration_minutes}
+          />
         </div>
       </div>
 

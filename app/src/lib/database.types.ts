@@ -268,6 +268,8 @@ export interface Appointment {
   professional_name: string;
   notes: string | null;
   confirm_token: string;
+  reminder_24h_sent_at: string | null;
+  reminder_final_sent_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -3,9 +3,18 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
-import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
+import { AppointmentStatusBadge, NeedsFollowUpBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
-import { APPOINTMENT_STATUS_DOT_COLOR, buildDaySlotTimes, slotKey, summarizeAppointmentsByDay } from "@/lib/appointments";
+import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
+import { AgendaLegend } from "@/components/AgendaLegend";
+import {
+  APPOINTMENT_STATUS_DOT_COLOR,
+  buildContinuationMap,
+  buildDaySlotTimes,
+  needsManualFollowUp,
+  slotKey,
+  summarizeAppointmentsByDay,
+} from "@/lib/appointments";
 import {
   addDaysToDateStr,
   brDateOnly,
@@ -71,6 +80,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
   }
 
   const daySlots = buildDaySlotTimes(date);
+  const continuationSlots = buildContinuationMap(appointments, daySlots);
   const prevDay = addDaysToDateStr(date, -1);
   const nextDay = addDaysToDateStr(date, 1);
   const prevWeek = addDaysToDateStr(weekStart, -7);
@@ -111,6 +121,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
         </div>
       }
     >
+      <AgendaRealtimeRefresh clinicId={clinic.id} />
+
       {/* ---- diária, só visível no celular ---- */}
       <div className={styles.agendaDayView}>
         <div className={styles.agendaNav}>
@@ -130,15 +142,12 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
           <div className={styles.panelBody}>
             {daySlots.map((slot) => {
               const items = bySlot.get(slot) ?? [];
+              const continuedBy = continuationSlots.get(slot);
               return (
                 <div key={slot} className={styles.agendaSlot}>
                   <div className={styles.agendaSlotTime}>{formatBRTime(slot)}</div>
                   <div className={styles.agendaSlotBody}>
-                    {items.length === 0 ? (
-                      <Link href={`/dashboard/agenda/new?date=${date}&time=${encodeURIComponent(slot)}`} className={styles.agendaEmptySlot}>
-                        vago — toque pra agendar
-                      </Link>
-                    ) : (
+                    {items.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {items.map((a) => (
                           <Link
@@ -150,10 +159,24 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               <AppointmentStatusBadge status={a.status} />
                               {a.urgent && <UrgentBadge />}
+                              {needsManualFollowUp(a) && <NeedsFollowUpBadge />}
+                              <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{a.duration_minutes} min</span>
                             </div>
                           </Link>
                         ))}
                       </div>
+                    ) : continuedBy ? (
+                      // Slot ocupado por uma consulta mais longa que começou antes
+                      // (ex.: 60min às 9h cobre também o slot das 9h30) — não é
+                      // "vago" de verdade, então não oferece criar outro agendamento
+                      // aqui em cima.
+                      <Link href={`/dashboard/agenda/${continuedBy.id}`} className={styles.agendaContinuation}>
+                        ↳ {continuedBy.patient_name} (continuação)
+                      </Link>
+                    ) : (
+                      <Link href={`/dashboard/agenda/new?date=${date}&time=${encodeURIComponent(slot)}`} className={styles.agendaEmptySlot}>
+                        vago — toque pra agendar
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -165,6 +188,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
 
       {/* ---- semanal ou mensal, só visível em telas ≥860px ---- */}
       <div className={styles.agendaDesktopView}>
+        <AgendaLegend />
         {view === "week" ? (
           <>
             <div className={styles.agendaNav}>

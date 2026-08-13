@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brDateOnly } from "@/lib/date";
+import { brPhoneVariants } from "@/lib/validation";
 import type { Appointment, AppointmentEventActor, AppointmentStatus } from "@/lib/database.types";
 
 export const APPOINTMENT_SLOT_MINUTES = 30;
@@ -81,6 +82,20 @@ export const APPOINTMENT_STATUS_CLASS: Record<AppointmentStatus, string> = {
   atendido: "statusInfo",
 };
 
+/**
+ * Símbolo compacto por status — usado onde texto por extenso não cabe (chip
+ * da grade semanal) sem deixar a informação só na cor. Junto com a legenda
+ * da agenda, cobre o mesmo requisito de "nunca só cor" que a versão mobile
+ * já cumpre com o rótulo por extenso.
+ */
+export const APPOINTMENT_STATUS_SYMBOL: Record<AppointmentStatus, string> = {
+  agendado: "○",
+  confirmado: "✓",
+  cancelado_paciente: "✕",
+  cancelado_dentista: "✕",
+  atendido: "●",
+};
+
 /** Pra desenhar os pontinhos de resumo da célula do mês — mesmas 4 cores de `APPOINTMENT_STATUS_CLASS`, só que como valor de `background` em vez de `color`. */
 export const APPOINTMENT_STATUS_DOT_COLOR: Record<AppointmentStatus, string> = {
   agendado: "var(--warn)",
@@ -89,6 +104,19 @@ export const APPOINTMENT_STATUS_DOT_COLOR: Record<AppointmentStatus, string> = {
   cancelado_dentista: "var(--danger)",
   atendido: "var(--sign)",
 };
+
+/**
+ * Ainda "agendado" (sem resposta do paciente) e a consulta é daqui a menos
+ * de `withinHours` — é o gatilho visual de "sem resposta" pra recepção
+ * poder ligar manualmente como último recurso, pedido explícito do escopo
+ * de lembrete escalonado. Não é um campo novo no banco: é derivado direto
+ * de status + horário, então não precisa recalcular/expirar nada.
+ */
+export function needsManualFollowUp(a: Pick<Appointment, "status" | "scheduled_at">, withinHours = 4): boolean {
+  if (a.status !== "agendado") return false;
+  const hoursUntil = (new Date(a.scheduled_at).getTime() - Date.now()) / 3_600_000;
+  return hoursUntil >= 0 && hoursUntil <= withinHours;
+}
 
 /** Status que liberam o horário pra realocação — não entram na exclusão de sobreposição no banco (ver migration 022). */
 export const FREED_STATUSES: AppointmentStatus[] = ["cancelado_paciente", "cancelado_dentista"];
@@ -104,6 +132,29 @@ export function appointmentEndsAt(scheduledAt: string, durationMinutes: number):
 /** Duas faixas [aStart,aEnd) e [bStart,bEnd) se sobrepõem sse aStart < bEnd e bStart < aEnd. */
 export function rangesOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+}
+
+/**
+ * Pra cada slot de 30min da grade que é "continuação" de um agendamento mais
+ * longo (não o próprio horário de início dele), aponta qual agendamento —
+ * sem isso, uma consulta de 60min marcada às 9h deixava o slot das 9h30
+ * aparecendo como "vago" (o horário de início é o único que bate com
+ * `slotKey`), quando na prática já está ocupado; o backend recusaria um
+ * segundo agendamento ali, mas a tela mentia antes disso acontecer.
+ * Agendamentos cancelados não contam — cancelar libera o horário de verdade.
+ */
+export function buildContinuationMap(appointments: Appointment[], slots: string[]): Map<string, Appointment> {
+  const covered = new Map<string, Appointment>();
+  for (const a of appointments) {
+    if (isCancelled(a.status)) continue;
+    const start = new Date(a.scheduled_at).getTime();
+    const end = appointmentEndsAt(a.scheduled_at, a.duration_minutes).getTime();
+    for (const s of slots) {
+      const t = new Date(s).getTime();
+      if (t > start && t < end) covered.set(s, a);
+    }
+  }
+  return covered;
 }
 
 interface OverlapCheckInput {
@@ -145,6 +196,31 @@ export async function findOverlappingAppointment(
     candidates.find((a) => rangesOverlap(start, end, new Date(a.scheduled_at), appointmentEndsAt(a.scheduled_at, a.duration_minutes))) ??
     null
   );
+}
+
+/**
+ * O agendamento em aberto mais próximo pra um telefone — usado pelo webhook
+ * pra decidir se uma resposta em texto livre ("confirmar"/"cancelar") deve
+ * ser interpretada como resposta de agendamento. Só considera `agendado`
+ * (já confirmado/cancelado/atendido não precisa mais de resposta) e só
+ * consultas futuras (uma passada não faz sentido "confirmar" mais).
+ */
+export async function findPendingAppointmentForPhone(
+  supabase: SupabaseClient,
+  clinicId: string,
+  phone: string
+): Promise<Appointment | null> {
+  const { data } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .eq("status", "agendado")
+    .in("patient_phone", brPhoneVariants(phone))
+    .gte("scheduled_at", new Date().toISOString())
+    .order("scheduled_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as Appointment) ?? null;
 }
 
 export async function recordAppointmentEvent(

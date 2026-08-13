@@ -5,6 +5,8 @@ import { advanceConversation, formatQuestionPrompt } from "@/lib/conversationEng
 import { createAnamnesis } from "@/lib/anamnesis";
 import { brPhoneVariants } from "@/lib/validation";
 import { chargeOverageIfNeeded } from "@/lib/usage";
+import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
+import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import type { Conversation, Question } from "@/lib/database.types";
 
 /**
@@ -49,9 +51,31 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .maybeSingle();
 
   if (!conversation) {
-    // Nenhuma anamnese em andamento pra esse número — não é uma resposta que esperávamos.
+    // Nenhuma anamnese em andamento pra esse número — antes de desistir do
+    // evento, checa se é uma resposta de confirmação de agendamento (canal
+    // alternativo ao link, ver lib/appointmentNotifications.ts).
+    const pendingAppointment = await findPendingAppointmentForPhone(supabase, clinic.id, inbound.phone);
+    if (pendingAppointment) {
+      const action = matchConfirmCancel(inbound.text);
+      if (action) {
+        console.log(
+          `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} appointment=${pendingAppointment.id} resposta="${action}" via texto livre`
+        );
+        await processAppointmentResponse(supabase, clinic, pendingAppointment, action, "paciente");
+        return NextResponse.json({ ok: true });
+      }
+      // Tem agendamento pendente mas o texto não deu pra interpretar como
+      // confirmar/cancelar — orienta a usar o link, que é sempre inequívoco.
+      await sendText(
+        clinic,
+        inbound.phone,
+        `Não entendi. Pra confirmar ou cancelar sua consulta, toque aqui: ${process.env.NEXT_PUBLIC_APP_URL}/confirmacao/${pendingAppointment.confirm_token}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     console.log(
-      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: nenhuma conversa ativa para o telefone ${inbound.phone}`
+      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: nenhuma conversa ativa nem agendamento pendente para o telefone ${inbound.phone}`
     );
     return NextResponse.json({ ok: true });
   }

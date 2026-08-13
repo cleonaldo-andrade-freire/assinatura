@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap, slotKey, summarizeAppointmentsByDay } from "./appointments";
+import {
+  appointmentEndsAt,
+  buildContinuationMap,
+  buildDaySlotTimes,
+  isCancelled,
+  rangesOverlap,
+  slotKey,
+  summarizeAppointmentsByDay,
+} from "./appointments";
 import type { Appointment } from "./database.types";
 
 function fakeAppointment(overrides: Partial<Appointment>): Appointment {
@@ -16,6 +24,8 @@ function fakeAppointment(overrides: Partial<Appointment>): Appointment {
     professional_name: "Dra. Exemplo",
     notes: null,
     confirm_token: crypto.randomUUID(),
+    reminder_24h_sent_at: null,
+    reminder_final_sent_at: null,
     created_by: null,
     created_at: "2026-08-01T00:00:00+00:00",
     updated_at: "2026-08-01T00:00:00+00:00",
@@ -161,5 +171,27 @@ describe("rangesOverlap", () => {
 
   it("não detecta sobreposição em horários totalmente distintos", () => {
     expect(rangesOverlap(slot(9), slot(9, 30), slot(14), slot(14, 30))).toBe(false);
+  });
+});
+
+describe("buildContinuationMap", () => {
+  const slots = buildDaySlotTimes("2026-08-12", 8, 12);
+
+  it("marca os slots de continuação de uma consulta de 60min, sem marcar o próprio horário de início", () => {
+    const appt = fakeAppointment({ scheduled_at: slots[0], duration_minutes: 60 });
+    const covered = buildContinuationMap([appt], slots);
+    expect(covered.has(slots[0])).toBe(false); // início — já tratado via bySlot, não é "continuação"
+    expect(covered.get(slots[1])).toBe(appt); // 30min depois — coberto
+    expect(covered.has(slots[2])).toBe(false); // 60min depois — já fora da consulta
+  });
+
+  it("uma consulta de 30min (padrão) não cobre nenhum slot além do próprio início", () => {
+    const appt = fakeAppointment({ scheduled_at: slots[0], duration_minutes: 30 });
+    expect(buildContinuationMap([appt], slots).size).toBe(0);
+  });
+
+  it("agendamento cancelado não ocupa slot nenhum — o horário deve ficar livre pra realocação", () => {
+    const appt = fakeAppointment({ scheduled_at: slots[0], duration_minutes: 90, status: "cancelado_paciente" });
+    expect(buildContinuationMap([appt], slots).size).toBe(0);
   });
 });

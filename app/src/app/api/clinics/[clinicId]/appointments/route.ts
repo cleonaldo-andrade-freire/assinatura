@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isValidBRPhone } from "@/lib/validation";
 import { findOverlappingAppointment, recordAppointmentEvent, APPOINTMENT_SLOT_MINUTES } from "@/lib/appointments";
+import { sendAppointmentRequest } from "@/lib/appointmentNotifications";
 
 const bodySchema = z.object({
   scheduled_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), { message: "data/hora inválida" }),
@@ -110,6 +111,14 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     toStatus: "agendado",
     actor: "recepcao",
   });
+
+  // Best-effort — mesmo padrão do resto do app (ex.: notifyClinicSigned):
+  // uma falha de WhatsApp não pode impedir o agendamento de ser criado.
+  try {
+    await sendAppointmentRequest(clinic, appointment);
+  } catch (err) {
+    console.error("Falha ao enviar confirmação de agendamento por WhatsApp:", err);
+  }
 
   return NextResponse.json({ appointment }, { status: 201 });
 }

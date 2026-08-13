@@ -15,6 +15,8 @@ interface PatientSuggestion {
   phone: string | null;
 }
 
+const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
+
 export function NewAppointmentForm({
   clinicId,
   professionalName,
@@ -45,6 +47,7 @@ export function NewAppointmentForm({
 
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime ?? "");
+  const [duration, setDuration] = useState(30);
   const [urgent, setUrgent] = useState(false);
   const [notes, setNotes] = useState("");
 
@@ -108,6 +111,7 @@ export function NewAppointmentForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scheduled_at: time,
+          duration_minutes: duration,
           professional_name: professionalName,
           patient_id: patientId ?? undefined,
           patient_name: patientName.trim(),
@@ -252,6 +256,25 @@ export function NewAppointmentForm({
               </select>
               {showErrors && !time && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>Escolha um horário.</div>}
             </div>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="duration" className={styles.label}>
+              Duração
+            </label>
+            <select
+              id="duration"
+              className={styles.select}
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+            >
+              {DURATION_OPTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} minutos{d === 30 ? " (padrão)" : ""}
+                </option>
+              ))}
+            </select>
+            <p className={styles.hint}>Ajuste conforme o tipo de tratamento — bloqueia os slots seguintes da grade.</p>
           </div>
 
           <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, cursor: "pointer" }}>

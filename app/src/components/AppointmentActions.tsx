@@ -8,18 +8,22 @@ import { brDateOnly, formatBRTime } from "@/lib/date";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
+const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
+
 export function AppointmentActions({
   clinicId,
   appointmentId,
   status,
   urgent,
   scheduledAt,
+  durationMinutes,
 }: {
   clinicId: string;
   appointmentId: string;
   status: AppointmentStatus;
   urgent: boolean;
   scheduledAt: string;
+  durationMinutes: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -31,6 +35,7 @@ export function AppointmentActions({
   // grade/lista).
   const [newDate, setNewDate] = useState(brDateOnly(new Date(scheduledAt)));
   const [newTime, setNewTime] = useState(slotKey(scheduledAt));
+  const [newDuration, setNewDuration] = useState(durationMinutes);
   const { toasts, push, dismiss } = useToasts();
 
   async function patch(body: Record<string, unknown>, successMessage?: string) {
@@ -56,7 +61,7 @@ export function AppointmentActions({
 
   async function handleReschedule(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await patch({ scheduled_at: newTime }, "Agendamento remarcado.");
+    const ok = await patch({ scheduled_at: newTime, duration_minutes: newDuration }, "Agendamento remarcado.");
     if (ok) setRescheduling(false);
   }
 
@@ -139,6 +144,23 @@ export function AppointmentActions({
                 ))}
               </select>
             </div>
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="rescheduleDuration" className={styles.label}>
+              Duração
+            </label>
+            <select
+              id="rescheduleDuration"
+              className={styles.select}
+              value={newDuration}
+              onChange={(e) => setNewDuration(Number(e.target.value))}
+            >
+              {DURATION_OPTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} minutos{d === 30 ? " (padrão)" : ""}
+                </option>
+              ))}
+            </select>
           </div>
           <div className={styles.formActions}>
             <button type="submit" disabled={busy || !newTime} className={`${styles.btn} ${styles.btnPrimary}`}>

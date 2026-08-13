@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { APPOINTMENT_STATUS_CLASS, buildDaySlotTimes, slotKey } from "@/lib/appointments";
+import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_SYMBOL, buildContinuationMap, buildDaySlotTimes, slotKey } from "@/lib/appointments";
 import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { NewAppointmentForm } from "@/components/NewAppointmentForm";
 import type { Appointment } from "@/lib/database.types";
@@ -46,6 +46,14 @@ export function AgendaWeekGrid({
 
   const dayTimes = useMemo(() => new Map(weekDays.map((d) => [d, buildDaySlotTimes(d)])), [weekDays]);
 
+  // Igual à visão diária: uma consulta de 60min ocupa 2 slots de 30 — sem
+  // isso, o segundo apareceria "vago" e clicável, quando na prática já está
+  // ocupado (o backend recusaria um novo agendamento ali).
+  const continuationSlots = useMemo(() => {
+    const allSlots = weekDays.flatMap((d) => dayTimes.get(d)!);
+    return buildContinuationMap(appointments, allSlots);
+  }, [appointments, weekDays, dayTimes]);
+
   const [openSlot, setOpenSlot] = useState<Slot | null>(null);
 
   useEffect(() => {
@@ -78,7 +86,8 @@ export function AgendaWeekGrid({
               {weekDays.map((d) => {
                 const slot = dayTimes.get(d)![slotIndex];
                 const items = bySlot.get(slot) ?? [];
-                const empty = items.length === 0;
+                const continuedBy = items.length === 0 ? continuationSlots.get(slot) : undefined;
+                const empty = items.length === 0 && !continuedBy;
                 return (
                   <div
                     key={`${d}-${slotIndex}`}
@@ -106,9 +115,19 @@ export function AgendaWeekGrid({
                         className={`${shellStyles.agendaWeekChip} ${shellStyles.statusBadge} ${shellStyles[APPOINTMENT_STATUS_CLASS[a.status]]} ${a.urgent ? shellStyles.urgentMark : ""}`}
                         title={`${a.patient_name} — ${a.status}${a.urgent ? " · urgente" : ""}`}
                       >
-                        {a.patient_name}
+                        {APPOINTMENT_STATUS_SYMBOL[a.status]} {a.patient_name}
                       </Link>
                     ))}
+                    {continuedBy && (
+                      <Link
+                        href={`/dashboard/agenda/${continuedBy.id}`}
+                        className={shellStyles.agendaWeekChip}
+                        style={{ color: "var(--ink-faint)", background: "var(--surface-sunken)" }}
+                        title={`${continuedBy.patient_name} — continuação`}
+                      >
+                        ↳ continua
+                      </Link>
+                    )}
                   </div>
                 );
               })}
