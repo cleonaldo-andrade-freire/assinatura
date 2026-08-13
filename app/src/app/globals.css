@@ -8,7 +8,12 @@
   --line: #e4ded2;
   --brand: #2c6659;
   --brand-deep: #1d473d;
+  --brand-deeper: #16362f;
   --brand-tint: #e7f0ec;
+  /* Indicador de item ativo na sidebar (rail lateral) — mais claro que
+     --brand pra se destacar sobre o fundo escuro da sidebar, ver proposta de
+     redesign da Agenda. */
+  --brand-bright: #4f9c86;
   /* Azul-assinatura — reservada só pro momento de assinar (canvas, cartão de
      assinatura, confirmação), não é a cor de marca do produto. */
   --sign: #1f3f6e;
@@ -24,6 +29,10 @@
   --urgent: #6d3f96;
   --urgent-tint: #f1e9f8;
   --urgent-line: #d9c3ea;
+  /* "Faltou" em preenchimento sólido (grade da agenda) precisa de um cinza
+     mais escuro que --ink-faint pra manter contraste AA com texto branco em
+     cima (--ink-faint sozinho dá só 3:1) — ver proposta de redesign. */
+  --muted-fill: #6b7570;
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 20px;

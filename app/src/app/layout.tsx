@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import "./globals.css";
 
@@ -7,6 +7,16 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   weight: ["500", "600"],
   variable: "--font-fraunces",
+  display: "swap",
+});
+
+// Painel da clínica (shell.module.css) usa essa em vez da Fraunces — a
+// página pública/marketing continua com a serifada, mas telas de trabalho
+// revisitadas o dia inteiro (agenda, sidebar) pedem uma sans mais neutra.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-jakarta",
   display: "swap",
 });
 
@@ -33,7 +43,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={fraunces.variable}>
+    <html lang="pt-BR" className={`${fraunces.variable} ${jakarta.variable}`}>
       <body>
         <RegisterServiceWorker />
         {children}

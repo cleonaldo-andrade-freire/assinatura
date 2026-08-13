@@ -45,7 +45,7 @@
 }
 
 .brandName {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
   font-size: 16.5px;
   letter-spacing: 0.01em;
@@ -172,7 +172,7 @@
 }
 
 .pageTitle {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
   font-size: 26px;
   color: var(--brand-deep);
@@ -327,7 +327,7 @@
 }
 
 .statValue {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-size: 30px;
   font-weight: 600;
   color: var(--brand-deep);
@@ -582,7 +582,7 @@
   border-radius: 7px;
   background: var(--brand-tint);
   color: var(--brand-deep);
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
   font-size: 12px;
   display: flex;
@@ -873,7 +873,7 @@
 }
 
 .agendaNavLabel {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
   font-size: 16px;
   color: var(--ink);
