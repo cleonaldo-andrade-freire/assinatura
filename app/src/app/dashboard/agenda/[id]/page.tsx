@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import { formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
@@ -73,8 +74,13 @@ export default async function AppointmentDetailPage({ params }: { params: { id: 
           </div>
         </div>
         <div className={styles.panelBody}>
-          {detailRow("Paciente", a.patient_name)}
-          {detailRow("WhatsApp", `+55 ${formatBRPhoneLocal(a.patient_phone)}`)}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
+            <PatientAvatar clinicId={clinic.id} patientId={a.patient_id} name={a.patient_name} size={52} />
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{a.patient_name}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+            </div>
+          </div>
           {!a.patient_id && (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
               <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>

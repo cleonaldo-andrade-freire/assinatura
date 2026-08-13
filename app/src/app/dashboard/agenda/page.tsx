@@ -8,6 +8,7 @@ import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
 import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
 import { AgendaLegend } from "@/components/AgendaLegend";
 import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import {
   APPOINTMENT_STATUS_DOT_COLOR,
   buildContinuationMap,
@@ -161,13 +162,17 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                             key={a.id}
                             href={`/dashboard/agenda/${a.id}`}
                             className={`${styles.agendaCard} ${a.urgent ? styles.urgentMark : ""}`}
+                            style={{ display: "flex", gap: 10, alignItems: "flex-start" }}
                           >
-                            <div className={styles.agendaCardName}>{a.patient_name}</div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <AppointmentStatusBadge status={a.status} />
-                              {a.urgent && <UrgentBadge />}
-                              {needsManualFollowUp(a) && <NeedsFollowUpBadge />}
-                              <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{a.duration_minutes} min</span>
+                            <PatientAvatar clinicId={clinic.id} patientId={a.patient_id} name={a.patient_name} size={34} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className={styles.agendaCardName}>{a.patient_name}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <AppointmentStatusBadge status={a.status} />
+                                {a.urgent && <UrgentBadge />}
+                                {needsManualFollowUp(a) && <NeedsFollowUpBadge />}
+                                <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{a.duration_minutes} min</span>
+                              </div>
                             </div>
                           </Link>
                         ))}
