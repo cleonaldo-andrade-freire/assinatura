@@ -58,7 +58,10 @@ export function PatientRowActions({ clinicId, patientId }: { clinicId: string; p
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+      <div
+        style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <Link
           href={`/dashboard/pacientes/${patientId}`}
           aria-label="Editar paciente"

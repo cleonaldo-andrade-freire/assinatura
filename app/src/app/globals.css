@@ -284,3 +284,9 @@ th {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Linha de tabela clicável (ver ClickableRow) — navega ao clicar em
+   qualquer lugar da linha, não só no ícone de editar. */
+.clickableRow {
+  cursor: pointer;
+}

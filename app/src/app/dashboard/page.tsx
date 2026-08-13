@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { getPlanById } from "@/lib/plans";
@@ -265,12 +266,12 @@ export default async function DashboardPage({
                 {anamneses.map((a) => {
                   const signatureId = signatureByAnamnesis.get(a.id);
                   return (
-                    <tr key={a.id}>
+                    <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
                       <td>
-                        <Link href={`/dashboard/anamneses/${a.id}`} className={styles.rowMain} style={{ textDecoration: "none", color: "inherit" }}>
+                        <span className={styles.rowMain}>
                           <div className={styles.rowAvatarPlaceholder}>{initials(a.patient_name)}</div>
                           <span className={styles.rowTitle}>{a.patient_name}</span>
-                        </Link>
+                        </span>
                       </td>
                       <td data-label="Data">{formatBRDate(a.created_at)}</td>
                       <td data-label="Status">
@@ -280,7 +281,7 @@ export default async function DashboardPage({
                           <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                         )}
                       </td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
                         {" · "}
                         {signatureId ? (
@@ -293,7 +294,7 @@ export default async function DashboardPage({
                           </a>
                         )}
                       </td>
-                    </tr>
+                    </ClickableRow>
                   );
                 })}
               </tbody>

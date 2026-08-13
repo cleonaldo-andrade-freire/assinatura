@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
@@ -115,7 +116,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
               </thead>
               <tbody>
                 {certificates.map((c) => (
-                  <tr key={c.id}>
+                  <ClickableRow key={c.id} href={`/dashboard/atestados/${c.id}`}>
                     <td className={styles.rowTitle}>{c.patient_name}</td>
                     <td data-label="Data">{formatBRDate(c.created_at)}</td>
                     <td data-label="Dias de afastamento">{c.rest_days}</td>
@@ -125,9 +126,11 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                       </span>
                     </td>
                     <td>
-                      <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
+                      <Link href={`/dashboard/atestados/${c.id}`} onClick={(e) => e.stopPropagation()}>
+                        Ver detalhes
+                      </Link>
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

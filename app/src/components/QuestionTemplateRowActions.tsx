@@ -58,7 +58,7 @@ export function QuestionTemplateRowActions({ clinicId, templateId }: { clinicId:
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
         <Link
           href={`/dashboard/templates/${templateId}`}
           aria-label="Editar modelo"

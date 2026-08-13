@@ -58,7 +58,7 @@ export function CertificateTemplateRowActions({ clinicId, templateId }: { clinic
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
         <Link
           href={`/dashboard/atestados/templates/${templateId}`}
           aria-label="Editar modelo"

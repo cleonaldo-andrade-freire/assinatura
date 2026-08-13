@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PrescriptionTemplateRowActions } from "@/components/PrescriptionTemplateRowActions";
 import type { PrescriptionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -93,13 +94,13 @@ export default async function PrescriptionTemplatesPage({
               </thead>
               <tbody>
                 {templates.map((t) => (
-                  <tr key={t.id}>
+                  <ClickableRow key={t.id} href={`/dashboard/prescricoes/templates/${t.id}`}>
                     <td className={styles.rowTitle}>{t.name}</td>
                     <td>{t.items.length}</td>
                     <td>
                       <PrescriptionTemplateRowActions clinicId={clinic.id} templateId={t.id} />
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

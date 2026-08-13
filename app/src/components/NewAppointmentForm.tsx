@@ -226,7 +226,7 @@ export function NewAppointmentForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={handleSubmit} className={styles.form} style={bare ? { gap: 12 } : undefined}>
           <div className={styles.field} style={{ position: "relative" }}>
             <label htmlFor="patientName" className={styles.label}>
               Nome do paciente
@@ -324,10 +324,12 @@ export function NewAppointmentForm({
                 ))}
               </ul>
             )}
-            <p className={styles.hint}>
-              Busca no cadastro de pacientes da clínica — se não encontrar, o agendamento fica só com nome e
-              celular, sem exigir cadastro completo agora.
-            </p>
+            {!bare && (
+              <p className={styles.hint}>
+                Busca no cadastro de pacientes da clínica — se não encontrar, o agendamento fica só com nome e
+                celular, sem exigir cadastro completo agora.
+              </p>
+            )}
           </div>
 
           <div className={styles.field}>
@@ -378,71 +380,73 @@ export function NewAppointmentForm({
             </div>
           </div>
 
-          <div className={styles.field}>
-            <label htmlFor="duration" className={styles.label}>
-              Duração
-            </label>
-            <select
-              id="duration"
-              className={styles.select}
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-            >
-              {DURATION_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} minutos{d === 30 ? " (padrão)" : ""}
-                </option>
-              ))}
-            </select>
-            <p className={styles.hint}>Ajuste conforme o tipo de tratamento — bloqueia os slots seguintes da grade.</p>
-          </div>
+          <div className={styles.formRow}>
+            <div className={styles.field}>
+              <label htmlFor="duration" className={styles.label}>
+                Duração
+              </label>
+              <select
+                id="duration"
+                className={styles.select}
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+              >
+                {DURATION_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} minutos{d === 30 ? " (padrão)" : ""}
+                  </option>
+                ))}
+              </select>
+              {!bare && (
+                <p className={styles.hint}>Ajuste conforme o tipo de tratamento — bloqueia os slots seguintes da grade.</p>
+              )}
+            </div>
 
-          <div className={styles.field}>
-            <label htmlFor="returnOption" className={styles.label}>
-              Retornar em
-            </label>
-            <select
-              id="returnOption"
-              className={styles.select}
-              value={returnOption}
-              onChange={(e) => setReturnOption(e.target.value as ReturnOption)}
-            >
-              {RETURN_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {returnOption === "custom" && (
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <div className={styles.field}>
+              <label htmlFor="returnOption" className={styles.label}>
+                Retornar em
+              </label>
+              <select
+                id="returnOption"
+                className={styles.select}
+                value={returnOption}
+                onChange={(e) => setReturnOption(e.target.value as ReturnOption)}
+              >
+                {RETURN_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              {returnOption === "custom" && (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={36}
+                    className={styles.input}
+                    style={{ width: 90 }}
+                    value={returnCustomMonths}
+                    onChange={(e) => setReturnCustomMonths(Number(e.target.value))}
+                  />
+                  <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>mês(es)</span>
+                </div>
+              )}
+              {returnOption === "specific" && (
                 <input
-                  type="number"
-                  min={1}
-                  max={36}
+                  type="date"
                   className={styles.input}
-                  style={{ width: 90 }}
-                  value={returnCustomMonths}
-                  onChange={(e) => setReturnCustomMonths(Number(e.target.value))}
+                  style={{ marginTop: 8 }}
+                  value={returnSpecificDate}
+                  min={brDateOnly()}
+                  onChange={(e) => setReturnSpecificDate(e.target.value)}
+                  required
                 />
-                <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>mês(es) a partir desta consulta</span>
-              </div>
-            )}
-            {returnOption === "specific" && (
-              <input
-                type="date"
-                className={styles.input}
-                style={{ marginTop: 8 }}
-                value={returnSpecificDate}
-                min={brDateOnly()}
-                onChange={(e) => setReturnSpecificDate(e.target.value)}
-                required
-              />
-            )}
-            {returnOption !== "none" && (
-              <p className={styles.hint}>
-                Cria automaticamente uma segunda consulta de retorno pro mesmo paciente, no mesmo horário do dia.
-              </p>
-            )}
+              )}
+              {!bare && returnOption !== "none" && (
+                <p className={styles.hint}>Cria automaticamente uma segunda consulta no mesmo horário do dia.</p>
+              )}
+            </div>
           </div>
 
           <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, cursor: "pointer" }}>
@@ -462,7 +466,7 @@ export function NewAppointmentForm({
             <textarea
               id="notes"
               className={styles.input}
-              rows={3}
+              rows={bare ? 2 : 3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Motivo da consulta, anotação da recepção…"

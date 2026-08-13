@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PatientRowActions } from "@/components/PatientRowActions";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Patient } from "@/lib/database.types";
@@ -86,14 +87,14 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
               </thead>
               <tbody>
                 {patients.map((p) => (
-                  <tr key={p.id}>
+                  <ClickableRow key={p.id} href={`/dashboard/pacientes/${p.id}`}>
                     <td className={styles.rowTitle}>{p.name}</td>
                     <td data-label="CPF">{p.cpf ?? "—"}</td>
                     <td data-label="WhatsApp">{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
                     <td>
                       <PatientRowActions clinicId={clinic.id} patientId={p.id} />
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

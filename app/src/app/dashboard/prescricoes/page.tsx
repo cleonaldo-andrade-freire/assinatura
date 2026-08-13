@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
@@ -115,7 +116,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
               </thead>
               <tbody>
                 {prescriptions.map((p) => (
-                  <tr key={p.id}>
+                  <ClickableRow key={p.id} href={`/dashboard/prescricoes/${p.id}`}>
                     <td className={styles.rowTitle}>{p.patient_name}</td>
                     <td data-label="Data">{formatBRDate(p.created_at)}</td>
                     <td data-label="Itens">{p.items.length}</td>
@@ -125,9 +126,11 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
                       </span>
                     </td>
                     <td>
-                      <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
+                      <Link href={`/dashboard/prescricoes/${p.id}`} onClick={(e) => e.stopPropagation()}>
+                        Ver detalhes
+                      </Link>
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

@@ -7,6 +7,7 @@ import { AppointmentStatusBadge, NeedsFollowUpBadge, UrgentBadge } from "@/compo
 import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
 import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
 import { AgendaLegend } from "@/components/AgendaLegend";
+import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import {
   APPOINTMENT_STATUS_DOT_COLOR,
   buildContinuationMap,
@@ -91,6 +92,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
   const prevMonthDate = addDaysToDateStr(monthDays[0], -1);
   const nextMonthDate = monthRangeEnd;
   const daySummary = view === "month" ? summarizeAppointmentsByDay(appointments) : new Map();
+  const professionalName = clinic.dentist_name || clinic.name;
 
   function viewHref(v: "week" | "month") {
     return `/dashboard/agenda?date=${date}&view=${v}`;
@@ -115,9 +117,14 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
               </Link>
             </span>
           </div>
-          <Link href={`/dashboard/agenda/new?date=${date}`} className={`${styles.btn} ${styles.btnPrimary}`}>
+          <NewAppointmentTrigger
+            clinicId={clinic.id}
+            professionalName={professionalName}
+            date={date}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+          >
             + Novo agendamento
-          </Link>
+          </NewAppointmentTrigger>
         </div>
       }
     >
@@ -174,9 +181,15 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                         ↳ {continuedBy.patient_name} (continuação)
                       </Link>
                     ) : (
-                      <Link href={`/dashboard/agenda/new?date=${date}&time=${encodeURIComponent(slot)}`} className={styles.agendaEmptySlot}>
+                      <NewAppointmentTrigger
+                        clinicId={clinic.id}
+                        professionalName={professionalName}
+                        date={date}
+                        time={slot}
+                        className={styles.agendaEmptySlot}
+                      >
                         vago — toque pra agendar
-                      </Link>
+                      </NewAppointmentTrigger>
                     )}
                   </div>
                 </div>
@@ -205,7 +218,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
 
             <AgendaWeekGrid
               clinicId={clinic.id}
-              professionalName={clinic.dentist_name || clinic.name}
+              professionalName={professionalName}
               weekDays={weekDays}
               slotsPerDay={daySlots.length}
               today={today}

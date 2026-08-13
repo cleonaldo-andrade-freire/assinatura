@@ -1,16 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_SYMBOL, buildContinuationMap, buildDaySlotTimes, slotKey } from "@/lib/appointments";
-import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
-import { NewAppointmentForm } from "@/components/NewAppointmentForm";
+import { formatBRDate, formatBRTime } from "@/lib/date";
+import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import type { Appointment } from "@/lib/database.types";
 import shellStyles from "@/styles/shell.module.css";
-import uiStyles from "@/components/ui/ui.module.css";
 
 const WEEKDAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -67,15 +65,6 @@ export function AgendaWeekGrid({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
-
-  useEffect(() => {
-    if (!openSlot) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpenSlot(null);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openSlot]);
 
   async function handleDrop(appointmentId: string, newTime: string) {
     setDragOverKey(null);
@@ -218,40 +207,14 @@ export function AgendaWeekGrid({
         })}
       </div>
 
-      {openSlot &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className={uiStyles.overlay} onClick={() => setOpenSlot(null)}>
-            <div
-              className={`${uiStyles.dialog} ${uiStyles.dialogWide}`}
-              role="dialog"
-              aria-modal="true"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-                <div>
-                  <h3 className={uiStyles.dialogTitle}>Novo agendamento</h3>
-                  <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--ink-soft)" }}>
-                    {formatBRWeekday(`${openSlot.date}T12:00:00-03:00`, "long")}, {formatBRDate(`${openSlot.date}T12:00:00-03:00`)} às{" "}
-                    {formatBRTime(openSlot.time)}
-                  </p>
-                </div>
-                <button type="button" className={uiStyles.toastClose} onClick={() => setOpenSlot(null)} aria-label="Fechar">
-                  ×
-                </button>
-              </div>
-              <NewAppointmentForm
-                bare
-                clinicId={clinicId}
-                professionalName={professionalName}
-                initialDate={openSlot.date}
-                initialTime={openSlot.time}
-                onSuccess={() => setOpenSlot(null)}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
+      <NewAppointmentModal
+        open={!!openSlot}
+        onClose={() => setOpenSlot(null)}
+        clinicId={clinicId}
+        professionalName={professionalName}
+        date={openSlot?.date ?? ""}
+        time={openSlot?.time}
+      />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>

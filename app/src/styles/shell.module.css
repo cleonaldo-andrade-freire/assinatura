@@ -169,7 +169,6 @@
   justify-content: space-between;
   gap: 20px;
   padding: 32px 40px 24px;
-  max-width: 1180px;
 }
 
 .pageTitle {
@@ -188,7 +187,6 @@
 
 .content {
   padding: 0 40px 48px;
-  max-width: 1180px;
 }
 
 @media (min-width: 768px) and (max-width: 900px) {
@@ -931,16 +929,19 @@
 }
 
 .agendaEmptySlot {
-  display: block;
+  display: flex;
+  align-items: center;
+  width: 100%;
   border: 1.5px dashed var(--line);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
+  background: none;
   color: var(--ink-faint);
+  font-family: inherit;
   font-size: 13px;
+  text-align: left;
   text-decoration: none;
   min-height: 44px;
-  display: flex;
-  align-items: center;
 }
 
 .agendaEmptySlot:hover {

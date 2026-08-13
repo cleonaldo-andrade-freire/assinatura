@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { QuestionTemplateRowActions } from "@/components/QuestionTemplateRowActions";
 import type { QuestionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -50,13 +51,13 @@ export default async function TemplatesPage() {
             </thead>
             <tbody>
               {templates.map((t) => (
-                <tr key={t.id}>
+                <ClickableRow key={t.id} href={`/dashboard/templates/${t.id}`}>
                   <td className={styles.rowTitle}>{t.name}</td>
                   <td>{t.questions.length}</td>
                   <td>
                     <QuestionTemplateRowActions clinicId={clinic.id} templateId={t.id} />
                   </td>
-                </tr>
+                </ClickableRow>
               ))}
             </tbody>
           </table>
