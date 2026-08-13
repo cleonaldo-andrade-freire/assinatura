@@ -14,3 +14,45 @@ export function formatBRDate(iso: string): string {
 export function formatBRDateTime(iso: string, timeStyle: "short" | "medium" = "short"): string {
   return new Date(iso).toLocaleString("pt-BR", { timeZone: BR_TIMEZONE, dateStyle: "short", timeStyle });
 }
+
+export function formatBRTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { timeZone: BR_TIMEZONE, hour: "2-digit", minute: "2-digit" });
+}
+
+export function formatBRWeekday(iso: string, style: "short" | "long" = "short"): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: BR_TIMEZONE, weekday: style });
+}
+
+/** Data de hoje no fuso do Brasil como "YYYY-MM-DD" — pra navegação por dia/semana da agenda. */
+export function brDateOnly(d: Date = new Date()): string {
+  return d.toLocaleDateString("en-CA", { timeZone: BR_TIMEZONE });
+}
+
+export function addDaysToDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Segunda-feira da semana que contém `dateStr` (0 = domingo, como `getUTCDay`). */
+export function mondayOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const weekday = dt.getUTCDay();
+  const diff = weekday === 0 ? -6 : 1 - weekday;
+  dt.setUTCDate(dt.getUTCDate() + diff);
+  return dt.toISOString().slice(0, 10);
+}
+
+/**
+ * Faixa UTC (`[from, to)`) correspondente ao dia `dateStr` inteiro no fuso do
+ * Brasil. Offset fixo -03:00 porque o Brasil extinguiu o horário de verão em
+ * 2019 — não precisa de lógica de fuso variável.
+ */
+export function brDayRangeUtc(dateStr: string): { fromIso: string; toIso: string } {
+  return {
+    fromIso: new Date(`${dateStr}T00:00:00-03:00`).toISOString(),
+    toIso: new Date(`${addDaysToDateStr(dateStr, 1)}T00:00:00-03:00`).toISOString(),
+  };
+}

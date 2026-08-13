@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { appointmentEndsAt, isCancelled, rangesOverlap } from "./appointments";
+import { appointmentEndsAt, buildDaySlotTimes, isCancelled, rangesOverlap } from "./appointments";
+
+describe("buildDaySlotTimes", () => {
+  it("gera slots de 30 em 30 minutos dentro do horário comercial", () => {
+    const slots = buildDaySlotTimes("2026-08-12", 8, 9);
+    expect(slots).toEqual(["2026-08-12T11:00:00.000Z", "2026-08-12T11:30:00.000Z"]);
+  });
+
+  it("horário local do Brasil vira o instante UTC certo (offset fixo -03:00)", () => {
+    const [first] = buildDaySlotTimes("2026-08-12", 8, 9);
+    expect(new Date(first).toISOString()).toBe("2026-08-12T11:00:00.000Z");
+  });
+});
 
 describe("appointmentEndsAt", () => {
   it("soma a duração em minutos ao horário de início", () => {

@@ -4,6 +4,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import styles from "@/styles/shell.module.css";
 
+function AgendaIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="8" cy="14.5" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="14.5" r="1.3" fill="currentColor" />
+    </svg>
+  );
+}
+
 function AnamnesesIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -111,15 +122,20 @@ function MoreIcon() {
 // pra revelar um único destino. As cinco abas cabem direto na barra do
 // celular (rótulo mais comprido, "Configurações", ainda encolhe com
 // segurança via min-width:0 + reticências no CSS).
+// Agenda entra na barra fixa — pra quem faz recepção é provavelmente a tela
+// mais checada do dia, junto de Anamneses. Configurações volta pro "Mais":
+// com 6 destinos reais não cabem todos com rótulo por extenso na barra do
+// celular (é o mesmo estouro que já aconteceu uma vez com 6 itens), e
+// Configurações continua sendo o de uso mais esporádico dos seis.
 const PRIMARY_NAV_ITEMS = [
+  { href: "/dashboard/agenda", label: "Agenda", icon: AgendaIcon },
   { href: "/dashboard", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
-  { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 
-const MORE_NAV_ITEMS: typeof PRIMARY_NAV_ITEMS = [];
+const MORE_NAV_ITEMS = [{ href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon }];
 
 const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 

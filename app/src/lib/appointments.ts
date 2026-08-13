@@ -3,6 +3,26 @@ import type { Appointment, AppointmentEventActor, AppointmentStatus } from "@/li
 
 export const APPOINTMENT_SLOT_MINUTES = 30;
 
+// Horário de funcionamento assumido pra desenhar a grade — o schema não tem
+// um campo de horário de expediente por clínica ainda. 08h–19h cobre o
+// horário comercial típico; um agendamento fora dessa faixa (se algum dia
+// existir) continua funcionando, só não aparece como uma linha vazia extra.
+export const AGENDA_START_HOUR = 8;
+export const AGENDA_END_HOUR = 19;
+
+/** Horários (ISO, em UTC) de cada slot de 30min do dia `dateStr` ("YYYY-MM-DD", calendário do Brasil). */
+export function buildDaySlotTimes(dateStr: string, startHour = AGENDA_START_HOUR, endHour = AGENDA_END_HOUR): string[] {
+  const slots: string[] = [];
+  for (let h = startHour; h < endHour; h++) {
+    for (const m of [0, 30]) {
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      slots.push(new Date(`${dateStr}T${hh}:${mm}:00-03:00`).toISOString());
+    }
+  }
+  return slots;
+}
+
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   agendado: "Agendado",
   confirmado: "Confirmado",

@@ -640,6 +640,38 @@
   color: var(--danger);
 }
 
+/* Reaproveita o azul-assinatura — na agenda, "atendido" é o mesmo tipo de
+   "etapa concluída" que ele já significa no resto do produto. */
+.statusInfo {
+  color: var(--sign);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.statusBadge.statusOk {
+  background: var(--brand-tint);
+}
+
+.statusBadge.statusWarn {
+  background: var(--warn-tint);
+}
+
+.statusBadge.statusDanger {
+  background: var(--danger-tint);
+}
+
+.statusBadge.statusInfo {
+  background: var(--sign-tint);
+}
+
 /* ============================== Buttons ============================== */
 
 .btn {
@@ -794,4 +826,197 @@
 
 .formActions {
   margin-top: 4px;
+}
+
+/* ============================== Agenda ============================== */
+
+/* Indicador de urgência — de propósito sem nenhuma cor de status: textura
+   (borda tracejada) + ícone + texto, três sinais redundantes que não
+   dependem de matiz (ver plano de design da agenda). */
+.urgentMark {
+  border-left: 3px dashed var(--ink-faint);
+  padding-left: 9px;
+}
+
+.urgentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.agendaNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.agendaNavLabel {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  text-align: center;
+  text-decoration: none;
+}
+
+.agendaNavArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 18px;
+  flex: none;
+}
+
+.agendaNavArrow:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+
+/* ---- diária (mobile) ---- */
+
+.agendaDayView {
+  display: block;
+}
+
+.agendaSlot {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.agendaSlotTime {
+  flex: none;
+  width: 46px;
+  padding-top: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.agendaSlotBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.agendaEmptySlot {
+  display: block;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--ink-faint);
+  font-size: 13px;
+  text-decoration: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.agendaEmptySlot:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink-soft);
+}
+
+.agendaCard {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--surface);
+}
+
+.agendaCardName {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.agendaCardMeta {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+/* ---- semanal (desktop) ---- */
+
+.agendaWeekView {
+  display: none;
+}
+
+.agendaWeekGrid {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.agendaWeekHeaderCell {
+  padding: 10px 8px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.agendaWeekHeaderCell.today {
+  color: var(--brand-deep);
+  background: var(--brand-tint);
+}
+
+.agendaWeekTimeCell {
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.agendaWeekCell {
+  min-height: 44px;
+  padding: 3px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.agendaWeekChip {
+  display: block;
+  border-radius: 7px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  color: inherit;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 860px) {
+  .agendaDayView {
+    display: none;
+  }
+  .agendaWeekView {
+    display: block;
+  }
 }
