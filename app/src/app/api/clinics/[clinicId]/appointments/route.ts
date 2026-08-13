@@ -137,9 +137,12 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   }
 
   // "À medida que for reagendando, sair da lista" — se este paciente tinha
-  // outras consultas pendentes nas listas de acompanhamento do dashboard
+  // OUTRAS consultas pendentes nas listas de acompanhamento do dashboard
   // (retorno ou cancelamento), este novo agendamento já cumpre o papel
-  // delas. Best-effort: não pode travar a criação do agendamento.
+  // delas. `.neq("id", appointment.id)` é essencial: sem isso, um
+  // agendamento que já nasce com `return_due_date` (campo "Retornar em"
+  // deste mesmo POST) se autodispensa da lista no mesmo instante em que
+  // entra nela. Best-effort: não pode travar a criação do agendamento.
   if (patientId) {
     try {
       const now = new Date().toISOString();
@@ -148,6 +151,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
         .update({ return_dismissed_at: now })
         .eq("clinic_id", clinic.id)
         .eq("patient_id", patientId)
+        .neq("id", appointment.id)
         .not("return_due_date", "is", null)
         .is("return_dismissed_at", null);
 
@@ -156,6 +160,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
         .update({ cancellation_dismissed_at: now })
         .eq("clinic_id", clinic.id)
         .eq("patient_id", patientId)
+        .neq("id", appointment.id)
         .in("status", ["cancelado_paciente", "cancelado_dentista"])
         .is("cancellation_dismissed_at", null);
     } catch (err) {
