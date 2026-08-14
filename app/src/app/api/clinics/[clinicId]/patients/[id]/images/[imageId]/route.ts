@@ -32,6 +32,33 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
   });
 }
 
+/** Edita só a descrição da imagem. */
+export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string; imageId: string } }) {
+  const clinic = await getCurrentClinic();
+  if (!clinic || clinic.id !== params.clinicId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+  const description = typeof body.description === "string" ? body.description.trim() || null : null;
+
+  const supabase = await createSupabaseServerClient();
+  const { data: image, error } = await supabase
+    .from("patient_images")
+    .update({ description })
+    .eq("id", params.imageId)
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", params.id)
+    .select("*")
+    .single();
+
+  if (error || !image) return NextResponse.json({ error: "update_failed", message: error?.message }, { status: 500 });
+  return NextResponse.json({ image });
+}
+
 export async function DELETE(_req: NextRequest, { params }: { params: { clinicId: string; id: string; imageId: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic || clinic.id !== params.clinicId) {

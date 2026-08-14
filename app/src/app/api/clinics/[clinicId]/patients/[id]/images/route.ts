@@ -40,9 +40,13 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (files.length === 0) {
     return NextResponse.json({ error: "missing_files" }, { status: 400 });
   }
+  // Mesma ordem/quantidade que `images` — o campo "descriptions" repete a
+  // chave uma vez por arquivo (FormData preserva a ordem de inserção).
+  const descriptions = (form?.getAll("descriptions") ?? []).map((d) => String(d).trim());
 
   const uploaded: PatientImage[] = [];
-  for (const file of files) {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     const { data: row, error: insertError } = await supabase
       .from("patient_images")
       .insert({
@@ -52,6 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
         storage_key: "",
         content_type: file.type,
         size_bytes: file.size,
+        description: descriptions[i] || null,
       })
       .select("*")
       .single();

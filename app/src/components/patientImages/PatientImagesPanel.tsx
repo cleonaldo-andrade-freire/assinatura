@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { UploadImagesModal } from "@/components/patientImages/UploadImagesModal";
 import type { PatientImage } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -26,6 +27,10 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ groupLabel: string; index: number } | null>(null);
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [savingDescriptionId, setSavingDescriptionId] = useState<string | null>(null);
   const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
@@ -49,6 +54,31 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
       setConfirmDeleteId(null);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  function startEditDescription(img: PatientImage) {
+    setEditingDescriptionId(img.id);
+    setDescriptionDraft(img.description ?? "");
+  }
+
+  async function handleSaveDescription(id: string) {
+    setSavingDescriptionId(id);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/patients/${patientId}/images/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: descriptionDraft }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        push("Falha ao salvar a descrição. Tenta de novo.");
+        return;
+      }
+      setImages((prev) => prev.map((img) => (img.id === id ? (data.image as PatientImage) : img)));
+      setEditingDescriptionId(null);
+    } finally {
+      setSavingDescriptionId(null);
     }
   }
 
@@ -82,15 +112,27 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
           <div key={group.label} className={pi.dateGroup}>
             <p className={pi.dateLabel}>{group.label}</p>
             <div className={pi.grid}>
-              {group.items.map((img) => {
+              {group.items.map((img, imgIndex) => {
                 const url = `/api/clinics/${clinicId}/patients/${patientId}/images/${img.id}`;
+                const isEditingDescription = editingDescriptionId === img.id;
                 return (
                   <div key={img.id} className={pi.tile}>
-                    <div className={pi.thumbFrame}>
+                    <div
+                      className={pi.thumbFrame}
+                      onClick={() => setLightbox({ groupLabel: group.label, index: imgIndex })}
+                      style={{ cursor: "pointer" }}
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={img.file_name} />
                       <div className={pi.thumbOverlay}>
-                        <a href={url} download={img.file_name} className={pi.thumbAction} aria-label="Baixar" title="Baixar">
+                        <a
+                          href={url}
+                          download={img.file_name}
+                          className={pi.thumbAction}
+                          aria-label="Baixar"
+                          title="Baixar"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M12 4v11M12 15l-4-4M12 15l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M5 19h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -98,7 +140,10 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
                         </a>
                         <button
                           type="button"
-                          onClick={() => setConfirmDeleteId(img.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(img.id);
+                          }}
                           className={`${pi.thumbAction} ${pi.thumbActionDanger}`}
                           aria-label="Excluir"
                           title="Excluir"
@@ -118,6 +163,33 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
                     <p className={pi.fileName} title={img.file_name}>
                       {img.file_name}
                     </p>
+                    {isEditingDescription ? (
+                      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                        <input
+                          type="text"
+                          autoFocus
+                          className={styles.input}
+                          style={{ fontSize: 11.5, padding: "4px 6px" }}
+                          value={descriptionDraft}
+                          onChange={(e) => setDescriptionDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveDescription(img.id);
+                            if (e.key === "Escape") setEditingDescriptionId(null);
+                          }}
+                          onBlur={() => handleSaveDescription(img.id)}
+                          disabled={savingDescriptionId === img.id}
+                          placeholder="Descrição…"
+                        />
+                      </div>
+                    ) : (
+                      <p
+                        className={pi.description}
+                        title={img.description ?? "Adicionar descrição"}
+                        onClick={() => startEditDescription(img)}
+                      >
+                        {img.description || "+ Adicionar descrição"}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -132,6 +204,17 @@ export function PatientImagesPanel({ clinicId, patientId }: { clinicId: string; 
         clinicId={clinicId}
         patientId={patientId}
         onUploaded={(newImages) => setImages((prev) => [...newImages, ...prev])}
+      />
+
+      <ImageLightbox
+        open={lightbox !== null}
+        onClose={() => setLightbox(null)}
+        images={(groups.find((g) => g.label === lightbox?.groupLabel)?.items ?? []).map((img) => ({
+          url: `/api/clinics/${clinicId}/patients/${patientId}/images/${img.id}`,
+          alt: img.description || img.file_name,
+        }))}
+        index={lightbox?.index ?? 0}
+        onIndexChange={(next) => setLightbox((prev) => (prev ? { ...prev, index: next } : prev))}
       />
 
       <ConfirmDialog

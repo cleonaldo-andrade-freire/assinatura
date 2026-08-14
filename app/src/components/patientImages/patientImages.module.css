@@ -94,6 +94,22 @@
   white-space: nowrap;
 }
 
+.description {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.description:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
 /* ===== Modal de envio ===== */
 
 .dropzone {
@@ -115,9 +131,9 @@
 
 .fileRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line-soft);
 }
 

@@ -34,6 +34,7 @@ export function UploadImagesModal({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [descriptions, setDescriptions] = useState<string[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -42,6 +43,7 @@ export function UploadImagesModal({
   useEffect(() => {
     if (!open) {
       setFiles([]);
+      setDescriptions([]);
       setDragActive(false);
     }
   }, [open]);
@@ -59,10 +61,16 @@ export function UploadImagesModal({
       return;
     }
     setFiles((prev) => [...prev, ...picked]);
+    setDescriptions((prev) => [...prev, ...picked.map(() => "")]);
   }
 
   function removeAt(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+    setDescriptions((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function setDescriptionAt(index: number, value: string) {
+    setDescriptions((prev) => prev.map((d, i) => (i === index ? value : d)));
   }
 
   async function handleUpload() {
@@ -70,7 +78,10 @@ export function UploadImagesModal({
     setUploading(true);
     try {
       const form = new FormData();
-      files.forEach((f) => form.append("images", f));
+      files.forEach((f, i) => {
+        form.append("images", f);
+        form.append("descriptions", descriptions[i] ?? "");
+      });
       const res = await fetch(`/api/clinics/${clinicId}/patients/${patientId}/images`, { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
@@ -131,7 +142,15 @@ export function UploadImagesModal({
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{formatSize(file.size)}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-faint)", marginBottom: 6 }}>{formatSize(file.size)}</div>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      placeholder="Descrição (opcional)"
+                      value={descriptions[i] ?? ""}
+                      onChange={(e) => setDescriptionAt(i, e.target.value)}
+                      style={{ fontSize: 12.5, padding: "6px 10px" }}
+                    />
                   </div>
                   <button type="button" onClick={() => removeAt(i)} className={pi.fileRowRemove} aria-label="Remover" title="Remover">
                     ×

@@ -489,5 +489,6 @@ export interface PatientImage {
   storage_key: string;
   content_type: string;
   size_bytes: number;
+  description: string | null;
   created_at: string;
 }

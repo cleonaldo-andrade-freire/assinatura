@@ -6,16 +6,17 @@ import { useRouter } from "next/navigation";
 import { ToothRegionSelect } from "@/components/budgets/ToothRegionSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { EvolutionImageUploader } from "@/components/treatments/EvolutionImageUploader";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import { EvolutionFormModal, type EvolutionFormResult } from "@/components/treatments/EvolutionFormModal";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
-import { brDateOnly, formatBRDate, formatBRTime } from "@/lib/date";
+import { formatBRDate, formatBRTime } from "@/lib/date";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
 import tp from "./treatments.module.css";
 
 const CUSTOM_TREATMENT_VALUE = "__custom__";
-const MAX_EVOLUTION_IMAGES = 5;
+const EVOLUTION_TRUNCATE_LENGTH = 260;
 
 interface CatalogTable extends PriceTable {
   items: PriceTableItem[];
@@ -62,18 +63,13 @@ export function TreatmentDetailModal({
   const [evolutions, setEvolutions] = useState<TreatmentEvolution[]>([]);
   const [loadingEvolutions, setLoadingEvolutions] = useState(false);
 
-  const [addingEvolution, setAddingEvolution] = useState(false);
-  const [evoDate, setEvoDate] = useState(brDateOnly());
-  const [evoText, setEvoText] = useState("");
-  const [evoImages, setEvoImages] = useState<File[]>([]);
+  const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
+  const [evolutionModalInitial, setEvolutionModalInitial] = useState<TreatmentEvolution | null>(null);
   const [savingEvolution, setSavingEvolution] = useState(false);
 
-  const [editingEvolutionId, setEditingEvolutionId] = useState<string | null>(null);
-  const [editEvoDate, setEditEvoDate] = useState("");
-  const [editEvoText, setEditEvoText] = useState("");
-  const [editEvoKeepKeys, setEditEvoKeepKeys] = useState<string[]>([]);
-  const [editEvoNewImages, setEditEvoNewImages] = useState<File[]>([]);
-  const [savingEvolutionEdit, setSavingEvolutionEdit] = useState(false);
+  const [expandedEvolutionIds, setExpandedEvolutionIds] = useState<string[]>([]);
+  const [lightboxEvolutionId, setLightboxEvolutionId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const [confirmDeleteEvolutionId, setConfirmDeleteEvolutionId] = useState<string | null>(null);
   const [deletingEvolutionId, setDeletingEvolutionId] = useState<string | null>(null);
@@ -105,11 +101,9 @@ export function TreatmentDetailModal({
 
   useEffect(() => {
     if (!open || !treatment) return;
-    setAddingEvolution(false);
-    setEditingEvolutionId(null);
-    setEvoDate(brDateOnly());
-    setEvoText("");
-    setEvoImages([]);
+    setEvolutionModalOpen(false);
+    setEvolutionModalInitial(null);
+    setExpandedEvolutionIds([]);
 
     setLoadingEvolutions(true);
     fetch(`/api/clinics/${clinicId}/treatments/${treatment.id}/evolutions`)
@@ -175,68 +169,53 @@ export function TreatmentDetailModal({
     }
   }
 
-  async function handleAddEvolution() {
+  function openAddEvolution() {
+    setEvolutionModalInitial(null);
+    setEvolutionModalOpen(true);
+  }
+
+  function openEditEvolution(e: TreatmentEvolution) {
+    setEvolutionModalInitial(e);
+    setEvolutionModalOpen(true);
+  }
+
+  async function handleSaveEvolution(values: EvolutionFormResult) {
     if (!treatment) return;
-    if (!evoText.trim()) {
-      push("Preencha o texto da evolução.");
-      return;
-    }
     setSavingEvolution(true);
     try {
       const form = new FormData();
-      form.set("evolution_date", evoDate);
-      form.set("text", evoText.trim());
-      evoImages.forEach((file) => form.append("images", file));
+      form.set("evolution_date", values.evolutionDate);
+      form.set("text", values.text);
+      values.newImages.forEach((file) => form.append("images", file));
 
-      const res = await fetch(`/api/clinics/${clinicId}/treatments/${treatment.id}/evolutions`, { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        push("Falha ao salvar a evolução. Tenta de novo.");
-        return;
+      if (evolutionModalInitial) {
+        form.set("keep_image_keys", JSON.stringify(values.keepImageKeys));
+        const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${evolutionModalInitial.id}`, { method: "PATCH", body: form });
+        const data = await res.json();
+        if (!res.ok) {
+          push("Falha ao salvar a evolução. Tenta de novo.");
+          return;
+        }
+        setEvolutions((prev) => prev.map((ev) => (ev.id === evolutionModalInitial.id ? (data.evolution as TreatmentEvolution) : ev)));
+        push("Evolução atualizada.", "success");
+      } else {
+        const res = await fetch(`/api/clinics/${clinicId}/treatments/${treatment.id}/evolutions`, { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) {
+          push("Falha ao salvar a evolução. Tenta de novo.");
+          return;
+        }
+        setEvolutions((prev) => [data.evolution as TreatmentEvolution, ...prev]);
+        push("Evolução adicionada.", "success");
       }
-      setEvolutions((prev) => [data.evolution as TreatmentEvolution, ...prev]);
-      setAddingEvolution(false);
-      setEvoText("");
-      setEvoImages([]);
-      push("Evolução adicionada.", "success");
+      setEvolutionModalOpen(false);
     } finally {
       setSavingEvolution(false);
     }
   }
 
-  function startEditEvolution(e: TreatmentEvolution) {
-    setEditingEvolutionId(e.id);
-    setEditEvoDate(e.evolution_date);
-    setEditEvoText(e.text);
-    setEditEvoKeepKeys([...e.image_keys]);
-    setEditEvoNewImages([]);
-  }
-
-  async function handleSaveEvolutionEdit(e: TreatmentEvolution) {
-    if (!editEvoText.trim()) {
-      push("Preencha o texto da evolução.");
-      return;
-    }
-    setSavingEvolutionEdit(true);
-    try {
-      const form = new FormData();
-      form.set("evolution_date", editEvoDate);
-      form.set("text", editEvoText.trim());
-      form.set("keep_image_keys", JSON.stringify(editEvoKeepKeys));
-      editEvoNewImages.forEach((file) => form.append("images", file));
-
-      const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${e.id}`, { method: "PATCH", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        push("Falha ao salvar a evolução. Tenta de novo.");
-        return;
-      }
-      setEvolutions((prev) => prev.map((ev) => (ev.id === e.id ? (data.evolution as TreatmentEvolution) : ev)));
-      setEditingEvolutionId(null);
-      push("Evolução atualizada.", "success");
-    } finally {
-      setSavingEvolutionEdit(false);
-    }
+  function toggleExpanded(id: string) {
+    setExpandedEvolutionIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   }
 
   async function handleDeleteEvolution(id: string) {
@@ -358,48 +337,10 @@ export function TreatmentDetailModal({
                     <p className={styles.fgroupLabel} style={{ margin: 0 }}>
                       Evoluções
                     </p>
-                    {!addingEvolution && (
-                      <button type="button" onClick={() => setAddingEvolution(true)} className={`${styles.btn} ${styles.btnGhost}`}>
-                        + Nova evolução
-                      </button>
-                    )}
+                    <button type="button" onClick={openAddEvolution} className={`${styles.btn} ${styles.btnGhost}`}>
+                      + Nova evolução
+                    </button>
                   </div>
-
-                  {addingEvolution && (
-                    <div className={tp.evolutionCard} style={{ marginBottom: 12 }}>
-                      <div className={styles.formRow}>
-                        <div className={styles.field} style={{ maxWidth: 180 }}>
-                          <label className={styles.label}>Data*</label>
-                          <input type="date" className={styles.input} value={evoDate} onChange={(e) => setEvoDate(e.target.value)} />
-                        </div>
-                      </div>
-                      <div className={styles.field} style={{ marginTop: 8 }}>
-                        <label className={styles.label}>Texto*</label>
-                        <textarea className={styles.input} rows={3} value={evoText} onChange={(e) => setEvoText(e.target.value)} />
-                      </div>
-                      <div style={{ marginTop: 10 }}>
-                        <label className={styles.label}>Imagens (opcional, até {MAX_EVOLUTION_IMAGES})</label>
-                        <EvolutionImageUploader files={evoImages} onChange={setEvoImages} max={MAX_EVOLUTION_IMAGES} />
-                      </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                        <button type="button" disabled={savingEvolution} onClick={handleAddEvolution} className={`${styles.btn} ${styles.btnPrimary}`}>
-                          {savingEvolution ? "Salvando…" : "Adicionar evolução"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={savingEvolution}
-                          onClick={() => {
-                            setAddingEvolution(false);
-                            setEvoText("");
-                            setEvoImages([]);
-                          }}
-                          className={`${styles.btn} ${styles.btnGhost}`}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {loadingEvolutions ? (
                     <p style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Carregando…</p>
@@ -407,76 +348,11 @@ export function TreatmentDetailModal({
                     <p style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Nenhuma evolução registrada ainda.</p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {evolutions.map((e) =>
-                        editingEvolutionId === e.id ? (
-                          <div key={e.id} className={tp.evolutionCard}>
-                            <div className={styles.formRow}>
-                              <div className={styles.field} style={{ maxWidth: 180 }}>
-                                <label className={styles.label}>Data*</label>
-                                <input type="date" className={styles.input} value={editEvoDate} onChange={(ev) => setEditEvoDate(ev.target.value)} />
-                              </div>
-                            </div>
-                            <div className={styles.field} style={{ marginTop: 8 }}>
-                              <label className={styles.label}>Texto*</label>
-                              <textarea className={styles.input} rows={3} value={editEvoText} onChange={(ev) => setEditEvoText(ev.target.value)} />
-                            </div>
-                            {e.image_keys.length > 0 && (
-                              <div style={{ marginTop: 10 }}>
-                                <label className={styles.label}>Imagens atuais</label>
-                                <div className={tp.evolutionImages}>
-                                  {e.image_keys.map((key, i) => {
-                                    const kept = editEvoKeepKeys.includes(key);
-                                    return (
-                                      <div key={key} style={{ position: "relative", opacity: kept ? 1 : 0.35 }}>
-                                        <a href={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} target="_blank" rel="noreferrer" className={tp.evolutionThumb}>
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} alt="" />
-                                        </a>
-                                        <button
-                                          type="button"
-                                          className={tp.imageRemove}
-                                          style={{ position: "absolute", top: 3, right: 3 }}
-                                          onClick={() =>
-                                            setEditEvoKeepKeys((prev) => (kept ? prev.filter((k) => k !== key) : [...prev, key]))
-                                          }
-                                          title={kept ? "Remover" : "Manter"}
-                                        >
-                                          {kept ? "×" : "+"}
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ marginTop: 10 }}>
-                              <label className={styles.label}>Adicionar imagens</label>
-                              <EvolutionImageUploader
-                                files={editEvoNewImages}
-                                onChange={setEditEvoNewImages}
-                                max={Math.max(0, MAX_EVOLUTION_IMAGES - editEvoKeepKeys.length)}
-                              />
-                            </div>
-                            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                              <button
-                                type="button"
-                                disabled={savingEvolutionEdit}
-                                onClick={() => handleSaveEvolutionEdit(e)}
-                                className={`${styles.btn} ${styles.btnPrimary}`}
-                              >
-                                {savingEvolutionEdit ? "Salvando…" : "Salvar"}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={savingEvolutionEdit}
-                                onClick={() => setEditingEvolutionId(null)}
-                                className={`${styles.btn} ${styles.btnGhost}`}
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
+                      {evolutions.map((e) => {
+                        const isLong = e.text.length > EVOLUTION_TRUNCATE_LENGTH;
+                        const isExpanded = expandedEvolutionIds.includes(e.id);
+                        const displayText = isLong && !isExpanded ? `${e.text.slice(0, EVOLUTION_TRUNCATE_LENGTH).trimEnd()}…` : e.text;
+                        return (
                           <div key={e.id} className={tp.evolutionCard}>
                             <div className={tp.evolutionHeader}>
                               <span className={tp.evolutionDate}>
@@ -485,7 +361,7 @@ export function TreatmentDetailModal({
                               <div style={{ display: "flex", gap: 10 }}>
                                 <button
                                   type="button"
-                                  onClick={() => startEditEvolution(e)}
+                                  onClick={() => openEditEvolution(e)}
                                   style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12 }}
                                 >
                                   Editar
@@ -500,31 +376,64 @@ export function TreatmentDetailModal({
                                 </button>
                               </div>
                             </div>
-                            <p className={tp.evolutionText}>{e.text}</p>
+                            <p className={tp.evolutionText}>
+                              {displayText}
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpanded(e.id)}
+                                  style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12.5, fontWeight: 600, marginLeft: 6, padding: 0 }}
+                                >
+                                  {isExpanded ? "ver menos" : "ver mais"}
+                                </button>
+                              )}
+                            </p>
                             {e.image_keys.length > 0 && (
                               <div className={tp.evolutionImages}>
                                 {e.image_keys.map((_, i) => (
-                                  <a
+                                  <button
                                     key={i}
-                                    href={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`}
-                                    target="_blank"
-                                    rel="noreferrer"
+                                    type="button"
                                     className={tp.evolutionThumb}
+                                    style={{ border: "none", padding: 0, cursor: "pointer" }}
+                                    onClick={() => {
+                                      setLightboxEvolutionId(e.id);
+                                      setLightboxIndex(i);
+                                    }}
                                   >
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} alt="" />
-                                  </a>
+                                  </button>
                                 ))}
                               </div>
                             )}
                           </div>
-                        )
-                      )}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               </div>
             </div>
+
+            <EvolutionFormModal
+              open={evolutionModalOpen}
+              onClose={() => setEvolutionModalOpen(false)}
+              onSave={handleSaveEvolution}
+              saving={savingEvolution}
+              clinicId={clinicId}
+              initial={evolutionModalInitial}
+            />
+
+            <ImageLightbox
+              open={lightboxEvolutionId !== null}
+              onClose={() => setLightboxEvolutionId(null)}
+              images={(evolutions.find((e) => e.id === lightboxEvolutionId)?.image_keys ?? []).map((_, i) => ({
+                url: `/api/clinics/${clinicId}/treatment-evolutions/${lightboxEvolutionId}/images/${i}`,
+              }))}
+              index={lightboxIndex}
+              onIndexChange={setLightboxIndex}
+            />
 
             <ConfirmDialog
               open={confirmDeleteTreatmentOpen}
