@@ -25,6 +25,31 @@ const patchSchema = z.object({
   patient_id: z.string().uuid().nullable().optional(),
 });
 
+/** Agendamento + histórico de eventos — usado pelo modal de detalhe aberto fora da agenda (ex.: aba Agendamentos da ficha do paciente), onde a interceptação de rota do Next não alcança. */
+export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
+  const clinic = await getCurrentClinic();
+  if (!clinic || clinic.id !== params.clinicId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: appointment } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("id", params.id)
+    .eq("clinic_id", clinic.id)
+    .maybeSingle();
+  if (!appointment) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const { data: eventsData } = await supabase
+    .from("appointment_events")
+    .select("*")
+    .eq("appointment_id", appointment.id)
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ appointment, events: eventsData ?? [] });
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic || clinic.id !== params.clinicId) {

@@ -40,6 +40,7 @@ export function AppointmentDetailBody({
   appointment: a,
   events,
   compact,
+  onChanged,
 }: {
   clinicId: string;
   appointment: Appointment;
@@ -48,6 +49,8 @@ export function AppointmentDetailBody({
    * cancela o `margin-bottom` próprio do `.panel` (senão soma os dois e
    * sobra espaço em branco entre os cards). */
   compact?: boolean;
+  /** Ver AppointmentActions — só o modal client-fetched (fora da agenda) precisa. */
+  onChanged?: () => void;
 }) {
   const panelStyle = compact ? { marginBottom: 0 } : undefined;
   return (
@@ -83,7 +86,7 @@ export function AppointmentDetailBody({
               "Retorno previsto",
               `${formatBRDate(`${a.return_due_date}T12:00:00-03:00`)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
             )}
-          <AppointmentNotesField clinicId={clinicId} appointmentId={a.id} notes={a.notes} />
+          <AppointmentNotesField clinicId={clinicId} appointmentId={a.id} notes={a.notes} onChanged={onChanged} />
         </div>
       </div>
 
@@ -100,6 +103,7 @@ export function AppointmentDetailBody({
             urgent={a.urgent}
             scheduledAt={a.scheduled_at}
             durationMinutes={a.duration_minutes}
+            onChanged={onChanged}
           />
         </div>
       </div>

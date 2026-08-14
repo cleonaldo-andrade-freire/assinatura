@@ -16,6 +16,7 @@ export function AppointmentActions({
   urgent,
   scheduledAt,
   durationMinutes,
+  onChanged,
 }: {
   clinicId: string;
   appointmentId: string;
@@ -26,6 +27,10 @@ export function AppointmentActions({
   urgent: boolean;
   scheduledAt: string;
   durationMinutes: number;
+  /** Além do router.refresh() (que só afeta Server Components ao redor), o
+   * modal de detalhe aberto fora da agenda busca os dados por fetch — sem
+   * isso, status/urgência ficavam desatualizados ali depois de uma ação. */
+  onChanged?: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -63,6 +68,7 @@ export function AppointmentActions({
       }
       if (successMessage) push(successMessage, "success");
       router.refresh();
+      onChanged?.();
       return true;
     } finally {
       setBusy(false);

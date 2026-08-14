@@ -14,7 +14,18 @@ import styles from "@/styles/shell.module.css";
  * liga com mais informação), não só na criação. Edição em modal — inline
  * dentro do card ficava ruim (textarea empurrando o resto do conteúdo).
  */
-export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clinicId: string; appointmentId: string; notes: string | null }) {
+export function AppointmentNotesField({
+  clinicId,
+  appointmentId,
+  notes,
+  onChanged,
+}: {
+  clinicId: string;
+  appointmentId: string;
+  notes: string | null;
+  /** Ver AppointmentActions — só o modal client-fetched (fora da agenda) precisa. */
+  onChanged?: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(notes ?? "");
@@ -44,6 +55,7 @@ export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clin
       setOpen(false);
       push("Observação salva.", "success");
       router.refresh();
+      onChanged?.();
     } finally {
       setSaving(false);
     }

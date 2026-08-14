@@ -11,6 +11,7 @@ import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
 import { PatientImagesPanel } from "@/components/patientImages/PatientImagesPanel";
+import { AppointmentDetailTrigger } from "@/components/dashboard/AppointmentDetailTrigger";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
@@ -257,7 +258,7 @@ export default async function EditPatientPage({
                   </span>
                 </td>
                 <td>
-                  <Link href={`/dashboard/agenda/${a.id}`}>Ver detalhes</Link>
+                  <AppointmentDetailTrigger clinicId={clinic.id} appointmentId={a.id} />
                 </td>
               </tr>
             ))}
