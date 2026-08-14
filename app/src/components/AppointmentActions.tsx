@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
@@ -41,7 +41,27 @@ export function AppointmentActions({
   const [newTime, setNewTime] = useState(slotKey(scheduledAt));
   const [newDuration, setNewDuration] = useState(durationMinutes);
   const [resending, setResending] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { toasts, push, dismiss } = useToasts();
+
+  // Fecha o menu "⋯ Mais ações" ao clicar fora ou apertar Esc — não é um
+  // modal (não usa useEscapeToClose), então trata os dois aqui mesmo.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   async function handleResend() {
     setResending(true);
@@ -103,14 +123,33 @@ export function AppointmentActions({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newDate]);
 
+  // Só a ação mais relevante pro status atual fica em destaque — o resto
+  // (mais raro/secundário) vai pro menu "⋯", inclusive Cancelar (em
+  // vermelho, mas sem competir visualmente com as ações do dia a dia).
+  const menuItems: { label: string; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
+  if (status === "agendado") {
+    menuItems.push({ label: resending ? "Enviando…" : "📲 Enviar confirmação por WhatsApp", onClick: handleResend, disabled: resending });
+  }
+  if (!isTerminal) {
+    // "atendido" já está entre os status terminais (isTerminal), então
+    // chegar aqui garante que ainda não foi marcado como atendido.
+    menuItems.push({ label: "Marcar como atendido", onClick: () => patch({ status: "atendido" }, "Marcado como atendido.") });
+    menuItems.push({ label: "Marcar falta", onClick: () => patch({ status: "faltou" }, "Marcado como falta.") });
+    menuItems.push({ label: "Remarcar", onClick: () => setRescheduling(true) });
+    menuItems.push({
+      label: urgent ? "Remover urgência" : "Marcar como urgência",
+      onClick: () => patch({ urgent: !urgent }, urgent ? "Urgência removida." : "Marcado como urgência."),
+    });
+    menuItems.push({
+      label: "Cancelar",
+      danger: true,
+      onClick: () => patch({ status: "cancelado_dentista" }, "Agendamento cancelado — horário liberado."),
+    });
+  }
+
   return (
     <div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {status === "agendado" && (
-          <button type="button" disabled={busy || resending} onClick={handleResend} className={`${styles.btn} ${styles.btnGhost}`}>
-            {resending ? "Enviando…" : "📲 Enviar confirmação por WhatsApp"}
-          </button>
-        )}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         {status !== "confirmado" && status !== "em_atendimento" && !isTerminal && (
           <button type="button" disabled={busy} onClick={() => patch({ status: "confirmado" }, "Agendamento confirmado.")} className={`${styles.btn} ${styles.btnPrimary}`}>
             Confirmar
@@ -121,40 +160,33 @@ export function AppointmentActions({
             Iniciar atendimento
           </button>
         )}
-        {status !== "atendido" && !isTerminal && (
-          <button type="button" disabled={busy} onClick={() => patch({ status: "atendido" }, "Marcado como atendido.")} className={`${styles.btn} ${styles.btnGhost}`}>
-            Marcar como atendido
-          </button>
-        )}
-        {!isTerminal && (
-          <button type="button" disabled={busy} onClick={() => patch({ status: "faltou" }, "Marcado como falta.")} className={`${styles.btn} ${styles.btnGhost}`}>
-            Marcar falta
-          </button>
-        )}
-        {!isTerminal && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => patch({ status: "cancelado_dentista" }, "Agendamento cancelado — horário liberado.")}
-            className={`${styles.btn} ${styles.btnDanger}`}
-          >
-            Cancelar
-          </button>
-        )}
-        {!isTerminal && (
-          <button type="button" disabled={busy} onClick={() => setRescheduling((v) => !v)} className={`${styles.btn} ${styles.btnGhost}`}>
-            Remarcar
-          </button>
-        )}
-        {!isTerminal && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => patch({ urgent: !urgent }, urgent ? "Urgência removida." : "Marcado como urgência.")}
-            className={`${styles.btn} ${styles.btnGhost}`}
-          >
-            {urgent ? "Remover urgência" : "Marcar como urgência"}
-          </button>
+        {menuItems.length > 0 && (
+          <div className={styles.menuWrap} ref={menuRef}>
+            <button type="button" disabled={busy} onClick={() => setMenuOpen((v) => !v)} className={styles.menuTrigger} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Mais ações">
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className={styles.menuPanel} role="menu">
+                {menuItems.map((item, i) => (
+                  <div key={i}>
+                    {item.danger && i > 0 && !menuItems[i - 1].danger && <hr className={styles.menuDivider} />}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={busy || item.disabled}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        item.onClick();
+                      }}
+                      className={`${styles.menuItem} ${item.danger ? styles.menuItemDanger : ""}`}
+                    >
+                      {item.label}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
