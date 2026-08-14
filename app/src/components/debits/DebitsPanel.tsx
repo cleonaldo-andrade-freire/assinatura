@@ -186,98 +186,108 @@ export function DebitsPanel({
         </div>
       </div>
 
-      <div style={{ marginBottom: 28 }}>
-        <p className={db.sectionTitle}>Em aberto</p>
-        {openDebits.length === 0 ? (
-          <div className={styles.emptyState}>Nenhum débito em aberto.</div>
-        ) : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selectedOpen.size > 0 ? 56 : 0 }}>
-              {openDebits.map((d) => (
-                <div key={d.id} className={db.row}>
-                  <input
-                    type="checkbox"
-                    checked={selectedOpen.has(d.id)}
-                    onChange={() => toggleOpen(d.id)}
-                    style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(d.id)}
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ color: "var(--danger)", flexShrink: 0 }}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-            </div>
-            <Pagination page={openPage} totalPages={openTotalPages} count={openCount} itemLabel="débito" hrefFor={openHrefFor} />
-          </>
-        )}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Em aberto</p>
+          {openCount > 0 && <span className={db.paymentTag}>{openCount}</span>}
+        </div>
+        <div className={styles.panelBody}>
+          {openDebits.length === 0 ? (
+            <div className={styles.emptyState}>Nenhum débito em aberto.</div>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selectedOpen.size > 0 ? 56 : 0 }}>
+                {openDebits.map((d) => (
+                  <div key={d.id} className={db.row}>
+                    <input
+                      type="checkbox"
+                      checked={selectedOpen.has(d.id)}
+                      onChange={() => toggleOpen(d.id)}
+                      style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(d.id)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ color: "var(--danger)", flexShrink: 0 }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Pagination page={openPage} totalPages={openTotalPages} count={openCount} itemLabel="débito" hrefFor={openHrefFor} />
+            </>
+          )}
+        </div>
       </div>
 
-      <div style={{ marginBottom: selectedPaid.size > 0 ? 56 : 0 }}>
-        <p className={db.sectionTitle}>Pago</p>
-        {paidDebits.length === 0 ? (
-          <div className={styles.emptyState}>Nenhum débito pago ainda.</div>
-        ) : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {paidDebits.map((d) => {
-                const canCancelPayment = !d.has_split && !d.receipt_id;
-                const isReceipted = !!d.receipt_id;
-                return (
-                  <div key={d.id} className={db.row}>
-                    {isReceipted ? (
-                      <span style={{ width: 18, flexShrink: 0 }} />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={selectedPaid.has(d.id)}
-                        onChange={() => togglePaid(d.id)}
-                        style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
-                      />
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                        {d.payment_method && <span className={db.paymentTag}>{d.payment_method}</span>}
-                        {d.paid_at && <span className={db.dateTag}>{formatBRDateTime(d.paid_at, "medium")}</span>}
+      <div className={styles.panel} style={{ marginBottom: selectedPaid.size > 0 ? 56 : 20 }}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Pago</p>
+          {paidCount > 0 && <span className={db.paymentTag}>{paidCount}</span>}
+        </div>
+        <div className={styles.panelBody}>
+          {paidDebits.length === 0 ? (
+            <div className={styles.emptyState}>Nenhum débito pago ainda.</div>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {paidDebits.map((d) => {
+                  const canCancelPayment = !d.has_split && !d.receipt_id;
+                  const isReceipted = !!d.receipt_id;
+                  return (
+                    <div key={d.id} className={db.row}>
+                      {isReceipted ? (
+                        <span style={{ width: 18, flexShrink: 0 }} />
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={selectedPaid.has(d.id)}
+                          onChange={() => togglePaid(d.id)}
+                          style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                          {d.payment_method && <span className={db.paymentTag}>{d.payment_method}</span>}
+                          {d.paid_at && <span className={db.dateTag}>{formatBRDateTime(d.paid_at, "medium")}</span>}
+                        </div>
                       </div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
+                      <span className={`${styles.statusDot} ${styles.statusOk}`}>{isReceipted ? "Recibo emitido" : "Pago"}</span>
+                      {canCancelPayment && (
+                        <button
+                          type="button"
+                          disabled={cancelingPaymentId === d.id}
+                          onClick={() => handleCancelPayment(d.id)}
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ flexShrink: 0 }}
+                        >
+                          {cancelingPaymentId === d.id ? "Cancelando…" : "Cancelar recebimento"}
+                        </button>
+                      )}
+                      {!isReceipted && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(d.id)}
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ color: "var(--danger)", flexShrink: 0 }}
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
-                    <span className={`${styles.statusDot} ${styles.statusOk}`}>{isReceipted ? "Recibo emitido" : "Pago"}</span>
-                    {canCancelPayment && (
-                      <button
-                        type="button"
-                        disabled={cancelingPaymentId === d.id}
-                        onClick={() => handleCancelPayment(d.id)}
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ flexShrink: 0 }}
-                      >
-                        {cancelingPaymentId === d.id ? "Cancelando…" : "Cancelar recebimento"}
-                      </button>
-                    )}
-                    {!isReceipted && (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(d.id)}
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ color: "var(--danger)", flexShrink: 0 }}
-                      >
-                        Excluir
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <Pagination page={paidPage} totalPages={paidTotalPages} count={paidCount} itemLabel="débito" hrefFor={paidHrefFor} />
-          </>
-        )}
+                  );
+                })}
+              </div>
+              <Pagination page={paidPage} totalPages={paidTotalPages} count={paidCount} itemLabel="débito" hrefFor={paidHrefFor} />
+            </>
+          )}
+        </div>
       </div>
 
       {selectedOpen.size > 0 && (

@@ -117,8 +117,12 @@ export function RecurringExpensesPanel({
   }
 
   return (
-    <div>
-      <p className={ex.sectionTitle}>Despesas recorrentes</p>
+    <div className={styles.panel} style={{ marginBottom: 0 }}>
+      <div className={styles.panelHeader}>
+        <p className={styles.panelHeaderTitle}>Despesas recorrentes</p>
+        {recurring.length > 0 && <span className={ex.categoryTag}>{recurring.length}</span>}
+      </div>
+      <div className={styles.panelBody}>
       {recurring.length === 0 ? (
         <div className={styles.emptyState}>Nenhuma despesa recorrente cadastrada.</div>
       ) : (
@@ -203,6 +207,8 @@ export function RecurringExpensesPanel({
           </tbody>
         </table>
       )}
+
+      </div>
 
       <ConfirmDialog
         open={confirmDeleteId !== null}

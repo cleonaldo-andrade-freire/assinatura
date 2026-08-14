@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { MarkPaidModal } from "@/components/expenses/MarkPaidModal";
 import { NewExpenseModal } from "@/components/expenses/NewExpenseModal";
+import { ExpenseReceiptButton } from "@/components/expenses/ExpenseReceiptButton";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDateTime } from "@/lib/date";
 import { formatDateBR } from "@/lib/pdfTextLayout";
@@ -105,7 +106,7 @@ export function ExpensesPanel({
     }
   }
 
-  async function handleConfirmPaid(paymentMethod: string, paidAt: string) {
+  async function handleConfirmPaid(paymentMethod: string, paidAt: string, receiptFile: File | null) {
     const ids = expensesToPay.map((e) => e.id);
     const res = await fetch(`/api/clinics/${clinicId}/expenses/mark-paid`, {
       method: "POST",
@@ -117,7 +118,24 @@ export function ExpensesPanel({
       push(data?.message || "Falha ao registrar o pagamento. Tenta de novo.");
       return;
     }
-    const paid = (data.expenses as Expense[]) ?? [];
+    let paid = (data.expenses as Expense[]) ?? [];
+
+    // Comprovante é um segundo passo best-effort, só faz sentido com uma
+    // despesa por vez (ver MarkPaidModal) — uma falha aqui não desfaz o
+    // pagamento já registrado.
+    if (receiptFile && ids.length === 1) {
+      const receiptForm = new FormData();
+      receiptForm.append("receipt", receiptFile);
+      const receiptRes = await fetch(`/api/clinics/${clinicId}/expenses/${ids[0]}/receipt`, { method: "POST", body: receiptForm });
+      if (receiptRes.ok) {
+        const receiptData = await receiptRes.json();
+        paid = paid.map((e) => (e.id === ids[0] ? (receiptData.expense as Expense) : e));
+      } else {
+        const receiptError = await receiptRes.json().catch(() => null);
+        push(receiptError?.message || "Pagamento registrado, mas falhou ao anexar o comprovante — anexe depois na lista de pagas.");
+      }
+    }
+
     setPendingExpenses((prev) => prev.filter((e) => !ids.includes(e.id)));
     setPaidExpenses((prev) => [...paid, ...prev]);
     setSelectedPending(new Set());
@@ -162,87 +180,103 @@ export function ExpensesPanel({
         </div>
       </div>
 
-      <div style={{ marginBottom: 28 }}>
-        <p className={ex.sectionTitle}>Pendente</p>
-        {pendingExpenses.length === 0 ? (
-          <div className={styles.emptyState}>Nenhuma despesa pendente.</div>
-        ) : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selectedPending.size > 0 ? 56 : 0 }}>
-              {pendingExpenses.map((e) => (
-                <div key={e.id} className={ex.row}>
-                  <input
-                    type="checkbox"
-                    checked={selectedPending.has(e.id)}
-                    onChange={() => togglePending(e.id)}
-                    style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                      {e.category && <span className={ex.categoryTag}>{e.category}</span>}
-                      <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Pendente</p>
+          {pendingCount > 0 && <span className={ex.categoryTag}>{pendingCount}</span>}
+        </div>
+        <div className={styles.panelBody}>
+          {pendingExpenses.length === 0 ? (
+            <div className={styles.emptyState}>Nenhuma despesa pendente.</div>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selectedPending.size > 0 ? 56 : 0 }}>
+                {pendingExpenses.map((e) => (
+                  <div key={e.id} className={ex.row}>
+                    <input
+                      type="checkbox"
+                      checked={selectedPending.has(e.id)}
+                      onChange={() => togglePending(e.id)}
+                      style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        {e.category && <span className={ex.categoryTag}>{e.category}</span>}
+                        <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
+                      </div>
                     </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(e.id)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ color: "var(--danger)", flexShrink: 0 }}
+                    >
+                      Excluir
+                    </button>
                   </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(e.id)}
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ color: "var(--danger)", flexShrink: 0 }}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-            </div>
-            <Pagination page={pendingPage} totalPages={pendingTotalPages} count={pendingCount} itemLabel="despesa" hrefFor={pendingHrefFor} />
-          </>
-        )}
+                ))}
+              </div>
+              <Pagination page={pendingPage} totalPages={pendingTotalPages} count={pendingCount} itemLabel="despesa" hrefFor={pendingHrefFor} />
+            </>
+          )}
+        </div>
       </div>
 
-      <div>
-        <p className={ex.sectionTitle}>Pago</p>
-        {paidExpenses.length === 0 ? (
-          <div className={styles.emptyState}>Nenhuma despesa paga neste mês.</div>
-        ) : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {paidExpenses.map((e) => (
-                <div key={e.id} className={ex.row}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                      {e.category && <span className={ex.categoryTag}>{e.category}</span>}
-                      {e.payment_method && <span className={ex.categoryTag}>{e.payment_method}</span>}
-                      {e.paid_at && <span className={ex.dateTag}>{formatBRDateTime(e.paid_at, "medium")}</span>}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Pago</p>
+          {paidCount > 0 && <span className={ex.categoryTag}>{paidCount}</span>}
+        </div>
+        <div className={styles.panelBody}>
+          {paidExpenses.length === 0 ? (
+            <div className={styles.emptyState}>Nenhuma despesa paga neste mês.</div>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {paidExpenses.map((e) => (
+                  <div key={e.id} className={ex.row}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        {e.category && <span className={ex.categoryTag}>{e.category}</span>}
+                        {e.payment_method && <span className={ex.categoryTag}>{e.payment_method}</span>}
+                        {e.paid_at && <span className={ex.dateTag}>{formatBRDateTime(e.paid_at, "medium")}</span>}
+                      </div>
                     </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
+                    <span className={`${styles.statusDot} ${styles.statusOk}`}>Pago</span>
+                    <ExpenseReceiptButton
+                      clinicId={clinicId}
+                      expense={e}
+                      onUploaded={(updated) => setPaidExpenses((prev) => prev.map((it) => (it.id === updated.id ? updated : it)))}
+                      onError={(message) => push(message)}
+                    />
+                    <button
+                      type="button"
+                      disabled={cancelingPaymentId === e.id}
+                      onClick={() => handleCancelPayment(e.id)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {cancelingPaymentId === e.id ? "Cancelando…" : "Cancelar pagamento"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(e.id)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ color: "var(--danger)", flexShrink: 0 }}
+                    >
+                      Excluir
+                    </button>
                   </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
-                  <span className={`${styles.statusDot} ${styles.statusOk}`}>Pago</span>
-                  <button
-                    type="button"
-                    disabled={cancelingPaymentId === e.id}
-                    onClick={() => handleCancelPayment(e.id)}
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ flexShrink: 0 }}
-                  >
-                    {cancelingPaymentId === e.id ? "Cancelando…" : "Cancelar pagamento"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(e.id)}
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ color: "var(--danger)", flexShrink: 0 }}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-            </div>
-            <Pagination page={paidPage} totalPages={paidTotalPages} count={paidCount} itemLabel="despesa" hrefFor={paidHrefFor} />
-          </>
-        )}
+                ))}
+              </div>
+              <Pagination page={paidPage} totalPages={paidTotalPages} count={paidCount} itemLabel="despesa" hrefFor={paidHrefFor} />
+            </>
+          )}
+        </div>
       </div>
 
       {selectedPending.size > 0 && (
