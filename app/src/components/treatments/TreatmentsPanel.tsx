@@ -207,6 +207,10 @@ export function TreatmentsPanel({
           setTreatments((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
           setDetailTreatment(updated);
         }}
+        onDeleted={(id) => {
+          setTreatments((prev) => prev.filter((t) => t.id !== id));
+          setDetailTreatment(null);
+        }}
       />
 
       <FinalizeTreatmentModal

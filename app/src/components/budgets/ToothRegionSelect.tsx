@@ -42,10 +42,25 @@ function ToothButton({ number, selected, onClick }: { number: string; selected: 
  * selecionado, cada uma com o valor cheio — mesmo padrão da referência
  * (tratamento igual em 2 dentes = 2 linhas, não o valor dividido).
  */
-export function ToothRegionSelect({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+export function ToothRegionSelect({
+  value,
+  onChange,
+  single,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  /** Editar um tratamento já existente é sempre um dente/região só — clicar
+   * troca a seleção em vez de acumular (mesmo componente da tela de
+   * adicionar, só o comportamento de clique muda). */
+  single?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("permanent");
 
   function toggle(v: string) {
+    if (single) {
+      onChange(value.includes(v) ? [] : [v]);
+      return;
+    }
     onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   }
 
@@ -58,12 +73,13 @@ export function ToothRegionSelect({ value, onChange }: { value: string[]; onChan
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <label className={styles.label} style={{ marginBottom: 0 }}>
-          Selecionar dente/região <span style={{ fontWeight: 400, color: "var(--ink-faint)" }}>(pode marcar mais de um)</span>
+          Selecionar dente/região{" "}
+          {!single && <span style={{ fontWeight: 400, color: "var(--ink-faint)" }}>(pode marcar mais de um)</span>}
         </label>
         <span style={{ fontSize: 12.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 8 }}>
           {value.length > 0 ? (
             <>
-              Selecionados ({value.length}): <strong style={{ color: "var(--ink)" }}>{value.join(", ")}</strong>
+              {single ? "Selecionado" : `Selecionados (${value.length})`}: <strong style={{ color: "var(--ink)" }}>{value.join(", ")}</strong>
               <button
                 type="button"
                 onClick={() => onChange([])}

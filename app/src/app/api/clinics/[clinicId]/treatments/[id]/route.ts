@@ -7,6 +7,7 @@ const bodySchema = z.object({
   treatment_name: z.string().trim().min(1).optional(),
   tooth_region: z.string().trim().nullable().optional(),
   price: z.number().nonnegative().optional(),
+  price_table_name: z.string().trim().nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
