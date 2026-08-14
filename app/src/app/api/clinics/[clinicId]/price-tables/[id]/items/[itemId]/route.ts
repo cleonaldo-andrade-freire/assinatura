@@ -8,6 +8,7 @@ const bodySchema = z.object({
   name: z.string().trim().min(1).optional(),
   price: z.number().nonnegative().optional(),
   active: z.boolean().optional(),
+  favorito: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string; itemId: string } }) {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
 
@@ -19,6 +20,8 @@ export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clin
   const [draft, setDraft] = useState(notes ?? "");
   const [saving, setSaving] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+
+  useEscapeToClose(() => !saving && setOpen(false), open);
 
   function startEdit() {
     setDraft(notes ?? "");
@@ -47,18 +50,31 @@ export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clin
   }
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-      <span style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Observação</span>
-      <span style={{ fontSize: 13.5, textAlign: "right" }}>
-        {notes ? <span style={{ whiteSpace: "pre-wrap" }}>{notes}</span> : <span style={{ color: "var(--ink-faint)" }}>—</span>}{" "}
+    <div style={{ padding: "12px 0 4px", borderTop: "1px solid var(--line)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: notes ? 8 : 0 }}>
+        <span style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Observação</span>
         <button
           type="button"
           onClick={startEdit}
-          style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12.5, fontWeight: 600, padding: 0, marginLeft: 4 }}
+          style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12.5, fontWeight: 600, padding: 0 }}
         >
           {notes ? "Editar" : "+ Adicionar"}
         </button>
-      </span>
+      </div>
+      {notes && (
+        <div
+          style={{
+            background: "var(--surface-sunken)",
+            borderRadius: "var(--radius-sm)",
+            padding: "10px 12px",
+            fontSize: 13.5,
+            lineHeight: 1.5,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {notes}
+        </div>
+      )}
 
       {open &&
         typeof document !== "undefined" &&

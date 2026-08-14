@@ -104,3 +104,26 @@
   color: var(--ink-faint);
   max-width: 560px;
 }
+
+.favoriteStar {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  padding: 4px;
+  color: var(--ink-faint);
+}
+
+.favoriteStar:hover:not(:disabled) {
+  color: var(--warn);
+}
+
+.favoriteStar[aria-pressed="true"] {
+  color: var(--warn);
+}
+
+.favoriteStar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -397,6 +397,7 @@ export interface PriceTableItem {
   name: string;
   price: number;
   active: boolean;
+  favorito: boolean;
   display_order: number;
   created_at: string;
   updated_at: string;

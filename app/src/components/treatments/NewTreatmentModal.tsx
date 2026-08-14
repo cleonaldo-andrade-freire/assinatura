@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ToothRegionSelect } from "@/components/budgets/ToothRegionSelect";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
 import type { PriceTable, PriceTableItem, Treatment } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -46,6 +48,8 @@ export function NewTreatmentModal({
   const [price, setPrice] = useState("");
   const [toothSelection, setToothSelection] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEscapeToClose(onClose, open);
 
   useEffect(() => {
     if (!open) return;
@@ -162,9 +166,9 @@ export function NewTreatmentModal({
               disabled={!priceTableId}
             >
               <option value="">Selecione…</option>
-              {selectedTable?.items.map((i) => (
+              {selectedTable && sortFavoritesFirst(selectedTable.items).map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
+                  {treatmentOptionLabel(i)}
                 </option>
               ))}
               <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>

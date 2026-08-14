@@ -13,6 +13,8 @@ import styles from "@/styles/shell.module.css";
 import nb from "./newBudget.module.css";
 
 const PAYMENT_METHODS = ["Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"];
+// Só esses dois meios fazem sentido parcelar — os outros são à vista por natureza.
+const PARCELABLE_METHODS = new Set(["Cartão de crédito", "Boleto"]);
 
 interface CatalogTable extends PriceTable {
   items: PriceTableItem[];
@@ -83,6 +85,16 @@ export function NewBudgetModal({
 
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState<"draft" | "approve" | null>(null);
+
+  const canInstallment = PARCELABLE_METHODS.has(paymentMethod);
+
+  // Meio de pagamento decide se parcelamento é uma opção — trocar pra um
+  // meio à vista limpa o que só fazia sentido no parcelado.
+  useEffect(() => {
+    if (canInstallment) return;
+    setParcelar(false);
+    setAdicionarEntrada(false);
+  }, [canInstallment]);
 
   useEffect(() => {
     if (!open) return;
@@ -342,106 +354,96 @@ export function NewBudgetModal({
 
             <hr className={nb.sectionDivider} />
 
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={parcelar}
-                onChange={(e) => {
-                  setParcelar(e.target.checked);
-                  if (!e.target.checked) setAdicionarEntrada(false);
-                }}
-                style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
-              />
-              <span style={{ fontSize: 13.5 }}>Parcelar orçamento</span>
-            </label>
+            <div className={styles.field} style={{ maxWidth: 260, marginBottom: 0 }}>
+              <label className={styles.label}>Meio de pagamento*</label>
+              <select className={styles.select} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <option value="">Selecione…</option>
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {parcelar && (
+            {canInstallment && (
               <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    checked={adicionarEntrada}
-                    onChange={(e) => setAdicionarEntrada(e.target.checked)}
+                    checked={parcelar}
+                    onChange={(e) => {
+                      setParcelar(e.target.checked);
+                      if (!e.target.checked) setAdicionarEntrada(false);
+                    }}
                     style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
                   />
-                  <span style={{ fontSize: 13.5 }}>Adicionar entrada</span>
+                  <span style={{ fontSize: 13.5 }}>Parcelar orçamento</span>
                 </label>
 
-                {!adicionarEntrada ? (
-                  <div className={styles.formRow} style={{ marginBottom: 0 }}>
-                    <div className={styles.field}>
-                      <label className={styles.label}>Meio de pagamento</label>
-                      <select className={styles.select} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                        <option value="">Selecione…</option>
-                        {PAYMENT_METHODS.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label}>Condições de pagamento*</label>
-                      <select className={styles.select} value={installments} onChange={(e) => setInstallments(Number(e.target.value))}>
-                        {installmentOptions(total).map((o) => (
-                          <option key={o.count} value={o.count}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className={styles.formRow}>
-                      <div className={styles.field}>
-                        <label className={styles.label}>Meio de pagamento da entrada</label>
-                        <select className={styles.select} value={downPaymentMethod} onChange={(e) => setDownPaymentMethod(e.target.value)}>
-                          <option value="">Selecione…</option>
-                          {PAYMENT_METHODS.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className={styles.field}>
-                        <label className={styles.label}>Valor da entrada*</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          className={styles.input}
-                          value={downPaymentValue}
-                          onChange={(e) => setDownPaymentValue(formatMoneyInput(e.target.value))}
-                          placeholder="0,00"
-                        />
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>Saldo restante — {formatMoney(remainingBalance)}</div>
-                    <div className={styles.formRow} style={{ marginBottom: 0 }}>
-                      <div className={styles.field}>
-                        <label className={styles.label}>Meio de pagamento</label>
-                        <select className={styles.select} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                          <option value="">Selecione…</option>
-                          {PAYMENT_METHODS.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className={styles.field}>
+                {parcelar && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={adicionarEntrada}
+                        onChange={(e) => setAdicionarEntrada(e.target.checked)}
+                        style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
+                      />
+                      <span style={{ fontSize: 13.5 }}>Adicionar entrada</span>
+                    </label>
+
+                    {!adicionarEntrada ? (
+                      <div className={styles.field} style={{ maxWidth: 260, marginBottom: 0 }}>
                         <label className={styles.label}>Condições de pagamento*</label>
-                        <select className={styles.select} value={balanceInstallments} onChange={(e) => setBalanceInstallments(Number(e.target.value))}>
-                          {installmentOptions(remainingBalance).map((o) => (
+                        <select className={styles.select} value={installments} onChange={(e) => setInstallments(Number(e.target.value))}>
+                          {installmentOptions(total).map((o) => (
                             <option key={o.count} value={o.count}>
                               {o.label}
                             </option>
                           ))}
                         </select>
                       </div>
-                    </div>
-                  </>
+                    ) : (
+                      <>
+                        <div className={styles.formRow}>
+                          <div className={styles.field}>
+                            <label className={styles.label}>Meio de pagamento da entrada</label>
+                            <select className={styles.select} value={downPaymentMethod} onChange={(e) => setDownPaymentMethod(e.target.value)}>
+                              <option value="">Selecione…</option>
+                              {PAYMENT_METHODS.map((m) => (
+                                <option key={m} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className={styles.field}>
+                            <label className={styles.label}>Valor da entrada*</label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              className={styles.input}
+                              value={downPaymentValue}
+                              onChange={(e) => setDownPaymentValue(formatMoneyInput(e.target.value))}
+                              placeholder="0,00"
+                            />
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>Saldo restante ({paymentMethod}) — {formatMoney(remainingBalance)}</div>
+                        <div className={styles.field} style={{ maxWidth: 260, marginBottom: 0 }}>
+                          <label className={styles.label}>Condições de pagamento do saldo*</label>
+                          <select className={styles.select} value={balanceInstallments} onChange={(e) => setBalanceInstallments(Number(e.target.value))}>
+                            {installmentOptions(remainingBalance).map((o) => (
+                              <option key={o.count} value={o.count}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}

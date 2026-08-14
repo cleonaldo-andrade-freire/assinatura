@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { brDateOnly } from "@/lib/date";
 import { buildFinalizationText } from "@/lib/treatments";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import type { Treatment } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -27,6 +28,8 @@ export function FinalizeTreatmentModal({
   const [finalizedAt, setFinalizedAt] = useState(brDateOnly());
   const [evolutionText, setEvolutionText] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEscapeToClose(onClose, open);
 
   useEffect(() => {
     if (!open) return;

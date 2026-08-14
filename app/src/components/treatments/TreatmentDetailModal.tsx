@@ -8,8 +8,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { EvolutionFormModal, type EvolutionFormResult } from "@/components/treatments/EvolutionFormModal";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { formatBRDate, formatBRTime } from "@/lib/date";
+import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -73,6 +75,10 @@ export function TreatmentDetailModal({
 
   const [confirmDeleteEvolutionId, setConfirmDeleteEvolutionId] = useState<string | null>(null);
   const [deletingEvolutionId, setDeletingEvolutionId] = useState<string | null>(null);
+
+  // Suprime o Esc daqui enquanto algo aninhado por cima (evolução ou um
+  // ConfirmDialog) já trata o próprio Esc — senão os dois fechariam juntos.
+  useEscapeToClose(onClose, open && !evolutionModalOpen && !confirmDeleteTreatmentOpen && confirmDeleteEvolutionId === null);
 
   useEffect(() => {
     if (!open) return;
@@ -301,9 +307,9 @@ export function TreatmentDetailModal({
                       disabled={!priceTableId}
                     >
                       <option value="">Selecione…</option>
-                      {selectedTable?.items.map((i) => (
+                      {selectedTable && sortFavoritesFirst(selectedTable.items).map((i) => (
                         <option key={i.id} value={i.id}>
-                          {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
+                          {treatmentOptionLabel(i)}
                         </option>
                       ))}
                       <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>

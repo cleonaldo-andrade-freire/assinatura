@@ -49,6 +49,14 @@
   max-width: 780px;
 }
 
+/* Maior que dialogExtraWide de propósito — pro modal de evolução, que abre
+   ANINHADO por cima do de editar tratamento (dialogExtraWide): um filho do
+   mesmo tamanho ou menor que o pai ficava com aparência "encolhida". */
+.dialogXWide {
+  composes: dialogWide;
+  max-width: 920px;
+}
+
 @keyframes dialogIn {
   from {
     opacity: 0;

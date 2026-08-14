@@ -55,6 +55,7 @@ export function PriceTableItemsEditor({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [togglingFavoritoId, setTogglingFavoritoId] = useState<string | null>(null);
   const [bulkTogglingSpecialty, setBulkTogglingSpecialty] = useState<string | null>(null);
   const [deletingSpecialty, setDeletingSpecialty] = useState<string | null>(null);
   const [confirmDeleteSpecialty, setConfirmDeleteSpecialty] = useState<{ specialty: string | null } | null>(null);
@@ -176,6 +177,26 @@ export function PriceTableItemsEditor({
       refresh();
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function handleToggleFavorito(item: PriceTableItem) {
+    setTogglingFavoritoId(item.id);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/price-tables/${priceTableId}/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorito: !item.favorito }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        push("Falha ao atualizar. Tenta de novo.");
+        return;
+      }
+      setItems((prev) => prev.map((it) => (it.id === item.id ? (data.item as PriceTableItem) : it)));
+      refresh();
+    } finally {
+      setTogglingFavoritoId(null);
     }
   }
 
@@ -364,7 +385,17 @@ export function PriceTableItemsEditor({
                       <td className={styles.rowTitle}>{item.name}</td>
                       <td data-label="Valor">{formatMoneyDisplay(item.price)}</td>
                       <td>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            disabled={togglingFavoritoId === item.id}
+                            onClick={() => handleToggleFavorito(item)}
+                            className={pt.favoriteStar}
+                            aria-pressed={item.favorito}
+                            title={item.favorito ? "Remover dos favoritos" : "Marcar como favorito"}
+                          >
+                            {item.favorito ? "★" : "☆"}
+                          </button>
                           <button type="button" onClick={() => startEdit(item)} className={`${styles.btn} ${styles.btnGhost}`}>
                             Editar
                           </button>

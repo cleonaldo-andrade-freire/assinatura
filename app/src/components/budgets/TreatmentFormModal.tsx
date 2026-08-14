@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ToothRegionSelect } from "@/components/budgets/ToothRegionSelect";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
 import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -176,9 +177,9 @@ export function TreatmentFormModal({
               disabled={!priceTableId}
             >
               <option value="">Selecione…</option>
-              {selectedTable?.items.map((i) => (
+              {selectedTable && sortFavoritesFirst(selectedTable.items).map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.specialty ? `${i.specialty} — ${i.name}` : i.name}
+                  {treatmentOptionLabel(i)}
                 </option>
               ))}
               <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>

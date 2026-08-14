@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import type { PatientImage } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -39,6 +40,8 @@ export function UploadImagesModal({
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+
+  useEscapeToClose(onClose, open);
 
   useEffect(() => {
     if (!open) {
