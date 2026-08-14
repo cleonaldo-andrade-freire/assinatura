@@ -245,7 +245,7 @@ export function DebitsPanel({
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                         {d.payment_method && <span className={db.paymentTag}>{d.payment_method}</span>}
-                        {d.paid_at && <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{formatBRDateTime(d.paid_at, "medium")}</span>}
+                        {d.paid_at && <span className={db.dateTag}>{formatBRDateTime(d.paid_at, "medium")}</span>}
                       </div>
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
