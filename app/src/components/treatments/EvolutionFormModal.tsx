@@ -69,7 +69,7 @@ export function EvolutionFormModal({
 
   return createPortal(
     <div className={uiStyles.overlay} style={{ zIndex: 260 }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
-      <div className={uiStyles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>{initial ? "Editar evolução" : "Nova evolução"}</h3>
           <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
