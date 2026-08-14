@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { EvolutionImageUploader } from "@/components/treatments/EvolutionImageUploader";
+import { EvolutionImageUploader, type EvolutionImageItem } from "@/components/treatments/EvolutionImageUploader";
 import { brDateOnly } from "@/lib/date";
 import type { TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
@@ -11,11 +11,33 @@ import tp from "./treatments.module.css";
 
 const MAX_EVOLUTION_IMAGES = 5;
 
+// Web Speech API — sem tipos no lib.dom padrão do TS, e só existe com
+// prefixo "webkit" em boa parte dos navegadores (Chrome/Edge; sem suporte
+// no Firefox desktop). Tipagem mínima só do que a gente usa.
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { resultIndex: number; results: { [i: number]: { isFinal: boolean; [j: number]: { transcript: string } }; length: number } }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
 export interface EvolutionFormResult {
   evolutionDate: string;
   text: string;
   keepImageKeys: string[];
-  newImages: File[];
+  /** Descrição atual de cada imagem mantida, por chave — só as chaves em `keepImageKeys` importam. */
+  keepImageDescriptions: Record<string, string>;
+  newImages: EvolutionImageItem[];
 }
 
 /**
@@ -42,18 +64,43 @@ export function EvolutionFormModal({
   const [evoDate, setEvoDate] = useState(brDateOnly());
   const [text, setText] = useState("");
   const [keepImageKeys, setKeepImageKeys] = useState<string[]>([]);
-  const [newImages, setNewImages] = useState<File[]>([]);
+  const [keptDescriptions, setKeptDescriptions] = useState<Record<string, string>>({});
+  const [newImages, setNewImages] = useState<EvolutionImageItem[]>([]);
+  const [dictating, setDictating] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // Para o ditado ao fechar o modal (Cancelar/×) — sem isso o microfone
+  // continuava escutando em segundo plano até o modal reabrir.
+  useEffect(() => {
+    if (open) return;
+    recognitionRef.current?.stop();
+    setDictating(false);
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
+    recognitionRef.current?.stop();
+    setDictating(false);
     if (initial) {
       setEvoDate(initial.evolution_date);
       setText(initial.text);
       setKeepImageKeys([...initial.image_keys]);
+      const descriptions: Record<string, string> = {};
+      initial.image_keys.forEach((key, i) => {
+        descriptions[key] = initial.image_descriptions?.[i] ?? "";
+      });
+      setKeptDescriptions(descriptions);
     } else {
       setEvoDate(brDateOnly());
       setText("");
       setKeepImageKeys([]);
+      setKeptDescriptions({});
     }
     setNewImages([]);
   }, [open, initial]);
@@ -61,10 +108,40 @@ export function EvolutionFormModal({
   if (!open || typeof document === "undefined") return null;
 
   const remainingSlots = Math.max(0, MAX_EVOLUTION_IMAGES - keepImageKeys.length);
+  const speechSupported = getSpeechRecognitionCtor() !== undefined;
+
+  function toggleDictation() {
+    if (dictating) {
+      recognitionRef.current?.stop();
+      setDictating(false);
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      let finalText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
+      }
+      if (finalText.trim()) {
+        setText((prev) => (prev ? `${prev} ${finalText.trim()}` : finalText.trim()));
+      }
+    };
+    recognition.onend = () => setDictating(false);
+    recognition.onerror = () => setDictating(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setDictating(true);
+  }
 
   function handleSave() {
+    recognitionRef.current?.stop();
     if (!text.trim()) return;
-    onSave({ evolutionDate: evoDate, text: text.trim(), keepImageKeys, newImages });
+    onSave({ evolutionDate: evoDate, text: text.trim(), keepImageKeys, keepImageDescriptions: keptDescriptions, newImages });
   }
 
   return createPortal(
@@ -86,28 +163,55 @@ export function EvolutionFormModal({
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Texto*</label>
-            <textarea className={styles.input} rows={5} value={text} onChange={(e) => setText(e.target.value)} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <label className={styles.label} style={{ marginBottom: 0 }}>
+                Texto*
+              </label>
+              {speechSupported && (
+                <button
+                  type="button"
+                  onClick={toggleDictation}
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ padding: "3px 10px", fontSize: 12, color: dictating ? "var(--danger)" : undefined, borderColor: dictating ? "var(--danger)" : undefined }}
+                  title={dictating ? "Parar ditado" : "Ditar por voz"}
+                >
+                  {dictating ? "● Gravando… (clique pra parar)" : "🎤 Ditar por voz"}
+                </button>
+              )}
+            </div>
+            <textarea className={styles.input} rows={5} value={text} onChange={(e) => setText(e.target.value)} style={{ marginTop: 6 }} />
           </div>
 
           {initial && initial.image_keys.length > 0 && (
             <div>
               <label className={styles.label}>Imagens atuais</label>
-              <div className={tp.evolutionImages}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
                 {initial.image_keys.map((key, i) => {
                   const kept = keepImageKeys.includes(key);
+                  const name = initial.image_names?.[i];
                   return (
-                    <div key={key} style={{ position: "relative", opacity: kept ? 1 : 0.35 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/api/clinics/${clinicId}/treatment-evolutions/${initial.id}/images/${i}`}
-                        alt=""
-                        className={tp.evolutionThumb}
-                      />
+                    <div key={key} className={tp.evolutionFileRow} style={{ opacity: kept ? 1 : 0.45 }}>
+                      <div className={tp.evolutionFileThumb}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`/api/clinics/${clinicId}/treatment-evolutions/${initial.id}/images/${i}`} alt="" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {name || "Imagem sem nome"}
+                        </div>
+                        <textarea
+                          className={styles.input}
+                          rows={2}
+                          placeholder="Descrição (opcional)"
+                          value={keptDescriptions[key] ?? ""}
+                          onChange={(e) => setKeptDescriptions((prev) => ({ ...prev, [key]: e.target.value }))}
+                          disabled={!kept}
+                        />
+                      </div>
                       <button
                         type="button"
                         className={tp.imageRemove}
-                        style={{ position: "absolute", top: 3, right: 3 }}
+                        style={{ position: "static", flexShrink: 0 }}
                         onClick={() => setKeepImageKeys((prev) => (kept ? prev.filter((k) => k !== key) : [...prev, key]))}
                         title={kept ? "Remover" : "Manter"}
                       >
@@ -122,7 +226,7 @@ export function EvolutionFormModal({
 
           <div>
             <label className={styles.label}>{initial ? "Adicionar imagens" : `Imagens (opcional, até ${MAX_EVOLUTION_IMAGES})`}</label>
-            <EvolutionImageUploader files={newImages} onChange={setNewImages} max={initial ? remainingSlots : MAX_EVOLUTION_IMAGES} />
+            <EvolutionImageUploader items={newImages} onChange={setNewImages} max={initial ? remainingSlots : MAX_EVOLUTION_IMAGES} />
           </div>
         </div>
 

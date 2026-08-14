@@ -477,6 +477,10 @@ export interface TreatmentEvolution {
   evolution_date: string;
   text: string;
   image_keys: string[];
+  /** Nome original de cada arquivo, na mesma ordem/posição de `image_keys` — a chave no Storage é um token aleatório, não dá pra saber qual foto é qual sem isso. */
+  image_names: string[] | null;
+  /** Descrição opcional de cada imagem, mesma ordem/posição de `image_keys`. */
+  image_descriptions: string[] | null;
   created_at: string;
 }
 

@@ -86,6 +86,7 @@ export function ImageLightbox({
           ›
         </button>
       )}
+      {current.alt && <span className={lb.caption}>{current.alt}</span>}
       {images.length > 1 && (
         <span className={lb.counter}>
           {index + 1} / {images.length}

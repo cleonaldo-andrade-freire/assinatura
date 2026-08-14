@@ -56,6 +56,8 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (images.length > MAX_EVOLUTION_IMAGES) {
     return NextResponse.json({ error: "too_many_images", message: `Máximo de ${MAX_EVOLUTION_IMAGES} imagens por evolução.` }, { status: 400 });
   }
+  // Mesma ordem/quantidade que `images` (uma entrada por arquivo).
+  const imageDescriptions = form.getAll("new_image_descriptions").map((d) => String(d));
 
   const { data: evolution, error: insertError } = await supabase
     .from("treatment_evolutions")
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       const imageKeys = await Promise.all(images.map((file) => saveEvolutionImage(clinic.id, evolution.id, file)));
       const { data: updated, error: updateError } = await supabase
         .from("treatment_evolutions")
-        .update({ image_keys: imageKeys })
+        .update({ image_keys: imageKeys, image_names: images.map((f) => f.name), image_descriptions: images.map((_, i) => imageDescriptions[i] ?? "") })
         .eq("id", evolution.id)
         .select("*")
         .single();

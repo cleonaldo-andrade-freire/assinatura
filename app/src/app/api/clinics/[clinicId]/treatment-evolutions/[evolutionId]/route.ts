@@ -38,15 +38,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   } catch {
     keepKeys = [];
   }
+  let keepDescriptions: Record<string, string> = {};
+  try {
+    keepDescriptions = JSON.parse(String(form.get("keep_image_descriptions") ?? "{}"));
+  } catch {
+    keepDescriptions = {};
+  }
+
   const keepSet = new Set(keepKeys);
   const existingKeys: string[] = evolution.image_keys ?? [];
-  const kept = existingKeys.filter((k) => keepSet.has(k));
+  const existingNames: string[] = evolution.image_names ?? [];
+  const existingDescriptions: string[] = evolution.image_descriptions ?? [];
+  const keptIndexes = existingKeys.map((_, i) => i).filter((i) => keepSet.has(existingKeys[i]));
+  const kept = keptIndexes.map((i) => existingKeys[i]);
+  const keptNames = keptIndexes.map((i) => existingNames[i] ?? "");
+  const keptDescriptions = keptIndexes.map((i) => keepDescriptions[existingKeys[i]] ?? existingDescriptions[i] ?? "");
   const toRemove = existingKeys.filter((k) => !keepSet.has(k));
 
   const newImages = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   if (kept.length + newImages.length > MAX_EVOLUTION_IMAGES) {
     return NextResponse.json({ error: "too_many_images", message: `Máximo de ${MAX_EVOLUTION_IMAGES} imagens por evolução.` }, { status: 400 });
   }
+  // Mesma ordem/quantidade que `images` (uma entrada por arquivo novo).
+  const newImageDescriptions = form.getAll("new_image_descriptions").map((d) => String(d));
 
   let newKeys: string[] = [];
   try {
@@ -57,7 +71,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
 
   const { data: updated, error } = await supabase
     .from("treatment_evolutions")
-    .update({ evolution_date: evolutionDate, text, image_keys: [...kept, ...newKeys] })
+    .update({
+      evolution_date: evolutionDate,
+      text,
+      image_keys: [...kept, ...newKeys],
+      image_names: [...keptNames, ...newImages.map((f) => f.name)],
+      image_descriptions: [...keptDescriptions, ...newImages.map((_, i) => newImageDescriptions[i] ?? "")],
+    })
     .eq("id", evolution.id)
     .select("*")
     .single();

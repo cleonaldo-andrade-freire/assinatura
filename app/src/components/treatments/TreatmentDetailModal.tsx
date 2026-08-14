@@ -186,10 +186,14 @@ export function TreatmentDetailModal({
       const form = new FormData();
       form.set("evolution_date", values.evolutionDate);
       form.set("text", values.text);
-      values.newImages.forEach((file) => form.append("images", file));
+      values.newImages.forEach((item) => {
+        form.append("images", item.file);
+        form.append("new_image_descriptions", item.description);
+      });
 
       if (evolutionModalInitial) {
         form.set("keep_image_keys", JSON.stringify(values.keepImageKeys));
+        form.set("keep_image_descriptions", JSON.stringify(values.keepImageDescriptions));
         const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${evolutionModalInitial.id}`, { method: "PATCH", body: form });
         const data = await res.json();
         if (!res.ok) {
@@ -390,21 +394,25 @@ export function TreatmentDetailModal({
                             </p>
                             {e.image_keys.length > 0 && (
                               <div className={tp.evolutionImages}>
-                                {e.image_keys.map((_, i) => (
-                                  <button
-                                    key={i}
-                                    type="button"
-                                    className={tp.evolutionThumb}
-                                    style={{ border: "none", padding: 0, cursor: "pointer" }}
-                                    onClick={() => {
-                                      setLightboxEvolutionId(e.id);
-                                      setLightboxIndex(i);
-                                    }}
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} alt="" />
-                                  </button>
-                                ))}
+                                {e.image_keys.map((_, i) => {
+                                  const caption = e.image_descriptions?.[i] || e.image_names?.[i] || "";
+                                  return (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      className={tp.evolutionThumb}
+                                      style={{ border: "none", padding: 0, cursor: "pointer" }}
+                                      title={caption || undefined}
+                                      onClick={() => {
+                                        setLightboxEvolutionId(e.id);
+                                        setLightboxIndex(i);
+                                      }}
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} alt={caption} />
+                                    </button>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -428,9 +436,13 @@ export function TreatmentDetailModal({
             <ImageLightbox
               open={lightboxEvolutionId !== null}
               onClose={() => setLightboxEvolutionId(null)}
-              images={(evolutions.find((e) => e.id === lightboxEvolutionId)?.image_keys ?? []).map((_, i) => ({
-                url: `/api/clinics/${clinicId}/treatment-evolutions/${lightboxEvolutionId}/images/${i}`,
-              }))}
+              images={(() => {
+                const evo = evolutions.find((e) => e.id === lightboxEvolutionId);
+                return (evo?.image_keys ?? []).map((_, i) => ({
+                  url: `/api/clinics/${clinicId}/treatment-evolutions/${lightboxEvolutionId}/images/${i}`,
+                  alt: evo?.image_descriptions?.[i] || evo?.image_names?.[i] || undefined,
+                }));
+              })()}
               index={lightboxIndex}
               onIndexChange={setLightboxIndex}
             />

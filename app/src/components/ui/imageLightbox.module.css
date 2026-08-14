@@ -87,3 +87,17 @@
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
 }
+
+.caption {
+  position: absolute;
+  bottom: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(80vw, 480px);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
