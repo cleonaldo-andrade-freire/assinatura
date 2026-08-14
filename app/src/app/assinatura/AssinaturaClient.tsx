@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { jsPDF } from "jspdf";
 import { formatCPF, isValidCPF } from "@/lib/validation";
 import { SignatureMark } from "@/components/SignatureMark";
-
-const REVIEW_GROUP_SIZE = 5;
 
 function draftKey(token: string) {
   return `assinatura-draft:${token}`;
@@ -83,9 +81,11 @@ export function AssinaturaClient() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [signatureThumb, setSignatureThumb] = useState<string | null>(null);
   const [formStep, setFormStep] = useState<FormStep>("review");
-  const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
-  const [visitedGroups, setVisitedGroups] = useState<Set<number>>(new Set([0]));
   const [isOnline, setIsOnline] = useState(true);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -100,14 +100,41 @@ export function AssinaturaClient() {
   // de novo mesmo com hasSignature ainda true.
   const signatureSnapshotRef = useRef<string | null>(null);
 
-  const reviewGroups = useMemo(() => {
-    const answers = record?.answers ?? [];
-    const groups: Answer[][] = [];
-    for (let i = 0; i < answers.length; i += REVIEW_GROUP_SIZE) {
-      groups.push(answers.slice(i, i + REVIEW_GROUP_SIZE));
+  function startEdit(i: number) {
+    if (!record) return;
+    setEditingIndex(i);
+    setEditDraft(record.answers[i].answer);
+    setEditError("");
+  }
+
+  function cancelEdit() {
+    setEditingIndex(null);
+    setEditError("");
+  }
+
+  async function saveEdit(i: number) {
+    if (!record) return;
+    setSavingEdit(true);
+    setEditError("");
+    try {
+      const nextAnswers = record.answers.map((qa, idx) => (idx === i ? { ...qa, answer: editDraft } : qa));
+      if (!demo && token) {
+        const res = await fetch(`/api/anamnesis/${encodeURIComponent(token)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: nextAnswers }),
+        });
+        if (!res.ok) {
+          setEditError("Não deu pra salvar a correção agora. Tenta de novo.");
+          return;
+        }
+      }
+      setRecord({ ...record, answers: nextAnswers });
+      setEditingIndex(null);
+    } finally {
+      setSavingEdit(false);
     }
-    return groups;
-  }, [record]);
+  }
 
   useEffect(() => {
     function goOnline() {
@@ -512,74 +539,69 @@ export function AssinaturaClient() {
             </p>
             <h1>Confira suas respostas</h1>
             <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 10 }}>
-              Revise com atenção antes de assinar. Se algo estiver errado, avise a clínica antes de confirmar.
+              Revise com atenção antes de assinar. Se alguma resposta estiver errada, toque em &quot;Corrigir&quot; pra ajustar.
             </p>
             <p style={{ fontSize: 15, marginBottom: 18 }}>
               Paciente: <strong style={{ color: "var(--brand-deep)" }}>{record.patient_name || "—"}</strong>
             </p>
 
-            {reviewGroups.length > 1 && (
-              <div style={{ display: "flex", gap: 5, marginBottom: 16 }}>
-                {reviewGroups.map((_, gi) => (
-                  <div
-                    key={gi}
-                    style={{
-                      flex: 1,
-                      height: 5,
-                      borderRadius: 999,
-                      background: visitedGroups.has(gi) ? "var(--brand)" : "var(--surface-sunken)",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {reviewGroups.map((group, gi) => {
-              const items = (
-                <dl style={{ margin: 0 }}>
-                  {group.map((qa, i) => (
-                    <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
-                      <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>{qa.question}</dt>
-                      <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{qa.answer || "—"}</dd>
-                    </div>
-                  ))}
-                </dl>
-              );
-              if (reviewGroups.length === 1) {
-                return (
-                  <div key={gi} style={{ borderTop: "1px solid var(--line)" }}>
-                    {items}
-                  </div>
-                );
-              }
-              return (
-                <details
-                  key={gi}
-                  open={openGroupIndex === gi}
-                  onToggle={(e) => {
-                    const open = (e.target as HTMLDetailsElement).open;
-                    setOpenGroupIndex(open ? gi : null);
-                    if (open) setVisitedGroups((prev) => new Set(prev).add(gi));
-                  }}
-                  style={{ borderTop: gi === 0 ? "1px solid var(--line)" : "none" }}
-                >
-                  <summary
-                    style={{
-                      padding: "12px 0",
-                      borderBottom: "1px solid var(--line)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "var(--ink-soft)",
-                      cursor: "pointer",
-                      minHeight: 22,
-                    }}
-                  >
-                    Perguntas {gi * REVIEW_GROUP_SIZE + 1}–{gi * REVIEW_GROUP_SIZE + group.length}
-                  </summary>
-                  {items}
-                </details>
-              );
-            })}
+            <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>
+              {record.answers.map((qa, i) => (
+                <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                  <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>{qa.question}</dt>
+                  {editingIndex === i ? (
+                    <dd style={{ margin: 0 }}>
+                      <textarea
+                        autoFocus
+                        rows={2}
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        style={{
+                          width: "100%",
+                          fontSize: 15,
+                          fontFamily: "inherit",
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--line)",
+                          resize: "vertical",
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          disabled={savingEdit}
+                          onClick={() => saveEdit(i)}
+                          className="btn-primary"
+                          style={{ padding: "6px 14px", fontSize: 13.5 }}
+                        >
+                          {savingEdit ? "Salvando…" : "Salvar"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingEdit}
+                          onClick={cancelEdit}
+                          style={{ border: "none", background: "none", color: "var(--ink-soft)", fontSize: 13.5, cursor: "pointer" }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                      {editError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{editError}</div>}
+                    </dd>
+                  ) : (
+                    <dd style={{ margin: 0, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                      <span style={{ fontSize: 15, fontWeight: 500 }}>{qa.answer || "—"}</span>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(i)}
+                        style={{ border: "none", background: "none", color: "var(--brand)", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, padding: 0 }}
+                      >
+                        Corrigir
+                      </button>
+                    </dd>
+                  )}
+                </div>
+              ))}
+            </dl>
           </div>
 
           <div className="sticky-actions">

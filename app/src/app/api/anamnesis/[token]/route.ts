@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
 
@@ -37,4 +38,40 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     answers: anamnesis.answers,
     already_signed: signature !== null,
   });
+}
+
+const patchSchema = z.object({
+  answers: z.array(z.object({ question: z.string(), answer: z.string() })),
+});
+
+/**
+ * Corrige uma resposta antes de assinar — chamado pela tela de revisão em
+ * /assinatura. Bloqueado depois de assinado: o documento já virou um PDF
+ * assinado com as respostas daquele momento, corrigir o registro depois
+ * criaria uma divergência entre o que foi assinado e o que a clínica vê.
+ */
+export async function PATCH(req: NextRequest, { params }: { params: { token: string } }) {
+  if (!isValidToken(params.token)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data: anamnesis } = await supabase.from("anamneses").select("id").eq("token", params.token).maybeSingle();
+  if (!anamnesis) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const { data: existingSignature } = await supabase.from("signatures").select("id").eq("anamnesis_id", anamnesis.id).maybeSingle();
+  if (existingSignature) {
+    return NextResponse.json({ error: "already_signed" }, { status: 409 });
+  }
+
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const { error } = await supabase.from("anamneses").update({ answers: parsed.data.answers }).eq("id", anamnesis.id);
+  if (error) return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
