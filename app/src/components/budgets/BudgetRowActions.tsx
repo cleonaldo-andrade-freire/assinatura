@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import type { BudgetStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -21,6 +22,8 @@ export function BudgetRowActions({
   const [sending, setSending] = useState(false);
   const [approving, setApproving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
   async function handleSend() {
@@ -73,6 +76,21 @@ export function BudgetRowActions({
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/budgets/${budgetId}`, { method: "DELETE" });
+      if (!res.ok) {
+        push("Falha ao excluir. Tenta de novo.");
+        return;
+      }
+      setConfirmDeleteOpen(false);
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
       {hasPdf && (
@@ -103,6 +121,26 @@ export function BudgetRowActions({
           {generating ? "Gerando…" : "Gerar tratamentos"}
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => setConfirmDeleteOpen(true)}
+        className={`${styles.btn} ${styles.btnGhost}`}
+        style={{ color: "var(--danger)" }}
+      >
+        Excluir
+      </button>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Excluir orçamento"
+        message="Isso remove o orçamento e o PDF gerado. Tratamentos já criados a partir dele (se aprovado) não são afetados."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        danger
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );

@@ -34,7 +34,16 @@ export default async function EditPatientPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { page?: string; rxPage?: string; apPage?: string; anPage?: string; bgPage?: string; tab?: string };
+  searchParams: {
+    page?: string;
+    rxPage?: string;
+    apPage?: string;
+    anPage?: string;
+    bgPage?: string;
+    tpPage?: string;
+    tpShowFinalized?: string;
+    tab?: string;
+  };
 }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
@@ -128,17 +137,21 @@ export default async function EditPatientPage({
     }
   }
 
-  // Sem paginação de propósito — lista de tratamentos de UM paciente
-  // dificilmente cresce a ponto de precisar (diferente da lista de
-  // orçamentos por paciente, ou de tabelas com todos os pacientes da
-  // clínica); o filtro "Mostrar finalizados" já resolve o volume.
-  const { data: treatmentsData } = await supabase
+  const treatmentsPage = Math.max(1, parseInt(searchParams.tpPage ?? "1", 10) || 1);
+  const tpFrom = (treatmentsPage - 1) * DOCS_PAGE_SIZE;
+  const tpTo = tpFrom + DOCS_PAGE_SIZE - 1;
+  const showFinalizedTreatments = searchParams.tpShowFinalized === "1";
+  let treatmentsQuery = supabase
     .from("treatments")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("clinic_id", clinic.id)
-    .eq("patient_id", patient.id)
-    .order("created_at", { ascending: false });
+    .eq("patient_id", patient.id);
+  if (!showFinalizedTreatments) treatmentsQuery = treatmentsQuery.eq("status", "aberto");
+  const { data: treatmentsData, count: treatmentsCount } = await treatmentsQuery
+    .order("created_at", { ascending: false })
+    .range(tpFrom, tpTo);
   const treatments = (treatmentsData as Treatment[]) ?? [];
+  const treatmentsTotalPages = Math.max(1, Math.ceil((treatmentsCount ?? 0) / DOCS_PAGE_SIZE));
 
   // Não existe `patient_id` em `anamneses` (tabela bem mais antiga, com histórico
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
@@ -316,7 +329,19 @@ export default async function EditPatientPage({
   );
 
   const tratamentosPanel = (
-    <TreatmentsPanel clinicId={clinic.id} professionalName={clinic.dentist_name || clinic.name} initialTreatments={treatments} />
+    <TreatmentsPanel
+      clinicId={clinic.id}
+      initialTreatments={treatments}
+      page={treatmentsPage}
+      totalPages={treatmentsTotalPages}
+      count={treatmentsCount ?? 0}
+      showFinalized={showFinalizedTreatments}
+      hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { tpPage: p, ...(showFinalizedTreatments ? { tpShowFinalized: "1" } : {}) })}
+      toggleShowFinalizedHref={pageHref(`/dashboard/pacientes/${patient.id}`, {
+        tpPage: 1,
+        ...(showFinalizedTreatments ? {} : { tpShowFinalized: "1" }),
+      })}
+    />
   );
 
   const atestadosPanel =

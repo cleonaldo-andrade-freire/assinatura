@@ -17,13 +17,11 @@ export function FinalizeTreatmentModal({
   open,
   onClose,
   onConfirm,
-  professionalName,
   treatments,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: (finalizedAt: string, evolutionText: string) => Promise<void> | void;
-  professionalName: string;
   treatments: Treatment[];
 }) {
   const [finalizedAt, setFinalizedAt] = useState(brDateOnly());
@@ -55,15 +53,9 @@ export function FinalizeTreatmentModal({
         <h3 className={uiStyles.dialogTitle}>Finalizar tratamento{treatments.length > 1 ? "s" : ""}</h3>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 6 }}>
-          <div className={styles.formRow}>
-            <div className={styles.field}>
-              <label className={styles.label}>Profissional</label>
-              <input type="text" className={styles.input} value={professionalName} disabled />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label}>Data*</label>
-              <input type="date" className={styles.input} value={finalizedAt} onChange={(e) => setFinalizedAt(e.target.value)} required />
-            </div>
+          <div className={styles.field} style={{ maxWidth: 200 }}>
+            <label className={styles.label}>Data*</label>
+            <input type="date" className={styles.input} value={finalizedAt} onChange={(e) => setFinalizedAt(e.target.value)} required />
           </div>
 
           <div className={styles.field}>

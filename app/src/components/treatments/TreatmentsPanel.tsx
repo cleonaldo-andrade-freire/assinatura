@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { FinalizeTreatmentModal } from "@/components/treatments/FinalizeTreatmentModal";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
@@ -13,18 +14,30 @@ import tp from "./treatments.module.css";
 
 export function TreatmentsPanel({
   clinicId,
-  professionalName,
   initialTreatments,
+  page,
+  totalPages,
+  count,
+  showFinalized,
+  hrefFor,
+  toggleShowFinalizedHref,
 }: {
   clinicId: string;
-  professionalName: string;
   initialTreatments: Treatment[];
+  page: number;
+  totalPages: number;
+  count: number;
+  showFinalized: boolean;
+  hrefFor: (page: number) => string;
+  toggleShowFinalizedHref: string;
 }) {
   const router = useRouter();
   const [treatments, setTreatments] = useState(initialTreatments);
-  useEffect(() => setTreatments(initialTreatments), [initialTreatments]);
+  useEffect(() => {
+    setTreatments(initialTreatments);
+    setSelected(new Set());
+  }, [initialTreatments]);
 
-  const [showFinalized, setShowFinalized] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,7 +52,6 @@ export function TreatmentsPanel({
   const [finalizeIds, setFinalizeIds] = useState<string[] | null>(null);
   const { toasts, push, dismiss } = useToasts();
 
-  const visible = showFinalized ? treatments : treatments.filter((t) => t.status === "aberto");
   const finalizeTargets = finalizeIds ? treatments.filter((t) => finalizeIds.includes(t.id)) : [];
 
   function toggleSelected(id: string) {
@@ -132,87 +144,94 @@ export function TreatmentsPanel({
     <div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-soft)", cursor: "pointer" }}>
-          <input type="checkbox" checked={showFinalized} onChange={(e) => setShowFinalized(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--brand)" }} />
+          <input
+            type="checkbox"
+            checked={showFinalized}
+            onChange={() => router.push(toggleShowFinalizedHref)}
+            style={{ width: 18, height: 18, accentColor: "var(--brand)" }}
+          />
           Mostrar finalizados
         </label>
       </div>
 
-      {visible.length === 0 ? (
+      {treatments.length === 0 ? (
         <div className={styles.emptyState}>
           {showFinalized ? "Nenhum tratamento cadastrado ainda." : "Nenhum tratamento em aberto — aprove um orçamento pra gerar tratamentos aqui."}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selected.size > 0 ? 56 : 0 }}>
-          {visible.map((t) =>
-            editingId === t.id ? (
-              <div key={t.id} className={tp.row}>
-                <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input type="text" className={styles.input} style={{ flex: 2, minWidth: 160 }} value={editName} onChange={(e) => setEditName(e.target.value)} />
-                  <input type="text" className={styles.input} style={{ width: 100 }} value={editTooth} onChange={(e) => setEditTooth(e.target.value)} placeholder="Dente" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={styles.input}
-                    style={{ width: 110 }}
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(formatMoneyInput(e.target.value))}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button type="button" disabled={savingEdit} onClick={() => handleSaveEdit(t.id)} className={`${styles.btn} ${styles.btnPrimary}`}>
-                    {savingEdit ? "Salvando…" : "Salvar"}
-                  </button>
-                  <button type="button" disabled={savingEdit} onClick={() => setEditingId(null)} className={`${styles.btn} ${styles.btnGhost}`}>
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div key={t.id} className={tp.row}>
-                {t.status === "aberto" ? (
-                  <input
-                    type="checkbox"
-                    checked={selected.has(t.id)}
-                    onChange={() => toggleSelected(t.id)}
-                    style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
-                  />
-                ) : (
-                  <span style={{ width: 18, flexShrink: 0 }} />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <button type="button" className={tp.name} onClick={() => startEdit(t)}>
-                    {t.tooth_region ? `${t.tooth_region} — ` : ""}
-                    {t.treatment_name}
-                  </button>
-                  <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                    Dr(a) {t.dentist_name}
-                    {t.price_table_name ? ` — ${t.price_table_name}` : ""}
-                    {t.status === "finalizado" && t.finalized_at ? ` — finalizado em ${formatBRDate(t.finalized_at)}` : ""}
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selected.size > 0 ? 56 : 0 }}>
+            {treatments.map((t) => {
+              const subtitleParts = [t.price_table_name, t.status === "finalizado" && t.finalized_at ? `finalizado em ${formatBRDate(t.finalized_at)}` : null].filter(
+                Boolean
+              );
+              return editingId === t.id ? (
+                <div key={t.id} className={tp.row}>
+                  <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input type="text" className={styles.input} style={{ flex: 2, minWidth: 160 }} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    <input type="text" className={styles.input} style={{ width: 100 }} value={editTooth} onChange={(e) => setEditTooth(e.target.value)} placeholder="Dente" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className={styles.input}
+                      style={{ width: 110 }}
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(formatMoneyInput(e.target.value))}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" disabled={savingEdit} onClick={() => handleSaveEdit(t.id)} className={`${styles.btn} ${styles.btnPrimary}`}>
+                      {savingEdit ? "Salvando…" : "Salvar"}
+                    </button>
+                    <button type="button" disabled={savingEdit} onClick={() => setEditingId(null)} className={`${styles.btn} ${styles.btnGhost}`}>
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoneyDisplay(t.price)}</div>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              ) : (
+                <div key={t.id} className={tp.row}>
                   {t.status === "aberto" ? (
-                    <button type="button" onClick={() => setFinalizeIds([t.id])} className={`${styles.btn} ${styles.btnGhost}`}>
-                      Finalizar
-                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(t.id)}
+                      onChange={() => toggleSelected(t.id)}
+                      style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
+                    />
                   ) : (
-                    <span className={`${styles.statusDot} ${styles.statusOk}`}>Finalizado</span>
+                    <span style={{ width: 18, flexShrink: 0 }} />
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(t.id)}
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ color: "var(--danger)" }}
-                  >
-                    Excluir
-                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <button type="button" className={tp.name} onClick={() => startEdit(t)}>
+                      {t.tooth_region ? `${t.tooth_region} — ` : ""}
+                      {t.treatment_name}
+                    </button>
+                    {subtitleParts.length > 0 && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{subtitleParts.join(" — ")}</div>}
+                  </div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoneyDisplay(t.price)}</div>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    {t.status === "aberto" ? (
+                      <button type="button" onClick={() => setFinalizeIds([t.id])} className={`${styles.btn} ${styles.btnGhost}`}>
+                        Finalizar
+                      </button>
+                    ) : (
+                      <span className={`${styles.statusDot} ${styles.statusOk}`}>Finalizado</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(t.id)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ color: "var(--danger)" }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
-          )}
-        </div>
+              );
+            })}
+          </div>
+          <Pagination page={page} totalPages={totalPages} count={count} itemLabel="tratamento" hrefFor={hrefFor} />
+        </>
       )}
 
       {selected.size > 0 && (
@@ -230,7 +249,6 @@ export function TreatmentsPanel({
         open={finalizeIds !== null}
         onClose={() => setFinalizeIds(null)}
         onConfirm={handleFinalizeConfirm}
-        professionalName={professionalName}
         treatments={finalizeTargets}
       />
 
