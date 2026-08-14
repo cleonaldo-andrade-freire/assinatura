@@ -15,24 +15,36 @@ import tp from "./treatments.module.css";
 
 export function TreatmentsPanel({
   clinicId,
+  patientId,
   initialTreatments,
   page,
   totalPages,
   count,
   showFinalized,
-  hrefFor,
   toggleShowFinalizedHref,
 }: {
   clinicId: string;
+  patientId: string;
   initialTreatments: Treatment[];
   page: number;
   totalPages: number;
   count: number;
   showFinalized: boolean;
-  hrefFor: (page: number) => string;
   toggleShowFinalizedHref: string;
 }) {
   const router = useRouter();
+
+  // Função criada aqui dentro (não recebida via prop) de propósito — passar
+  // uma função de um Server Component pra um Client Component quebra a
+  // serialização do RSC ("Functions cannot be passed directly to Client
+  // Components").
+  function hrefFor(p: number) {
+    const params = new URLSearchParams();
+    params.set("tpPage", String(p));
+    if (showFinalized) params.set("tpShowFinalized", "1");
+    params.set("tab", "tratamentos");
+    return `/dashboard/pacientes/${patientId}?${params.toString()}`;
+  }
   const [treatments, setTreatments] = useState(initialTreatments);
   useEffect(() => {
     setTreatments(initialTreatments);

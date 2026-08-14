@@ -332,12 +332,12 @@ export default async function EditPatientPage({
   const tratamentosPanel = (
     <TreatmentsPanel
       clinicId={clinic.id}
+      patientId={patient.id}
       initialTreatments={treatments}
       page={treatmentsPage}
       totalPages={treatmentsTotalPages}
       count={treatmentsCount ?? 0}
       showFinalized={showFinalizedTreatments}
-      hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { tpPage: p, ...(showFinalizedTreatments ? { tpShowFinalized: "1" } : {}) })}
       toggleShowFinalizedHref={pageHref(`/dashboard/pacientes/${patient.id}`, {
         tpPage: 1,
         ...(showFinalizedTreatments ? {} : { tpShowFinalized: "1" }),
