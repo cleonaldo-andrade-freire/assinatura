@@ -492,6 +492,11 @@
   box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
   overflow: hidden;
+  /* Dentro de um scroll flex-column (ex.: modal de detalhe), sem isso o
+     flexbox comprimia o painel pra caber no espaço em vez de deixar o
+     container pai rolar — com overflow:hidden aqui, isso cortava conteúdo
+     (ex.: observação com várias linhas) em vez de só rolar até ele. */
+  flex-shrink: 0;
 }
 
 .panelHeader {
