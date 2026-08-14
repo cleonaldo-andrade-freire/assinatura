@@ -20,7 +20,12 @@ export function CategoryCombobox({
   options: string[];
 }) {
   const [open, setOpen] = useState(false);
-  const filtered = value.trim() ? options.filter((o) => o.toLowerCase().includes(value.trim().toLowerCase())) : options;
+  const trimmed = value.trim();
+  const filtered = trimmed ? options.filter((o) => o.toLowerCase().includes(trimmed.toLowerCase())) : options;
+  // Categoria é texto livre — digitar algo novo já funciona sozinho ao salvar
+  // o formulário. Essa opção só deixa isso visível (senão parece que só dá
+  // pra escolher da lista).
+  const canCreate = trimmed.length > 0 && !options.some((o) => o.toLowerCase() === trimmed.toLowerCase());
 
   return (
     <div style={{ position: "relative" }}>
@@ -38,7 +43,7 @@ export function CategoryCombobox({
         placeholder="Opcional"
         autoComplete="off"
       />
-      {open && filtered.length > 0 && (
+      {open && (filtered.length > 0 || canCreate) && (
         <ul
           style={{
             position: "absolute",
@@ -82,6 +87,34 @@ export function CategoryCombobox({
               </button>
             </li>
           ))}
+          {canCreate && (
+            <li>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onChange(trimmed);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "7px 10px",
+                  background: "none",
+                  border: "none",
+                  borderTop: filtered.length > 0 ? "1px solid var(--line)" : "none",
+                  cursor: "pointer",
+                  borderRadius: 6,
+                  fontSize: 13.5,
+                  color: "var(--brand-deep)",
+                  fontWeight: 600,
+                }}
+              >
+                + Cadastrar “{trimmed}”
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>
