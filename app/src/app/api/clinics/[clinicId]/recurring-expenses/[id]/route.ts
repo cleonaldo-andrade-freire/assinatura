@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const patchSchema = z.object({
   description: z.string().min(1).optional(),
   category: z.string().nullable().optional(),
+  nature: z.enum(["fixa", "variavel"]).nullable().optional(),
   amount: z.number().positive().optional(),
   day_of_month: z.number().int().min(1).max(28).optional(),
   active: z.boolean().optional(),

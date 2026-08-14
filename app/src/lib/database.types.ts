@@ -514,6 +514,7 @@ export interface Receipt {
 }
 
 export type ExpenseStatus = "pendente" | "pago";
+export type ExpenseNature = "fixa" | "variavel";
 
 /** Regra de despesa recorrente — o cron gera uma `Expense` por mês a partir daqui, nunca a despesa em si. */
 export interface RecurringExpense {
@@ -521,6 +522,7 @@ export interface RecurringExpense {
   clinic_id: string;
   description: string;
   category: string | null;
+  nature: ExpenseNature | null;
   amount: number;
   day_of_month: number;
   active: boolean;
@@ -536,6 +538,7 @@ export interface Expense {
   recurring_expense_id: string | null;
   description: string;
   category: string | null;
+  nature: ExpenseNature | null;
   amount: number;
   due_date: string;
   status: ExpenseStatus;

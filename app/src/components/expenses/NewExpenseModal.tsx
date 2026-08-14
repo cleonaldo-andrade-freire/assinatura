@@ -7,22 +7,43 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { brDateOnly } from "@/lib/date";
 import { PAYMENT_METHODS } from "@/lib/paymentMethods";
+import { EXPENSE_NATURES, EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
 import { CategoryCombobox } from "@/components/expenses/CategoryCombobox";
+import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import type { ExpenseNature } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import shellStyles from "@/styles/shell.module.css";
+import ex from "./expenses.module.css";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function uploadReceipt(clinicId: string, expenseId: string, file: File): Promise<{ ok: boolean; message?: string }> {
+  const form = new FormData();
+  form.append("receipt", file);
+  const res = await fetch(`/api/clinics/${clinicId}/expenses/${expenseId}/receipt`, { method: "POST", body: form });
+  if (res.ok) return { ok: true };
+  const data = await res.json().catch(() => null);
+  return { ok: false, message: data?.message };
+}
 
 /**
- * "Despesa recorrente" ligado cria um MOLDE em `recurring_expenses` — a
- * primeira ocorrência de verdade só nasce na próxima passada do cron
- * (generateDueExpenses), não na hora. Evita duplicar a lógica de geração
- * em dois lugares.
+ * "Despesa recorrente" ligado cria um MOLDE em `recurring_expenses` — as
+ * ocorrências seguintes nascem sozinhas pelo cron (generateDueExpenses). Se
+ * "Já foi pago" também estiver marcado, a ocorrência de HOJE nasce junto,
+ * já paga (o cron não duplica: só gera quando ainda não existe uma despesa
+ * daquela recorrência no mês corrente).
  */
 export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: string; categoryOptions: string[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [nature, setNature] = useState<ExpenseNature | "">("");
   const [amount, setAmount] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [dueDate, setDueDate] = useState(brDateOnly());
@@ -30,14 +51,16 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [pickingReceipt, setPickingReceipt] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
-  useEscapeToClose(() => setOpen(false), open);
+  useEscapeToClose(() => setOpen(false), open && !pickingReceipt);
 
   function resetAndClose() {
     setDescription("");
     setCategory("");
+    setNature("");
     setAmount("");
     setRecurring(false);
     setDueDate(brDateOnly());
@@ -55,44 +78,73 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
       push("Preencha a descrição e o valor.");
       return;
     }
-    if (!recurring && alreadyPaid && !paymentMethod) {
+    if (alreadyPaid && !paymentMethod) {
       push("Selecione o meio de pagamento.");
       return;
     }
     setSaving(true);
     try {
-      const url = recurring ? `/api/clinics/${clinicId}/recurring-expenses` : `/api/clinics/${clinicId}/expenses`;
-      const body = recurring
-        ? { description: description.trim(), category: category.trim() || null, amount: value, day_of_month: parseInt(dayOfMonth, 10) }
-        : {
-            description: description.trim(),
-            category: category.trim() || null,
-            amount: value,
+      const base = {
+        description: description.trim(),
+        category: category.trim() || null,
+        nature: nature || null,
+        amount: value,
+      };
+
+      if (recurring) {
+        const res = await fetch(`/api/clinics/${clinicId}/recurring-expenses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...base, day_of_month: parseInt(dayOfMonth, 10) }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          push(data?.message || "Falha ao salvar. Tenta de novo.");
+          return;
+        }
+
+        if (alreadyPaid) {
+          const expRes = await fetch(`/api/clinics/${clinicId}/expenses`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...base,
+              due_date: brDateOnly(),
+              already_paid: true,
+              payment_method: paymentMethod,
+              recurring_expense_id: data.recurring_expense.id,
+            }),
+          });
+          const expData = await expRes.json().catch(() => null);
+          if (!expRes.ok) {
+            push(expData?.message || "Recorrência criada, mas falhou ao lançar a ocorrência de hoje já paga.");
+          } else if (receiptFile) {
+            const uploaded = await uploadReceipt(clinicId, expData.expense.id, receiptFile);
+            if (!uploaded.ok) push(uploaded.message || "Salvo, mas falhou ao anexar o comprovante — anexe depois na lista de pagas.");
+          }
+        }
+      } else {
+        const res = await fetch(`/api/clinics/${clinicId}/expenses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...base,
             due_date: dueDate,
             already_paid: alreadyPaid,
             payment_method: alreadyPaid ? paymentMethod : null,
-          };
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        push(data?.message || "Falha ao salvar. Tenta de novo.");
-        return;
-      }
-      // Comprovante é um segundo passo best-effort — a despesa já foi criada
-      // e salva, uma falha aqui não pode desfazer isso nem travar o modal.
-      if (!recurring && alreadyPaid && receiptFile) {
-        const receiptForm = new FormData();
-        receiptForm.append("receipt", receiptFile);
-        const receiptRes = await fetch(`/api/clinics/${clinicId}/expenses/${data.expense.id}/receipt`, { method: "POST", body: receiptForm });
-        if (!receiptRes.ok) {
-          const receiptError = await receiptRes.json().catch(() => null);
-          push(receiptError?.message || "Despesa salva, mas falhou ao anexar o comprovante — anexe depois na lista de pagas.");
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          push(data?.message || "Falha ao salvar. Tenta de novo.");
+          return;
+        }
+        if (alreadyPaid && receiptFile) {
+          const uploaded = await uploadReceipt(clinicId, data.expense.id, receiptFile);
+          if (!uploaded.ok) push(uploaded.message || "Despesa salva, mas falhou ao anexar o comprovante — anexe depois na lista de pagas.");
         }
       }
+
       resetAndClose();
       router.refresh();
     } finally {
@@ -110,7 +162,7 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
         typeof document !== "undefined" &&
         createPortal(
           <div className={uiStyles.overlay} onClick={() => setOpen(false)}>
-            <div className={uiStyles.dialog} style={{ maxWidth: 520 }} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className={uiStyles.dialog} style={{ maxWidth: 540 }} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
                 <h3 className={uiStyles.dialogTitle}>Nova despesa</h3>
                 <button type="button" className={uiStyles.toastClose} onClick={() => setOpen(false)} aria-label="Fechar">
@@ -142,11 +194,11 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
                     <CategoryCombobox id="expCategory" value={category} onChange={setCategory} options={categoryOptions} />
                   </div>
                   <div className={shellStyles.field}>
-                    <label htmlFor="expAmount" className={shellStyles.label}>
+                    <label htmlFor="expValor" className={shellStyles.label}>
                       Valor*
                     </label>
                     <input
-                      id="expAmount"
+                      id="expValor"
                       type="text"
                       inputMode="numeric"
                       className={shellStyles.input}
@@ -158,13 +210,30 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
                   </div>
                 </div>
 
+                <div className={shellStyles.field} style={{ marginBottom: 20, maxWidth: 220 }}>
+                  <label htmlFor="expNature" className={shellStyles.label}>
+                    Natureza
+                  </label>
+                  <select id="expNature" className={shellStyles.select} value={nature} onChange={(e) => setNature(e.target.value as ExpenseNature | "")}>
+                    <option value="">Não informada</option>
+                    {EXPENSE_NATURES.map((n) => (
+                      <option key={n} value={n}>
+                        {EXPENSE_NATURE_LABEL[n]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <p className={shellStyles.fgroupLabel} style={{ marginBottom: 10 }}>
+                  Recorrência
+                </p>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
                   <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--brand)" }} />
                   Despesa recorrente (todo mês)
                 </label>
 
                 {recurring ? (
-                  <div className={shellStyles.field} style={{ marginBottom: 14, maxWidth: 160 }}>
+                  <div className={shellStyles.field} style={{ marginBottom: 8, maxWidth: 160 }}>
                     <label htmlFor="expDay" className={shellStyles.label}>
                       Dia do mês*
                     </label>
@@ -180,7 +249,7 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
                     />
                   </div>
                 ) : (
-                  <div className={shellStyles.field} style={{ marginBottom: 14, maxWidth: 200 }}>
+                  <div className={shellStyles.field} style={{ marginBottom: 8, maxWidth: 200 }}>
                     <label htmlFor="expDueDate" className={shellStyles.label}>
                       Data de vencimento*
                     </label>
@@ -196,63 +265,73 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
                 )}
 
                 {recurring && (
-                  <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "-6px 0 14px" }}>
-                    A primeira despesa desta recorrência aparece como pendente a partir de amanhã — não é gerada na hora.
+                  <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "0 0 20px" }}>
+                    Sem "Já foi pago" marcado, a primeira ocorrência aparece como pendente a partir de amanhã — não é gerada na hora.
                   </p>
                 )}
 
-                {!recurring && (
-                  <>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={alreadyPaid}
-                        onChange={(e) => setAlreadyPaid(e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: "var(--brand)" }}
-                      />
-                      Já foi pago
-                    </label>
+                <div style={{ borderTop: "1px solid var(--line-soft)", paddingTop: 16, marginTop: recurring ? 0 : 20 }}>
+                  <p className={shellStyles.fgroupLabel} style={{ marginBottom: 10 }}>
+                    Pagamento
+                  </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={alreadyPaid}
+                      onChange={(e) => setAlreadyPaid(e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: "var(--brand)" }}
+                    />
+                    Já foi pago{recurring ? " (a ocorrência de hoje)" : ""}
+                  </label>
 
-                    {alreadyPaid && (
-                      <div className={shellStyles.formRow} style={{ marginBottom: 14 }}>
-                        <div className={shellStyles.field} style={{ maxWidth: 240 }}>
-                          <label htmlFor="expPaymentMethod" className={shellStyles.label}>
-                            Meio de pagamento*
-                          </label>
-                          <select
-                            id="expPaymentMethod"
-                            className={shellStyles.select}
-                            value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value)}
-                            required
-                          >
-                            <option value="">Selecione…</option>
-                            {PAYMENT_METHODS.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className={shellStyles.field}>
-                          <label htmlFor="expReceipt" className={shellStyles.label}>
-                            Comprovante
-                          </label>
-                          <input
-                            id="expReceipt"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,application/pdf"
-                            onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-                            className={shellStyles.input}
-                            style={{ padding: 6 }}
-                          />
-                        </div>
+                  {alreadyPaid && (
+                    <>
+                      {recurring && (
+                        <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "-8px 0 14px" }}>
+                          Lança a ocorrência de hoje já paga; os próximos meses seguem gerando pendentes normalmente, pelo dia informado acima.
+                        </p>
+                      )}
+                      <div className={shellStyles.field} style={{ marginBottom: 14, maxWidth: 240 }}>
+                        <label htmlFor="expPaymentMethod" className={shellStyles.label}>
+                          Meio de pagamento*
+                        </label>
+                        <select
+                          id="expPaymentMethod"
+                          className={shellStyles.select}
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          required
+                        >
+                          <option value="">Selecione…</option>
+                          {PAYMENT_METHODS.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    )}
-                  </>
-                )}
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <div className={shellStyles.field} style={{ marginBottom: 4 }}>
+                        <label className={shellStyles.label}>Comprovante</label>
+                        {receiptFile ? (
+                          <div className={ex.filePickedRow}>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{receiptFile.name}</span>
+                            <span style={{ color: "var(--ink-faint)", flexShrink: 0 }}>{formatFileSize(receiptFile.size)}</span>
+                            <button type="button" onClick={() => setReceiptFile(null)} className={ex.filePickedRemove} aria-label="Remover" title="Remover">
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => setPickingReceipt(true)} className={`${shellStyles.btn} ${shellStyles.btnGhost}`}>
+                            + Anexar comprovante
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
                   <button type="button" disabled={saving} onClick={() => setOpen(false)} className={`${shellStyles.btn} ${shellStyles.btnGhost}`}>
                     Cancelar
                   </button>
@@ -265,6 +344,8 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
           </div>,
           document.body
         )}
+
+      <ReceiptPickerModal open={pickingReceipt} onClose={() => setPickingReceipt(false)} onPicked={setReceiptFile} />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   );

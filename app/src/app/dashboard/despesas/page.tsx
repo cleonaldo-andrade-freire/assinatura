@@ -84,7 +84,7 @@ export default async function DespesasPage({
       title="Despesas"
       subtitle="Contas fixas e variáveis da clínica, avulsas ou recorrentes"
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <ExpensesPanel
           clinicId={clinic.id}
           categoryOptions={categoryOptions}

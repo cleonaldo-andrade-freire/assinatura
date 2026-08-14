@@ -6,7 +6,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { CategoryCombobox } from "@/components/expenses/CategoryCombobox";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
-import type { RecurringExpense } from "@/lib/database.types";
+import { EXPENSE_NATURES, EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
+import type { ExpenseNature, RecurringExpense } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 import ex from "./expenses.module.css";
 
@@ -36,6 +37,7 @@ export function RecurringExpensesPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editNature, setEditNature] = useState<ExpenseNature | "">("");
   const [editAmount, setEditAmount] = useState("");
   const [editDay, setEditDay] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -49,6 +51,7 @@ export function RecurringExpensesPanel({
     setEditingId(r.id);
     setEditDescription(r.description);
     setEditCategory(r.category ?? "");
+    setEditNature(r.nature ?? "");
     setEditAmount(formatMoneyDisplay(r.amount));
     setEditDay(String(r.day_of_month));
   }
@@ -65,7 +68,13 @@ export function RecurringExpensesPanel({
       const res = await fetch(`/api/clinics/${clinicId}/recurring-expenses/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: editDescription.trim(), category: editCategory.trim() || null, amount, day_of_month: day }),
+        body: JSON.stringify({
+          description: editDescription.trim(),
+          category: editCategory.trim() || null,
+          nature: editNature || null,
+          amount,
+          day_of_month: day,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -131,6 +140,7 @@ export function RecurringExpensesPanel({
             <tr>
               <th style={{ width: 50 }}>Ativa</th>
               <th>Categoria</th>
+              <th>Natureza</th>
               <th>Descrição</th>
               <th>Valor</th>
               <th>Dia</th>
@@ -144,6 +154,16 @@ export function RecurringExpensesPanel({
                   <td></td>
                   <td>
                     <CategoryCombobox id={`edit-cat-${r.id}`} value={editCategory} onChange={setEditCategory} options={categoryOptions} />
+                  </td>
+                  <td style={{ maxWidth: 130 }}>
+                    <select className={styles.select} value={editNature} onChange={(e) => setEditNature(e.target.value as ExpenseNature | "")}>
+                      <option value="">—</option>
+                      {EXPENSE_NATURES.map((n) => (
+                        <option key={n} value={n}>
+                          {EXPENSE_NATURE_LABEL[n]}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td>
                     <input type="text" className={styles.input} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} required />
@@ -183,6 +203,7 @@ export function RecurringExpensesPanel({
                     />
                   </td>
                   <td data-label="Categoria">{r.category || "—"}</td>
+                  <td data-label="Natureza">{r.nature ? EXPENSE_NATURE_LABEL[r.nature] : "—"}</td>
                   <td className={styles.rowTitle}>{r.description}</td>
                   <td data-label="Valor">{formatMoneyDisplay(r.amount)}</td>
                   <td data-label="Dia">{r.day_of_month}</td>

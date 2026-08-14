@@ -8,6 +8,7 @@ import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { MarkPaidModal } from "@/components/expenses/MarkPaidModal";
 import { NewExpenseModal } from "@/components/expenses/NewExpenseModal";
 import { ExpenseReceiptButton } from "@/components/expenses/ExpenseReceiptButton";
+import { EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDateTime } from "@/lib/date";
 import { formatDateBR } from "@/lib/pdfTextLayout";
@@ -180,7 +181,7 @@ export function ExpensesPanel({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={{ marginBottom: 16 }}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Pendente</p>
           {pendingCount > 0 && <span className={ex.categoryTag}>{pendingCount}</span>}
@@ -202,6 +203,7 @@ export function ExpensesPanel({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        {e.nature && <span className={ex.categoryTag}>{EXPENSE_NATURE_LABEL[e.nature]}</span>}
                         {e.category && <span className={ex.categoryTag}>{e.category}</span>}
                         <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
                       </div>
@@ -224,7 +226,7 @@ export function ExpensesPanel({
         </div>
       </div>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} style={{ marginBottom: 0 }}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Pago</p>
           {paidCount > 0 && <span className={ex.categoryTag}>{paidCount}</span>}
@@ -240,6 +242,7 @@ export function ExpensesPanel({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        {e.nature && <span className={ex.categoryTag}>{EXPENSE_NATURE_LABEL[e.nature]}</span>}
                         {e.category && <span className={ex.categoryTag}>{e.category}</span>}
                         {e.payment_method && <span className={ex.categoryTag}>{e.payment_method}</span>}
                         {e.paid_at && <span className={ex.dateTag}>{formatBRDateTime(e.paid_at, "medium")}</span>}

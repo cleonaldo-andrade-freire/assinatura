@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
 import type { Expense } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-/** Anexa/visualiza o comprovante de pagamento de UMA despesa já paga. Upload dispara direto na seleção do arquivo — sem modal, pra ficar rápido de usar numa linha de lista. */
+/** Anexa/visualiza o comprovante de pagamento de UMA despesa já paga — abre o mesmo modal de escolher/arrastar arquivo usado na criação, upload dispara assim que o arquivo é escolhido. */
 export function ExpenseReceiptButton({
   clinicId,
   expense,
@@ -16,13 +17,10 @@ export function ExpenseReceiptButton({
   onUploaded: (expense: Expense) => void;
   onError: (message: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [picking, setPicking] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handlePicked(file: File) {
     setUploading(true);
     try {
       const form = new FormData();
@@ -58,13 +56,13 @@ export function ExpenseReceiptButton({
       <button
         type="button"
         disabled={uploading}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => setPicking(true)}
         className={`${styles.btn} ${styles.btnGhost}`}
         style={{ flexShrink: 0 }}
       >
         {uploading ? "Enviando…" : "+ Comprovante"}
       </button>
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={handleFile} style={{ display: "none" }} />
+      <ReceiptPickerModal open={picking} onClose={() => setPicking(false)} onPicked={handlePicked} />
     </>
   );
 }

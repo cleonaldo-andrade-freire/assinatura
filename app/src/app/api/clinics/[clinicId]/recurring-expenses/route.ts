@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const bodySchema = z.object({
   description: z.string().min(1),
   category: z.string().nullable().optional(),
+  nature: z.enum(["fixa", "variavel"]).nullable().optional(),
   amount: z.number().positive(),
   day_of_month: z.number().int().min(1).max(28),
 });
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       clinic_id: clinic.id,
       description: parsed.data.description,
       category: parsed.data.category ?? null,
+      nature: parsed.data.nature ?? null,
       amount: parsed.data.amount,
       day_of_month: parsed.data.day_of_month,
     })

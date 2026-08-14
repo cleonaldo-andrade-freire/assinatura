@@ -35,6 +35,7 @@ export async function generateDueExpenses(supabase: SupabaseClient): Promise<num
       recurring_expense_id: rule.id,
       description: rule.description,
       category: rule.category,
+      nature: rule.nature,
       amount: rule.amount,
       due_date: dueDate,
     });

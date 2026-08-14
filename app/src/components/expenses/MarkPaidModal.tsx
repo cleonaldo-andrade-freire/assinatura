@@ -6,12 +6,20 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay } from "@/lib/money";
 import { brDateOnly } from "@/lib/date";
 import { PAYMENT_METHODS } from "@/lib/paymentMethods";
+import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
 import type { Expense } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
+import ex from "./expenses.module.css";
 
 function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**
@@ -37,9 +45,10 @@ export function MarkPaidModal({
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paidAt, setPaidAt] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [pickingReceipt, setPickingReceipt] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEscapeToClose(onClose, open);
+  useEscapeToClose(onClose, open && !pickingReceipt);
 
   useEffect(() => {
     if (!open) return;
@@ -106,13 +115,19 @@ export function MarkPaidModal({
           {canAttachReceipt ? (
             <div className={styles.field} style={{ marginTop: 14 }}>
               <label className={styles.label}>Comprovante</label>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,application/pdf"
-                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-                className={styles.input}
-                style={{ padding: 6 }}
-              />
+              {receiptFile ? (
+                <div className={ex.filePickedRow}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{receiptFile.name}</span>
+                  <span style={{ color: "var(--ink-faint)", flexShrink: 0 }}>{formatFileSize(receiptFile.size)}</span>
+                  <button type="button" onClick={() => setReceiptFile(null)} className={ex.filePickedRemove} aria-label="Remover" title="Remover">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setPickingReceipt(true)} className={`${styles.btn} ${styles.btnGhost}`}>
+                  + Anexar comprovante
+                </button>
+              )}
             </div>
           ) : (
             <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "14px 0 0" }}>
@@ -130,6 +145,7 @@ export function MarkPaidModal({
           </div>
         </form>
       </div>
+      <ReceiptPickerModal open={pickingReceipt} onClose={() => setPickingReceipt(false)} onPicked={setReceiptFile} />
     </div>,
     document.body
   );
