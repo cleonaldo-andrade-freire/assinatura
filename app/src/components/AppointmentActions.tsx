@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionMenu } from "@/components/ui/ActionMenu";
+import { RescheduleAppointmentModal } from "@/components/RescheduleAppointmentModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
-import { brDateOnly, formatBRTime } from "@/lib/date";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
-
-const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 
 export function AppointmentActions({
   clinicId,
@@ -33,14 +30,6 @@ export function AppointmentActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
-  // scheduledAt vem do banco como "...+00:00"; os <option> da grade de
-  // horário são gerados via Date.toISOString() ("...000Z") — precisa
-  // normalizar pros dois lados baterem, senão o select abre sem nada
-  // pré-selecionado (mesmo bug de fundo que fazia o agendamento sumir da
-  // grade/lista).
-  const [newDate, setNewDate] = useState(brDateOnly(new Date(scheduledAt)));
-  const [newTime, setNewTime] = useState(slotKey(scheduledAt));
-  const [newDuration, setNewDuration] = useState(durationMinutes);
   const [resending, setResending] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
@@ -80,8 +69,7 @@ export function AppointmentActions({
     }
   }
 
-  async function handleReschedule(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleReschedule(newTime: string, newDuration: number) {
     const ok = await patch({ scheduled_at: newTime, duration_minutes: newDuration }, "Agendamento remarcado.");
     if (ok) setRescheduling(false);
   }
@@ -94,15 +82,7 @@ export function AppointmentActions({
     if (ok && patientId) router.push(`/dashboard/pacientes/${patientId}?tab=tratamentos`);
   }
 
-  // Mesma lógica do formulário de criação — filtra horários que já passaram
-  // pra não oferecer uma remarcação que o servidor vai recusar.
-  const slots = buildDaySlotTimes(newDate).filter((s) => new Date(s).getTime() > Date.now());
   const isTerminal = status === "atendido" || status === "cancelado_paciente" || status === "cancelado_dentista" || status === "faltou";
-
-  useEffect(() => {
-    if (newTime && !slots.includes(newTime)) setNewTime("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newDate]);
 
   // Só a ação mais relevante pro status atual fica em destaque — o resto
   // (mais raro/secundário) vai pro menu "⋯", inclusive Cancelar (em
@@ -154,64 +134,14 @@ export function AppointmentActions({
         </p>
       )}
 
-      {rescheduling && (
-        <form onSubmit={handleReschedule} style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
-          <div className={styles.formRow}>
-            <div className={styles.field}>
-              <label htmlFor="rescheduleDate" className={styles.label}>
-                Nova data
-              </label>
-              <input
-                id="rescheduleDate"
-                type="date"
-                className={styles.input}
-                value={newDate}
-                min={brDateOnly()}
-                onChange={(e) => {
-                  setNewDate(e.target.value);
-                  setNewTime("");
-                }}
-                required
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="rescheduleTime" className={styles.label}>
-                Novo horário
-              </label>
-              <select id="rescheduleTime" className={styles.select} value={newTime} onChange={(e) => setNewTime(e.target.value)} required>
-                <option value="">Selecione…</option>
-                {slots.map((s) => (
-                  <option key={s} value={s}>
-                    {formatBRTime(s)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="rescheduleDuration" className={styles.label}>
-              Duração
-            </label>
-            <select
-              id="rescheduleDuration"
-              className={styles.select}
-              value={newDuration}
-              onChange={(e) => setNewDuration(Number(e.target.value))}
-            >
-              {DURATION_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} minutos{d === 30 ? " (padrão)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.formActions}>
-            <button type="submit" disabled={busy || !newTime} className={`${styles.btn} ${styles.btnPrimary}`}>
-              Confirmar remarcação
-            </button>
-          </div>
-        </form>
-      )}
+      <RescheduleAppointmentModal
+        open={rescheduling}
+        onClose={() => setRescheduling(false)}
+        scheduledAt={scheduledAt}
+        durationMinutes={durationMinutes}
+        saving={busy}
+        onConfirm={handleReschedule}
+      />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
