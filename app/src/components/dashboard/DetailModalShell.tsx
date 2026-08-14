@@ -44,7 +44,7 @@ export function DetailModalShell({
   return (
     <div className={uiStyles.overlay} onClick={() => router.back()}>
       <div
-        className={`${uiStyles.dialog} ${uiStyles.dialogWide}`}
+        className={`${uiStyles.dialog} ${uiStyles.dialogTall}`}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}

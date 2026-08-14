@@ -54,7 +54,7 @@ export function AppointmentDetailModal({
 
   return createPortal(
     <div className={uiStyles.overlay} onClick={onClose}>
-      <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className={`${uiStyles.dialog} ${uiStyles.dialogTall}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Agendamento</h3>
           <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">

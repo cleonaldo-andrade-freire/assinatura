@@ -49,6 +49,14 @@
   max-width: 780px;
 }
 
+/* Mais alta que dialogWide — pros modais de detalhe (agendamento/prótese),
+   que empilham 3 cards (dados, ações, histórico) e quase sempre passam dos
+   88vh do padrão, obrigando a rolar mesmo com pouco conteúdo em cada card. */
+.dialogTall {
+  composes: dialogWide;
+  max-height: 94vh;
+}
+
 /* Maior que dialogExtraWide de propósito — pro modal de evolução, que abre
    ANINHADO por cima do de editar tratamento (dialogExtraWide): um filho do
    mesmo tamanho ou menor que o pai ficava com aparência "encolhida". */
