@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { brDateOnly } from "@/lib/date";
+import { PAYMENT_METHODS } from "@/lib/paymentMethods";
 import { CategoryCombobox } from "@/components/expenses/CategoryCombobox";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import uiStyles from "@/components/ui/ui.module.css";
@@ -26,6 +27,9 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
   const [recurring, setRecurring] = useState(false);
   const [dueDate, setDueDate] = useState(brDateOnly());
   const [dayOfMonth, setDayOfMonth] = useState("5");
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
@@ -38,6 +42,9 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
     setRecurring(false);
     setDueDate(brDateOnly());
     setDayOfMonth("5");
+    setAlreadyPaid(false);
+    setPaymentMethod("");
+    setReceiptFile(null);
     setOpen(false);
   }
 
@@ -48,12 +55,23 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
       push("Preencha a descrição e o valor.");
       return;
     }
+    if (!recurring && alreadyPaid && !paymentMethod) {
+      push("Selecione o meio de pagamento.");
+      return;
+    }
     setSaving(true);
     try {
       const url = recurring ? `/api/clinics/${clinicId}/recurring-expenses` : `/api/clinics/${clinicId}/expenses`;
       const body = recurring
         ? { description: description.trim(), category: category.trim() || null, amount: value, day_of_month: parseInt(dayOfMonth, 10) }
-        : { description: description.trim(), category: category.trim() || null, amount: value, due_date: dueDate };
+        : {
+            description: description.trim(),
+            category: category.trim() || null,
+            amount: value,
+            due_date: dueDate,
+            already_paid: alreadyPaid,
+            payment_method: alreadyPaid ? paymentMethod : null,
+          };
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,6 +81,17 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
       if (!res.ok) {
         push(data?.message || "Falha ao salvar. Tenta de novo.");
         return;
+      }
+      // Comprovante é um segundo passo best-effort — a despesa já foi criada
+      // e salva, uma falha aqui não pode desfazer isso nem travar o modal.
+      if (!recurring && alreadyPaid && receiptFile) {
+        const receiptForm = new FormData();
+        receiptForm.append("receipt", receiptFile);
+        const receiptRes = await fetch(`/api/clinics/${clinicId}/expenses/${data.expense.id}/receipt`, { method: "POST", body: receiptForm });
+        if (!receiptRes.ok) {
+          const receiptError = await receiptRes.json().catch(() => null);
+          push(receiptError?.message || "Despesa salva, mas falhou ao anexar o comprovante — anexe depois na lista de pagas.");
+        }
       }
       resetAndClose();
       router.refresh();
@@ -170,6 +199,57 @@ export function NewExpenseModal({ clinicId, categoryOptions }: { clinicId: strin
                   <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "-6px 0 14px" }}>
                     A primeira despesa desta recorrência aparece como pendente a partir de amanhã — não é gerada na hora.
                   </p>
+                )}
+
+                {!recurring && (
+                  <>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={alreadyPaid}
+                        onChange={(e) => setAlreadyPaid(e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: "var(--brand)" }}
+                      />
+                      Já foi pago
+                    </label>
+
+                    {alreadyPaid && (
+                      <div className={shellStyles.formRow} style={{ marginBottom: 14 }}>
+                        <div className={shellStyles.field} style={{ maxWidth: 240 }}>
+                          <label htmlFor="expPaymentMethod" className={shellStyles.label}>
+                            Meio de pagamento*
+                          </label>
+                          <select
+                            id="expPaymentMethod"
+                            className={shellStyles.select}
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            required
+                          >
+                            <option value="">Selecione…</option>
+                            {PAYMENT_METHODS.map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className={shellStyles.field}>
+                          <label htmlFor="expReceipt" className={shellStyles.label}>
+                            Comprovante
+                          </label>
+                          <input
+                            id="expReceipt"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,application/pdf"
+                            onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                            className={shellStyles.input}
+                            style={{ padding: 6 }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>

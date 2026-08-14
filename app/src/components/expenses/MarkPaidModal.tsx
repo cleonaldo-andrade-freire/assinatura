@@ -27,12 +27,16 @@ export function MarkPaidModal({
   open: boolean;
   onClose: () => void;
   expenses: Expense[];
-  onConfirm: (paymentMethod: string, paidAt: string) => Promise<void> | void;
+  onConfirm: (paymentMethod: string, paidAt: string, receiptFile: File | null) => Promise<void> | void;
 }) {
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Um comprovante só faz sentido anexado a UMA despesa — com várias
+  // selecionadas de uma vez não dá pra saber qual recibo é de qual conta.
+  const canAttachReceipt = expenses.length === 1;
 
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paidAt, setPaidAt] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEscapeToClose(onClose, open);
@@ -41,6 +45,7 @@ export function MarkPaidModal({
     if (!open) return;
     setPaymentMethod("");
     setPaidAt(brDateOnly());
+    setReceiptFile(null);
   }, [open]);
 
   if (!open || typeof document === "undefined") return null;
@@ -50,7 +55,7 @@ export function MarkPaidModal({
     if (!paymentMethod || !paidAt) return;
     setSaving(true);
     try {
-      await onConfirm(paymentMethod, paidAt);
+      await onConfirm(paymentMethod, paidAt, canAttachReceipt ? receiptFile : null);
     } finally {
       setSaving(false);
     }
@@ -97,6 +102,23 @@ export function MarkPaidModal({
               <input type="date" className={styles.input} value={paidAt} onChange={(e) => setPaidAt(e.target.value)} required />
             </div>
           </div>
+
+          {canAttachReceipt ? (
+            <div className={styles.field} style={{ marginTop: 14 }}>
+              <label className={styles.label}>Comprovante</label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                className={styles.input}
+                style={{ padding: 6 }}
+              />
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "14px 0 0" }}>
+              Pra anexar comprovante, marque uma despesa por vez — com várias selecionadas não dá pra saber de qual conta é o recibo.
+            </p>
+          )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
             <button type="button" disabled={saving} onClick={onClose} className={`${styles.btn} ${styles.btnGhost}`}>

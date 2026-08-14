@@ -541,6 +541,10 @@ export interface Expense {
   status: ExpenseStatus;
   payment_method: string | null;
   paid_at: string | null;
+  /** Comprovante de pagamento anexado — bucket `expense-receipts`, ver expenseReceiptStorage.ts. */
+  receipt_storage_key: string | null;
+  receipt_file_name: string | null;
+  receipt_content_type: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
