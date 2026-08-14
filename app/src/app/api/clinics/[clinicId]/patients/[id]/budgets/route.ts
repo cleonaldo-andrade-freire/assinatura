@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { issueBudgetPdf } from "@/lib/budgetNotifications";
+import { createTreatmentsFromBudget } from "@/lib/treatments";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
 const itemSchema = z.object({
@@ -122,6 +123,17 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     finalBudget = await issueBudgetPdf(supabase, clinic, budget as Budget, (insertedItems as BudgetItem[]) ?? []);
   } catch (err) {
     console.error("Falha ao gerar PDF do orçamento na criação:", err);
+  }
+
+  // Orçamento já nasce aprovado (botão "Aprovar" do modal, em vez de
+  // "Salvar") — gera os tratamentos do paciente na hora, mesma lógica de
+  // quando um orçamento em aberto é aprovado depois.
+  if (finalBudget.status === "aprovado") {
+    try {
+      await createTreatmentsFromBudget(supabase, finalBudget, (insertedItems as BudgetItem[]) ?? []);
+    } catch (err) {
+      console.error("Falha ao criar tratamentos ao criar orçamento já aprovado:", err);
+    }
   }
 
   return NextResponse.json({ budget: finalBudget }, { status: 201 });

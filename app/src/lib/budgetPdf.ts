@@ -1,5 +1,6 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
+import { formatMoneyDisplay } from "@/lib/money";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -12,7 +13,7 @@ interface LogoImage {
 }
 
 function formatMoney(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+  return `R$ ${formatMoneyDisplay(value)}`;
 }
 
 /** Monta o PDF do orçamento — mesmo estilo de `certificatePdf.ts`, adaptado

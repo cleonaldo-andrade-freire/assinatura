@@ -8,10 +8,12 @@ import { Pagination } from "@/components/ui/Pagination";
 import { PatientTabs, PATIENT_TABS, type PatientTabKey } from "@/components/PatientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
+import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
-import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription } from "@/lib/database.types";
+import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription, Treatment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
@@ -20,7 +22,7 @@ const BUDGET_STATUS_LABEL = { em_aberto: "Em aberto", aprovado: "Aprovado" } as 
 const BUDGET_STATUS_CLASS = { em_aberto: styles.statusWarn, aprovado: styles.statusOk } as const;
 
 function formatMoney(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+  return `R$ ${formatMoneyDisplay(value)}`;
 }
 
 function isTabKey(v: string | undefined): v is PatientTabKey {
@@ -125,6 +127,18 @@ export default async function EditPatientPage({
       budgetTotalById.set(b.id, Math.max(0, selectedValue - discountAmount));
     }
   }
+
+  // Sem paginação de propósito — lista de tratamentos de UM paciente
+  // dificilmente cresce a ponto de precisar (diferente da lista de
+  // orçamentos por paciente, ou de tabelas com todos os pacientes da
+  // clínica); o filtro "Mostrar finalizados" já resolve o volume.
+  const { data: treatmentsData } = await supabase
+    .from("treatments")
+    .select("*")
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .order("created_at", { ascending: false });
+  const treatments = (treatmentsData as Treatment[]) ?? [];
 
   // Não existe `patient_id` em `anamneses` (tabela bem mais antiga, com histórico
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
@@ -301,6 +315,10 @@ export default async function EditPatientPage({
     </>
   );
 
+  const tratamentosPanel = (
+    <TreatmentsPanel clinicId={clinic.id} professionalName={clinic.dentist_name || clinic.name} initialTreatments={treatments} />
+  );
+
   const atestadosPanel =
     certificates.length === 0 ? (
       <div className={styles.emptyState}>
@@ -399,6 +417,7 @@ export default async function EditPatientPage({
           anamneses: anamnesesPanel,
           agendamentos: agendamentosPanel,
           orcamentos: orcamentosPanel,
+          tratamentos: tratamentosPanel,
           atestados: atestadosPanel,
           prescricoes: prescricoesPanel,
         }}

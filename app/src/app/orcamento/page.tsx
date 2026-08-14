@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
 import { formatBRDate } from "@/lib/date";
+import { formatMoneyDisplay } from "@/lib/money";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
 function formatMoney(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+  return `R$ ${formatMoneyDisplay(value)}`;
 }
 
 export default async function OrcamentoPage({ searchParams }: { searchParams: { token?: string } }) {

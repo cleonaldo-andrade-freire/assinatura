@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { TreatmentFormModal, type TreatmentFormValues } from "@/components/budgets/TreatmentFormModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { brDateOnly } from "@/lib/date";
-import { formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -24,7 +24,7 @@ interface DraftItem extends TreatmentFormValues {
 }
 
 function formatMoney(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+  return `R$ ${formatMoneyDisplay(value)}`;
 }
 
 function installmentOptions(total: number, max = 12): { count: number; label: string }[] {

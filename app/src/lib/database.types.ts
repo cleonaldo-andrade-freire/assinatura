@@ -445,3 +445,25 @@ export interface BudgetItem {
   display_order: number;
   created_at: string;
 }
+
+export type TreatmentStatus = "aberto" | "finalizado";
+
+/** Procedimento do paciente — nasce ao aprovar um orçamento (uma linha por item selecionado), mas vive independente dele depois. */
+export interface Treatment {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  budget_id: string | null;
+  budget_item_id: string | null;
+  price_table_name: string | null;
+  treatment_name: string;
+  tooth_region: string | null;
+  price: number;
+  dentist_name: string;
+  status: TreatmentStatus;
+  finalized_at: string | null;
+  evolution_text: string | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
