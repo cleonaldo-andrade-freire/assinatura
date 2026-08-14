@@ -469,6 +469,50 @@ export interface Treatment {
   updated_at: string;
 }
 
+export type DebitStatus = "aberto" | "pago";
+
+/**
+ * Conta a receber ligada a um tratamento — tabela separada de `treatments`
+ * de propósito: pagamento parcial gera um SEGUNDO débito (não um segundo
+ * tratamento clínico). `treatment_id` fica nulo se o tratamento clínico
+ * for excluído depois (o registro financeiro sobrevive).
+ */
+export interface TreatmentDebit {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  treatment_id: string | null;
+  description: string;
+  amount: number;
+  status: DebitStatus;
+  payment_method: string | null;
+  paid_at: string | null;
+  /** Já gerou um débito-remanescente (pagamento parcial) — bloqueia "Cancelar recebimento". */
+  has_split: boolean;
+  receipt_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Recibo — agrupa um ou mais débitos já pagos, com PDF gerado sob demanda (mesmo padrão de `Budget`). */
+export interface Receipt {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  patient_name: string;
+  patient_phone: string | null;
+  total_amount: number;
+  declared_ir: boolean;
+  token: string;
+  pdf_storage_key: string | null;
+  sha256: string | null;
+  sent_whatsapp_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Um registro de evolução (nota + até 5 imagens) — um tratamento pode ter vários ao longo do tempo. */
 export interface TreatmentEvolution {
   id: string;

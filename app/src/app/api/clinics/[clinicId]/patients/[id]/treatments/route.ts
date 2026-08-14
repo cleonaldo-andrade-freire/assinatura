@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createDebitForTreatment } from "@/lib/treatmentDebits";
+import type { Treatment } from "@/lib/database.types";
 
 const bodySchema = z.object({
   treatment_name: z.string().min(1),
@@ -50,5 +52,13 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (error || !treatment) {
     return NextResponse.json({ error: "insert_failed", message: error?.message }, { status: 500 });
   }
+
+  try {
+    await createDebitForTreatment(supabase, treatment as Treatment);
+  } catch (err) {
+    // O tratamento já foi criado (o que importa mais) — só o débito falhou.
+    console.error("Falha ao criar débito do tratamento:", err);
+  }
+
   return NextResponse.json({ treatment }, { status: 201 });
 }

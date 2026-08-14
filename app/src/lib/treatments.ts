@@ -1,30 +1,44 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Budget, BudgetItem, Treatment } from "@/lib/database.types";
+import { ensureDebitsForTreatments } from "@/lib/treatmentDebits";
 
 /**
  * Gera os tratamentos do paciente a partir de um orçamento aprovado — uma
  * linha por item selecionado (os desmarcados não viram tratamento, do mesmo
- * jeito que não entram no PDF/total).
+ * jeito que não entram no PDF/total). Cada tratamento com valor > 0 já sai
+ * daqui com o débito (conta a receber) correspondente.
  */
 async function createTreatmentsFromBudget(supabase: SupabaseClient, budget: Budget, items: BudgetItem[]): Promise<number> {
   const selected = items.filter((i) => i.selected);
   if (selected.length === 0) return 0;
 
-  const { error } = await supabase.from("treatments").insert(
-    selected.map((item, index) => ({
-      clinic_id: budget.clinic_id,
-      patient_id: budget.patient_id,
-      budget_id: budget.id,
-      budget_item_id: item.id,
-      price_table_name: item.price_table_name,
-      treatment_name: item.treatment_name,
-      tooth_region: item.tooth_region,
-      price: item.price,
-      dentist_name: item.dentist_name,
-      display_order: index,
-    }))
-  );
+  const { data, error } = await supabase
+    .from("treatments")
+    .insert(
+      selected.map((item, index) => ({
+        clinic_id: budget.clinic_id,
+        patient_id: budget.patient_id,
+        budget_id: budget.id,
+        budget_item_id: item.id,
+        price_table_name: item.price_table_name,
+        treatment_name: item.treatment_name,
+        tooth_region: item.tooth_region,
+        price: item.price,
+        dentist_name: item.dentist_name,
+        display_order: index,
+      }))
+    )
+    .select("*");
   if (error) throw new Error(`Falha ao criar tratamentos a partir do orçamento: ${error.message}`);
+
+  try {
+    await ensureDebitsForTreatments(supabase, (data as Treatment[]) ?? []);
+  } catch (err) {
+    // Os tratamentos já foram criados (o que importa mais) — só os débitos
+    // falharam; loga em vez de derrubar a aprovação do orçamento inteira.
+    console.error("Falha ao criar débitos dos tratamentos do orçamento:", err);
+  }
+
   return selected.length;
 }
 
