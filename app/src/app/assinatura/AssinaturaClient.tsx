@@ -10,6 +10,8 @@ function draftKey(token: string) {
   return `assinatura-draft:${token}`;
 }
 
+class AlreadySignedError extends Error {}
+
 interface Draft {
   fullName: string;
   cpf: string;
@@ -413,7 +415,19 @@ export function AssinaturaClient() {
       method: "POST",
       body: form,
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
+    if (!res.ok) {
+      // Se outro dispositivo/aba já assinou esse mesmo link entre o carregamento
+      // e o envio, o backend recusa com 409 — não é falha de rede/formato, é o
+      // documento já ter sido concluído. Sinalizamos separado pra mostrar a tela
+      // certa ("já assinado") em vez do erro genérico de envio.
+      if (res.status === 409) {
+        const body = await res.json().catch(() => null);
+        if (body?.error === "already_signed") {
+          throw new AlreadySignedError();
+        }
+      }
+      throw new Error(`status ${res.status}`);
+    }
   }
 
   async function handleSubmit() {
@@ -442,7 +456,8 @@ export function AssinaturaClient() {
       setStatus("success");
     } catch (err) {
       console.error("Falha ao enviar assinatura:", err);
-      setStatus("send-error");
+      clearDraft();
+      setStatus(err instanceof AlreadySignedError ? "already-signed" : "send-error");
     }
   }
 
@@ -457,8 +472,9 @@ export function AssinaturaClient() {
       setPdfUrl(URL.createObjectURL(lastPdfBlobRef.current));
       clearDraft();
       setStatus("success");
-    } catch {
-      setStatus("send-error");
+    } catch (err) {
+      clearDraft();
+      setStatus(err instanceof AlreadySignedError ? "already-signed" : "send-error");
     }
   }
 
