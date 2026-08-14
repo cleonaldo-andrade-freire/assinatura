@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
-import { formatMoneyDisplay } from "@/lib/money";
+import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { brDateOnly } from "@/lib/date";
 import { PAYMENT_METHODS } from "@/lib/paymentMethods";
 import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
@@ -23,8 +23,10 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
- * Marcar como pago — sem campo de valor (diferente de ReceivePaymentModal):
- * despesa não tem pagamento parcial, é um toggle pendente/pago só.
+ * Marcar como pago — sem pagamento parcial (diferente de ReceivePaymentModal),
+ * mas o valor lançado (na criação avulsa, ou pela estimativa do molde
+ * recorrente) pode ser corrigido aqui pro valor real cobrado, comum em
+ * despesa variável (conta de luz, água etc.).
  */
 export function MarkPaidModal({
   open,
@@ -35,15 +37,17 @@ export function MarkPaidModal({
   open: boolean;
   onClose: () => void;
   expenses: Expense[];
-  onConfirm: (paymentMethod: string, paidAt: string, receiptFile: File | null) => Promise<void> | void;
+  onConfirm: (paymentMethod: string, paidAt: string, amount: number | null, receiptFile: File | null) => Promise<void> | void;
 }) {
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-  // Um comprovante só faz sentido anexado a UMA despesa — com várias
-  // selecionadas de uma vez não dá pra saber qual recibo é de qual conta.
-  const canAttachReceipt = expenses.length === 1;
+  // Valor e comprovante só fazem sentido com UMA despesa por vez — com
+  // várias selecionadas não dá pra saber a qual conta cada correção/recibo
+  // pertence.
+  const isSingleExpense = expenses.length === 1;
 
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paidAt, setPaidAt] = useState("");
+  const [amount, setAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [pickingReceipt, setPickingReceipt] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,17 +58,22 @@ export function MarkPaidModal({
     if (!open) return;
     setPaymentMethod("");
     setPaidAt(brDateOnly());
+    setAmount(expenses.length === 1 ? formatMoneyDisplay(expenses[0].amount) : "");
     setReceiptFile(null);
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, expenses]);
 
   if (!open || typeof document === "undefined") return null;
 
+  const parsedAmount = parseMoneyInput(amount);
+  const amountValid = !isSingleExpense || parsedAmount > 0;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!paymentMethod || !paidAt) return;
+    if (!paymentMethod || !paidAt || !amountValid) return;
     setSaving(true);
     try {
-      await onConfirm(paymentMethod, paidAt, canAttachReceipt ? receiptFile : null);
+      await onConfirm(paymentMethod, paidAt, isSingleExpense ? parsedAmount : null, isSingleExpense ? receiptFile : null);
     } finally {
       setSaving(false);
     }
@@ -112,7 +121,30 @@ export function MarkPaidModal({
             </div>
           </div>
 
-          {canAttachReceipt ? (
+          {isSingleExpense ? (
+            <div className={styles.field} style={{ marginTop: 14, maxWidth: 160 }}>
+              <label className={styles.label}>Valor pago*</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={styles.input}
+                value={amount}
+                onChange={(e) => setAmount(formatMoneyInput(e.target.value))}
+                required
+              />
+              {parsedAmount > 0 && parsedAmount !== expenses[0].amount && (
+                <p style={{ fontSize: 12, color: "var(--warn)", margin: "6px 0 0" }}>
+                  Diferente do valor lançado ({formatMoney(expenses[0].amount)}) — a despesa é atualizada pro valor pago.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "14px 0 0" }}>
+              Pra corrigir o valor ou anexar comprovante, marque uma despesa por vez.
+            </p>
+          )}
+
+          {isSingleExpense && (
             <div className={styles.field} style={{ marginTop: 14 }}>
               <label className={styles.label}>Comprovante</label>
               {receiptFile ? (
@@ -129,17 +161,13 @@ export function MarkPaidModal({
                 </button>
               )}
             </div>
-          ) : (
-            <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "14px 0 0" }}>
-              Pra anexar comprovante, marque uma despesa por vez — com várias selecionadas não dá pra saber de qual conta é o recibo.
-            </p>
           )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
             <button type="button" disabled={saving} onClick={onClose} className={`${styles.btn} ${styles.btnGhost}`}>
               Cancelar
             </button>
-            <button type="submit" disabled={saving || !paymentMethod || !paidAt} className={`${styles.btn} ${styles.btnPrimary}`}>
+            <button type="submit" disabled={saving || !paymentMethod || !paidAt || !amountValid} className={`${styles.btn} ${styles.btnPrimary}`}>
               {saving ? "Salvando…" : "Confirmar pagamento"}
             </button>
           </div>

@@ -107,12 +107,12 @@ export function ExpensesPanel({
     }
   }
 
-  async function handleConfirmPaid(paymentMethod: string, paidAt: string, receiptFile: File | null) {
+  async function handleConfirmPaid(paymentMethod: string, paidAt: string, amount: number | null, receiptFile: File | null) {
     const ids = expensesToPay.map((e) => e.id);
     const res = await fetch(`/api/clinics/${clinicId}/expenses/mark-paid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expense_ids: ids, payment_method: paymentMethod, paid_at: paidAt }),
+      body: JSON.stringify({ expense_ids: ids, payment_method: paymentMethod, paid_at: paidAt, amount: ids.length === 1 ? amount : null }),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {

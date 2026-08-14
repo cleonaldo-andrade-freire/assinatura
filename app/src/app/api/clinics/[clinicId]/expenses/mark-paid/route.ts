@@ -3,12 +3,19 @@ import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const bodySchema = z.object({
-  expense_ids: z.array(z.string().uuid()).min(1),
-  payment_method: z.string().min(1),
-  /** Data local ("YYYY-MM-DD") escolhida no modal — sem hora, ao contrário do recebimento de débito, porque aqui o usuário pode estar registrando um pagamento feito em outro dia. */
-  paid_at: z.string().min(1),
-});
+const bodySchema = z
+  .object({
+    expense_ids: z.array(z.string().uuid()).min(1),
+    payment_method: z.string().min(1),
+    /** Data local ("YYYY-MM-DD") escolhida no modal — sem hora, ao contrário do recebimento de débito, porque aqui o usuário pode estar registrando um pagamento feito em outro dia. */
+    paid_at: z.string().min(1),
+    /** Corrige o valor lançado pro valor realmente pago — só com uma despesa selecionada (ver mensagem no refine abaixo). Comum em despesa variável recorrente, cujo valor no molde é só uma estimativa. */
+    amount: z.number().positive().nullable().optional(),
+  })
+  .refine((v) => !v.amount || v.expense_ids.length === 1, {
+    message: "Corrigir o valor só é permitido com uma despesa selecionada por vez.",
+    path: ["amount"],
+  });
 
 /** Marca uma ou mais despesas em aberto como pagas — sem pagamento parcial (ver RecurringExpensesPanel/schema). */
 export async function POST(req: NextRequest, { params }: { params: { clinicId: string } }) {
@@ -21,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_body", message: parsed.error.issues[0]?.message }, { status: 400 });
   }
-  const { expense_ids, payment_method, paid_at } = parsed.data;
+  const { expense_ids, payment_method, paid_at, amount } = parsed.data;
 
   const supabase = await createSupabaseServerClient();
   const { data: existing, error: fetchError } = await supabase
@@ -40,7 +47,13 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   const paidAtIso = new Date(`${paid_at}T12:00:00-03:00`).toISOString();
   const { data: updated, error } = await supabase
     .from("expenses")
-    .update({ status: "pago", payment_method, paid_at: paidAtIso, updated_at: new Date().toISOString() })
+    .update({
+      status: "pago",
+      payment_method,
+      paid_at: paidAtIso,
+      updated_at: new Date().toISOString(),
+      ...(amount ? { amount } : {}),
+    })
     .in("id", expense_ids)
     .select("*");
   if (error) return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
