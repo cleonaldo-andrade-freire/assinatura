@@ -94,6 +94,7 @@ export function AppointmentDetailBody({
           <AppointmentActions
             clinicId={clinicId}
             appointmentId={a.id}
+            patientId={a.patient_id}
             status={a.status}
             urgent={a.urgent}
             scheduledAt={a.scheduled_at}

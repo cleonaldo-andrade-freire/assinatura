@@ -72,6 +72,16 @@ export function TreatmentFormModal({
     }
   }, [open, initial]);
 
+  // Tabela padrão já vem selecionada (só ao adicionar, não ao editar) —
+  // separado do reset acima de propósito: o catálogo pode chegar DEPOIS do
+  // modal já estar aberto (corrida com o fetch), e isso não pode apagar
+  // nada que o usuário já tenha escolhido enquanto esperava.
+  useEffect(() => {
+    if (!open || initial || priceTableId) return;
+    const defaultTable = catalog.find((t) => t.is_default);
+    if (defaultTable) setPriceTableId(defaultTable.id);
+  }, [open, initial, catalog, priceTableId]);
+
   const selectedTable = catalog.find((t) => t.id === priceTableId);
   const isCustomTreatment = treatmentId === CUSTOM_TREATMENT_VALUE;
 

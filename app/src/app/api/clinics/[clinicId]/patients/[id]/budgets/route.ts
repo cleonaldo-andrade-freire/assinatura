@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { issueBudgetPdf } from "@/lib/budgetNotifications";
-import { createTreatmentsFromBudget } from "@/lib/treatments";
+import { ensureTreatmentsForBudget } from "@/lib/treatments";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
 const itemSchema = z.object({
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   // quando um orçamento em aberto é aprovado depois.
   if (finalBudget.status === "aprovado") {
     try {
-      await createTreatmentsFromBudget(supabase, finalBudget, (insertedItems as BudgetItem[]) ?? []);
+      await ensureTreatmentsForBudget(supabase, finalBudget, (insertedItems as BudgetItem[]) ?? []);
     } catch (err) {
       console.error("Falha ao criar tratamentos ao criar orçamento já aprovado:", err);
     }

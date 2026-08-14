@@ -13,6 +13,7 @@ const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 export function AppointmentActions({
   clinicId,
   appointmentId,
+  patientId,
   status,
   urgent,
   scheduledAt,
@@ -20,6 +21,9 @@ export function AppointmentActions({
 }: {
   clinicId: string;
   appointmentId: string;
+  /** Paciente vinculado — "Iniciar atendimento" leva pra aba Tratamentos da
+   * ficha dele. Sem cadastro (só nome/telefone), não tem pra onde navegar. */
+  patientId: string | null;
   status: AppointmentStatus;
   urgent: boolean;
   scheduledAt: string;
@@ -81,6 +85,14 @@ export function AppointmentActions({
     if (ok) setRescheduling(false);
   }
 
+  async function handleStartAttendance() {
+    const ok = await patch({ status: "em_atendimento" }, "Atendimento iniciado.");
+    // Leva direto pra aba de Tratamentos da ficha — é lá que o registro do
+    // atendimento (evolução, finalização) acontece. Sem paciente cadastrado
+    // não tem ficha pra abrir, só atualiza o status mesmo.
+    if (ok && patientId) router.push(`/dashboard/pacientes/${patientId}?tab=tratamentos`);
+  }
+
   // Mesma lógica do formulário de criação — filtra horários que já passaram
   // pra não oferecer uma remarcação que o servidor vai recusar.
   const slots = buildDaySlotTimes(newDate).filter((s) => new Date(s).getTime() > Date.now());
@@ -105,12 +117,7 @@ export function AppointmentActions({
           </button>
         )}
         {status !== "em_atendimento" && !isTerminal && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => patch({ status: "em_atendimento" }, "Atendimento iniciado.")}
-            className={`${styles.btn} ${styles.btnPrimary}`}
-          >
+          <button type="button" disabled={busy} onClick={handleStartAttendance} className={`${styles.btn} ${styles.btnPrimary}`}>
             Iniciar atendimento
           </button>
         )}

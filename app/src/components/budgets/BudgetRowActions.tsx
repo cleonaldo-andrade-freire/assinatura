@@ -20,6 +20,7 @@ export function BudgetRowActions({
   const router = useRouter();
   const [sending, setSending] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
   async function handleSend() {
@@ -56,6 +57,22 @@ export function BudgetRowActions({
     }
   }
 
+  async function handleGenerateTreatments() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/budgets/${budgetId}/generate-treatments`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        push("Falha ao gerar tratamentos. Tenta de novo.");
+        return;
+      }
+      push(data.created > 0 ? `${data.created} tratamento${data.created === 1 ? "" : "s"} gerado${data.created === 1 ? "" : "s"}.` : "Os tratamentos deste orçamento já existiam.", "success");
+      router.refresh();
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
       {hasPdf && (
@@ -71,9 +88,19 @@ export function BudgetRowActions({
       <button type="button" disabled={sending} onClick={handleSend} className={`${styles.btn} ${styles.btnGhost}`}>
         {sending ? "Enviando…" : "📲 WhatsApp"}
       </button>
-      {status !== "aprovado" && (
+      {status !== "aprovado" ? (
         <button type="button" disabled={approving} onClick={handleApprove} className={`${styles.btn} ${styles.btnGhost}`}>
           {approving ? "Aprovando…" : "Aprovar"}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={generating}
+          onClick={handleGenerateTreatments}
+          className={`${styles.btn} ${styles.btnGhost}`}
+          title="Recria os tratamentos deste orçamento na ficha do paciente, caso não tenham sido gerados"
+        >
+          {generating ? "Gerando…" : "Gerar tratamentos"}
         </button>
       )}
       <ToastStack toasts={toasts} onDismiss={dismiss} />

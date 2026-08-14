@@ -4,12 +4,11 @@ import type { Budget, BudgetItem, Treatment } from "@/lib/database.types";
 /**
  * Gera os tratamentos do paciente a partir de um orçamento aprovado — uma
  * linha por item selecionado (os desmarcados não viram tratamento, do mesmo
- * jeito que não entram no PDF/total). Best-effort: quem chama decide se uma
- * falha aqui deve travar a aprovação do orçamento ou só logar.
+ * jeito que não entram no PDF/total).
  */
-export async function createTreatmentsFromBudget(supabase: SupabaseClient, budget: Budget, items: BudgetItem[]): Promise<void> {
+async function createTreatmentsFromBudget(supabase: SupabaseClient, budget: Budget, items: BudgetItem[]): Promise<number> {
   const selected = items.filter((i) => i.selected);
-  if (selected.length === 0) return;
+  if (selected.length === 0) return 0;
 
   const { error } = await supabase.from("treatments").insert(
     selected.map((item, index) => ({
@@ -26,6 +25,20 @@ export async function createTreatmentsFromBudget(supabase: SupabaseClient, budge
     }))
   );
   if (error) throw new Error(`Falha ao criar tratamentos a partir do orçamento: ${error.message}`);
+  return selected.length;
+}
+
+/**
+ * Idempotente por existência (não por "acabou de aprovar agora"): se o
+ * orçamento já tem tratamentos vinculados, não cria de novo — permite
+ * chamar isso tanto na aprovação quanto como recuperação manual pra
+ * orçamentos que ficaram sem tratamento por alguma falha anterior (ex.:
+ * aprovado antes da migration da tabela `treatments` rodar).
+ */
+export async function ensureTreatmentsForBudget(supabase: SupabaseClient, budget: Budget, items: BudgetItem[]): Promise<number> {
+  const { count } = await supabase.from("treatments").select("id", { count: "exact", head: true }).eq("budget_id", budget.id);
+  if ((count ?? 0) > 0) return 0;
+  return createTreatmentsFromBudget(supabase, budget, items);
 }
 
 /**
