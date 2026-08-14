@@ -50,17 +50,29 @@ function demoData(): Record_ {
   };
 }
 
+// O logo entra no PDF a 42x42pt (ver buildPdf) — não há motivo pra carregar o
+// arquivo original no corpo da requisição de assinatura se ele tiver sido
+// enviado em alta resolução. Redesenhamos num canvas pequeno antes de gerar o
+// dataURL pra manter o payload leve (relevante pro limite de tamanho de
+// requisição das Functions da Vercel).
+const LOGO_MAX_DIMENSION = 120;
+
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
     const blob = await res.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    const bitmap = await createImageBitmap(blob).catch(() => null);
+    if (!bitmap) return null;
+
+    const scale = Math.min(1, LOGO_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
   } catch (err) {
     console.error("Falha ao carregar o logo da clínica:", err);
     return null;
@@ -235,7 +247,11 @@ export function AssinaturaClient() {
   useEffect(() => {
     if (status !== "form" || formStep !== "sign" || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    const ratio = window.devicePixelRatio || 1;
+    // Limitado a 2x: em iPhones com devicePixelRatio 3 (Pro/Pro Max), usar o
+    // valor bruto gera um PNG de assinatura grande o bastante pra estourar o
+    // limite de payload das Functions da Vercel (413) — 2x já é mais que
+    // suficiente de nitidez pra um traço de assinatura.
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * ratio;
     canvas.height = rect.height * ratio;
