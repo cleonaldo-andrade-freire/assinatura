@@ -513,6 +513,39 @@ export interface Receipt {
   updated_at: string;
 }
 
+export type ExpenseStatus = "pendente" | "pago";
+
+/** Regra de despesa recorrente — o cron gera uma `Expense` por mês a partir daqui, nunca a despesa em si. */
+export interface RecurringExpense {
+  id: string;
+  clinic_id: string;
+  description: string;
+  category: string | null;
+  amount: number;
+  day_of_month: number;
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Uma despesa avulsa ou gerada a partir de uma recorrência. */
+export interface Expense {
+  id: string;
+  clinic_id: string;
+  recurring_expense_id: string | null;
+  description: string;
+  category: string | null;
+  amount: number;
+  due_date: string;
+  status: ExpenseStatus;
+  payment_method: string | null;
+  paid_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Um registro de evolução (nota + até 5 imagens) — um tratamento pode ter vários ao longo do tempo. */
 export interface TreatmentEvolution {
   id: string;

@@ -227,7 +227,6 @@ export function DebitsPanel({
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {paidDebits.map((d) => {
-                const subtitleParts = [d.payment_method, d.paid_at ? formatBRDateTime(d.paid_at, "medium") : null].filter(Boolean);
                 const canCancelPayment = !d.has_split && !d.receipt_id;
                 const isReceipted = !!d.receipt_id;
                 return (
@@ -244,7 +243,10 @@ export function DebitsPanel({
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
-                      {subtitleParts.length > 0 && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{subtitleParts.join(" — ")}</div>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        {d.payment_method && <span className={db.paymentTag}>{d.payment_method}</span>}
+                        {d.paid_at && <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{formatBRDateTime(d.paid_at, "medium")}</span>}
+                      </div>
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
                     <span className={`${styles.statusDot} ${styles.statusOk}`}>{isReceipted ? "Recibo emitido" : "Pago"}</span>
