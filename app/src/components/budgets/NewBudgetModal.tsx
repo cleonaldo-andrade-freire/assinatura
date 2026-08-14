@@ -7,12 +7,12 @@ import { TreatmentFormModal, type TreatmentFormValues } from "@/components/budge
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { brDateOnly } from "@/lib/date";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { PAYMENT_METHODS } from "@/lib/paymentMethods";
 import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
 import nb from "./newBudget.module.css";
 
-const PAYMENT_METHODS = ["Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"];
 // Só esses dois meios fazem sentido parcelar — os outros são à vista por natureza.
 const PARCELABLE_METHODS = new Set(["Cartão de crédito", "Boleto"]);
 
