@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActionMenu } from "@/components/ui/ActionMenu";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { buildDaySlotTimes, slotKey } from "@/lib/appointments";
 import { brDateOnly, formatBRTime } from "@/lib/date";
@@ -41,27 +42,7 @@ export function AppointmentActions({
   const [newTime, setNewTime] = useState(slotKey(scheduledAt));
   const [newDuration, setNewDuration] = useState(durationMinutes);
   const [resending, setResending] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const { toasts, push, dismiss } = useToasts();
-
-  // Fecha o menu "⋯ Mais ações" ao clicar fora ou apertar Esc — não é um
-  // modal (não usa useEscapeToClose), então trata os dois aqui mesmo.
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onPointerDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
 
   async function handleResend() {
     setResending(true);
@@ -160,34 +141,7 @@ export function AppointmentActions({
             Iniciar atendimento
           </button>
         )}
-        {menuItems.length > 0 && (
-          <div className={styles.menuWrap} ref={menuRef}>
-            <button type="button" disabled={busy} onClick={() => setMenuOpen((v) => !v)} className={styles.menuTrigger} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Mais ações">
-              ⋯
-            </button>
-            {menuOpen && (
-              <div className={styles.menuPanel} role="menu">
-                {menuItems.map((item, i) => (
-                  <div key={i}>
-                    {item.danger && i > 0 && !menuItems[i - 1].danger && <hr className={styles.menuDivider} />}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={busy || item.disabled}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        item.onClick();
-                      }}
-                      className={`${styles.menuItem} ${item.danger ? styles.menuItemDanger : ""}`}
-                    >
-                      {item.label}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <ActionMenu items={menuItems} disabled={busy} />
       </div>
 
       {isTerminal && (
