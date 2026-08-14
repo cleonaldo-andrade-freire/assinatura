@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "treatment-evolution-images";
@@ -22,8 +23,14 @@ export function contentTypeForKey(storageKey: string): string {
   return TYPE_BY_EXTENSION[ext] ?? "application/octet-stream";
 }
 
-/** Imagem de uma evolução — bucket privado, uma chave por arquivo (até 5 por evolução, checado em quem chama). */
-export async function saveEvolutionImage(clinicId: string, evolutionId: string, index: number, file: File): Promise<string> {
+/**
+ * Imagem de uma evolução — bucket privado, uma chave por arquivo (até 5 por
+ * evolução, checado em quem chama). A chave usa um token aleatório, NÃO a
+ * posição no array — ao editar (manter algumas, adicionar outras), a nova
+ * imagem pode calhar do mesmo índice de uma que ficou, e com índice
+ * posicional (upsert: true) isso sobrescrevia o arquivo da imagem mantida.
+ */
+export async function saveEvolutionImage(clinicId: string, evolutionId: string, file: File): Promise<string> {
   const ext = EXTENSION_BY_TYPE[file.type];
   if (!ext) {
     throw new Error("Formato de imagem não suportado — use PNG, JPEG ou WEBP.");
@@ -33,7 +40,7 @@ export async function saveEvolutionImage(clinicId: string, evolutionId: string, 
   }
 
   const supabase = createSupabaseAdminClient();
-  const key = `${clinicId}/${evolutionId}/${index}.${ext}`;
+  const key = `${clinicId}/${evolutionId}/${randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage.from(BUCKET).upload(key, buffer, {

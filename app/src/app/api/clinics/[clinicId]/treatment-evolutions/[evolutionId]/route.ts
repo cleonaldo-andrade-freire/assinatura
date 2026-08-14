@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
 
   let newKeys: string[] = [];
   try {
-    newKeys = await Promise.all(newImages.map((file, i) => saveEvolutionImage(clinic.id, evolution.id, kept.length + i, file)));
+    newKeys = await Promise.all(newImages.map((file) => saveEvolutionImage(clinic.id, evolution.id, file)));
   } catch (err) {
     return NextResponse.json({ error: "image_upload_failed", message: err instanceof Error ? err.message : undefined }, { status: 400 });
   }

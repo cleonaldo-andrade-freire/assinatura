@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   if (images.length > 0) {
     try {
-      const imageKeys = await Promise.all(images.map((file, index) => saveEvolutionImage(clinic.id, evolution.id, index, file)));
+      const imageKeys = await Promise.all(images.map((file) => saveEvolutionImage(clinic.id, evolution.id, file)));
       const { data: updated, error: updateError } = await supabase
         .from("treatment_evolutions")
         .update({ image_keys: imageKeys })

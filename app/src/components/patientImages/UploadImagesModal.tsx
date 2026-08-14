@@ -141,15 +141,19 @@ export function UploadImagesModal({
                     <img src={previews[i]} alt="" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--ink-faint)", marginBottom: 6 }}>{formatSize(file.size)}</div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-faint)", flexShrink: 0 }}>{formatSize(file.size)}</span>
+                    </div>
+                    <label className={styles.label} style={{ marginBottom: 4 }}>
+                      Descrição
+                    </label>
                     <input
                       type="text"
                       className={styles.input}
-                      placeholder="Descrição (opcional)"
+                      placeholder="Ex.: radiografia panorâmica, foto do sorriso…"
                       value={descriptions[i] ?? ""}
                       onChange={(e) => setDescriptionAt(i, e.target.value)}
-                      style={{ fontSize: 12.5, padding: "6px 10px" }}
                     />
                   </div>
                   <button type="button" onClick={() => removeAt(i)} className={pi.fileRowRemove} aria-label="Remover" title="Remover">
