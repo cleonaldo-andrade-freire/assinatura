@@ -193,7 +193,7 @@ export function EvolutionFormModal({
                     <div key={key} className={tp.evolutionFileRow} style={{ opacity: kept ? 1 : 0.45 }}>
                       <div className={tp.evolutionFileThumb}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`/api/clinics/${clinicId}/treatment-evolutions/${initial.id}/images/${i}`} alt="" />
+                        <img src={`/api/clinics/${clinicId}/treatment-evolutions/${initial.id}/images/${key.split("/").pop()}`} alt="" />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

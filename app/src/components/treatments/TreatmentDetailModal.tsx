@@ -394,11 +394,12 @@ export function TreatmentDetailModal({
                             </p>
                             {e.image_keys.length > 0 && (
                               <div className={tp.evolutionImages}>
-                                {e.image_keys.map((_, i) => {
+                                {e.image_keys.map((key, i) => {
                                   const caption = e.image_descriptions?.[i] || e.image_names?.[i] || "";
+                                  const fileKey = key.split("/").pop();
                                   return (
                                     <button
-                                      key={i}
+                                      key={key}
                                       type="button"
                                       className={tp.evolutionThumb}
                                       style={{ border: "none", padding: 0, cursor: "pointer" }}
@@ -409,7 +410,7 @@ export function TreatmentDetailModal({
                                       }}
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${i}`} alt={caption} />
+                                      <img src={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/images/${fileKey}`} alt={caption} />
                                     </button>
                                   );
                                 })}
@@ -438,8 +439,8 @@ export function TreatmentDetailModal({
               onClose={() => setLightboxEvolutionId(null)}
               images={(() => {
                 const evo = evolutions.find((e) => e.id === lightboxEvolutionId);
-                return (evo?.image_keys ?? []).map((_, i) => ({
-                  url: `/api/clinics/${clinicId}/treatment-evolutions/${lightboxEvolutionId}/images/${i}`,
+                return (evo?.image_keys ?? []).map((key, i) => ({
+                  url: `/api/clinics/${clinicId}/treatment-evolutions/${lightboxEvolutionId}/images/${key.split("/").pop()}`,
                   alt: evo?.image_descriptions?.[i] || evo?.image_names?.[i] || undefined,
                 }));
               })()}
