@@ -1,18 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
 import styles from "@/styles/shell.module.css";
-
-export const PATIENT_TABS = [
-  { key: "agendamentos", label: "Agendamentos" },
-  { key: "orcamentos", label: "Orçamentos" },
-  { key: "tratamentos", label: "Tratamentos" },
-  { key: "anamneses", label: "Anamneses" },
-  { key: "atestados", label: "Atestados" },
-  { key: "prescricoes", label: "Prescrições" },
-] as const;
-
-export type PatientTabKey = (typeof PATIENT_TABS)[number]["key"];
 
 /** Troca de aba client-side (sem recarregar a página) — os quatro painéis já
  * vêm prontos (renderizados no servidor) do componente pai; aqui só decide

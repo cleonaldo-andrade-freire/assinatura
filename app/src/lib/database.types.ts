@@ -467,3 +467,15 @@ export interface Treatment {
   created_at: string;
   updated_at: string;
 }
+
+/** Um registro de evolução (nota + até 5 imagens) — um tratamento pode ter vários ao longo do tempo. */
+export interface TreatmentEvolution {
+  id: string;
+  clinic_id: string;
+  treatment_id: string;
+  patient_id: string;
+  evolution_date: string;
+  text: string;
+  image_keys: string[];
+  created_at: string;
+}

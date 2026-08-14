@@ -39,5 +39,24 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     .select("*");
 
   if (error) return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
+
+  // Best-effort — finalizar já registra uma evolução no histórico de cada
+  // tratamento (uma linha por tratamento, mesmo texto/data), pra "tela de
+  // edição do tratamento" sempre mostrar isso junto com as outras.
+  try {
+    await supabase.from("treatment_evolutions").insert(
+      (data ?? []).map((t) => ({
+        clinic_id: clinic.id,
+        treatment_id: t.id,
+        patient_id: t.patient_id,
+        evolution_date: parsed.data.finalized_at,
+        text: parsed.data.evolution_text,
+        image_keys: [],
+      }))
+    );
+  } catch (err) {
+    console.error("Falha ao registrar evolução ao finalizar tratamento:", err);
+  }
+
   return NextResponse.json({ treatments: data });
 }

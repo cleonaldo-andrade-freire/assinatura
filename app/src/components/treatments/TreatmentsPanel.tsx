@@ -6,7 +6,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { FinalizeTreatmentModal } from "@/components/treatments/FinalizeTreatmentModal";
-import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
+import { TreatmentDetailModal } from "@/components/treatments/TreatmentDetailModal";
+import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDate } from "@/lib/date";
 import type { Treatment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -40,11 +41,7 @@ export function TreatmentsPanel({
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editTooth, setEditTooth] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
+  const [detailTreatment, setDetailTreatment] = useState<Treatment | null>(null);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -61,38 +58,6 @@ export function TreatmentsPanel({
       else next.add(id);
       return next;
     });
-  }
-
-  function startEdit(t: Treatment) {
-    setEditingId(t.id);
-    setEditName(t.treatment_name);
-    setEditTooth(t.tooth_region ?? "");
-    setEditPrice(formatMoneyDisplay(t.price));
-  }
-
-  async function handleSaveEdit(id: string) {
-    if (!editName.trim()) {
-      push("Preencha o nome do tratamento.");
-      return;
-    }
-    setSavingEdit(true);
-    try {
-      const res = await fetch(`/api/clinics/${clinicId}/treatments/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ treatment_name: editName.trim(), tooth_region: editTooth.trim() || null, price: parseMoneyInput(editPrice) }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        push("Falha ao salvar. Tenta de novo.");
-        return;
-      }
-      setTreatments((prev) => prev.map((t) => (t.id === id ? (data.treatment as Treatment) : t)));
-      setEditingId(null);
-      router.refresh();
-    } finally {
-      setSavingEdit(false);
-    }
   }
 
   async function handleDelete(id: string) {
@@ -165,31 +130,7 @@ export function TreatmentsPanel({
               const subtitleParts = [t.price_table_name, t.status === "finalizado" && t.finalized_at ? `finalizado em ${formatBRDate(t.finalized_at)}` : null].filter(
                 Boolean
               );
-              return editingId === t.id ? (
-                <div key={t.id} className={tp.row}>
-                  <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <input type="text" className={styles.input} style={{ flex: 2, minWidth: 160 }} value={editName} onChange={(e) => setEditName(e.target.value)} />
-                    <input type="text" className={styles.input} style={{ width: 100 }} value={editTooth} onChange={(e) => setEditTooth(e.target.value)} placeholder="Dente" />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className={styles.input}
-                      style={{ width: 110 }}
-                      value={editPrice}
-                      onChange={(e) => setEditPrice(formatMoneyInput(e.target.value))}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" disabled={savingEdit} onClick={() => handleSaveEdit(t.id)} className={`${styles.btn} ${styles.btnPrimary}`}>
-                      {savingEdit ? "Salvando…" : "Salvar"}
-                    </button>
-                    <button type="button" disabled={savingEdit} onClick={() => setEditingId(null)} className={`${styles.btn} ${styles.btnGhost}`}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              return (
                 <div key={t.id} className={tp.row}>
                   {t.status === "aberto" ? (
                     <input
@@ -202,7 +143,7 @@ export function TreatmentsPanel({
                     <span style={{ width: 18, flexShrink: 0 }} />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <button type="button" className={tp.name} onClick={() => startEdit(t)}>
+                    <button type="button" className={tp.name} onClick={() => setDetailTreatment(t)}>
                       {t.tooth_region ? `${t.tooth_region} — ` : ""}
                       {t.treatment_name}
                     </button>
@@ -244,6 +185,17 @@ export function TreatmentsPanel({
           </button>
         </div>
       )}
+
+      <TreatmentDetailModal
+        open={detailTreatment !== null}
+        onClose={() => setDetailTreatment(null)}
+        clinicId={clinicId}
+        treatment={detailTreatment}
+        onSaved={(updated) => {
+          setTreatments((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+          setDetailTreatment(updated);
+        }}
+      />
 
       <FinalizeTreatmentModal
         open={finalizeIds !== null}
