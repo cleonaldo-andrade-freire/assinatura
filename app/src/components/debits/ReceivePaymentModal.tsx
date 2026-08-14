@@ -114,7 +114,7 @@ export function ReceivePaymentModal({
 
           {!canPartial && (
             <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "-6px 0 10px" }}>
-              Selecionando mais de um débito, o valor recebido precisa cobrir o total — pra pagar parcial, selecione um débito por vez.
+              Pagamento parcial só é permitido com um débito por vez — com vários selecionados, o valor recebido precisa cobrir o total.
             </p>
           )}
           {canPartial && isPartial && (
