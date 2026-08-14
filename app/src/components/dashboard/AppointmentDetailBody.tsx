@@ -1,5 +1,6 @@
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
+import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
@@ -82,7 +83,7 @@ export function AppointmentDetailBody({
               "Retorno previsto",
               `${formatBRDate(`${a.return_due_date}T12:00:00-03:00`)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
             )}
-          {a.notes && detailRow("Observação", a.notes)}
+          <AppointmentNotesField clinicId={clinicId} appointmentId={a.id} notes={a.notes} />
         </div>
       </div>
 
