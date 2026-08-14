@@ -253,7 +253,7 @@ export default async function SettingsPage() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td className={styles.rowTitle}>{formatBRDate(p.dueDate)}</td>
+                    <td className={styles.rowTitle}>{formatBRDate(`${p.dueDate}T12:00:00-03:00`)}</td>
                     <td data-label="Valor">R$ {p.value.toFixed(2).replace(".", ",")}</td>
                     <td data-label="Status">{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
                     <td>

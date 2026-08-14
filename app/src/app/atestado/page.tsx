@@ -73,7 +73,7 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
               </div>
               <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Início do afastamento</dt>
-                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(c.starts_on)}</dd>
+                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(`${c.starts_on}T12:00:00-03:00`)}</dd>
               </div>
               <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Dias de afastamento</dt>

@@ -1,13 +1,20 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
 import styles from "@/styles/shell.module.css";
 
 /** Troca de aba client-side (sem recarregar a página) — os quatro painéis já
  * vêm prontos (renderizados no servidor) do componente pai; aqui só decide
  * qual mostrar. `initialTab` vem da URL (?tab=) pra sobreviver à paginação
- * dentro de uma aba (o link de "página 2" preserva a aba atual). */
+ * dentro de uma aba (o link de "página 2" preserva a aba atual).
+ *
+ * A troca de aba também atualiza a URL (`router.replace`, sem empilhar
+ * histórico) — sem isso, os links de paginação de cada painel (calculados
+ * no servidor a partir do `?tab=` da URL no carregamento) ficavam presos na
+ * aba com que a página abriu: clicar "página 2" depois de trocar de aba
+ * aqui do lado do cliente te devolvia pra aba antiga. */
 export function PatientTabs({
   initialTab,
   panels,
@@ -15,7 +22,14 @@ export function PatientTabs({
   initialTab: PatientTabKey;
   panels: Record<PatientTabKey, ReactNode>;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [active, setActive] = useState<PatientTabKey>(initialTab);
+
+  function selectTab(key: PatientTabKey) {
+    setActive(key);
+    router.replace(`${pathname}?tab=${key}`, { scroll: false });
+  }
 
   return (
     <div className={styles.panel}>
@@ -24,7 +38,7 @@ export function PatientTabs({
           <button
             key={t.key}
             type="button"
-            onClick={() => setActive(t.key)}
+            onClick={() => selectTab(t.key)}
             className={`${styles.tabBtn} ${active === t.key ? styles.tabBtnActive : ""}`}
           >
             {t.label}

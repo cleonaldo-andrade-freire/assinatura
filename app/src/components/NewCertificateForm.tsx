@@ -118,7 +118,7 @@ export function NewCertificateForm({ clinicId, templates }: { clinicId: string; 
         paciente_nome: patientName.trim(),
         paciente_cpf: patientCpf.trim(),
         data_emissao: formatBRDate(new Date().toISOString()),
-        data_inicio: startsOn ? formatBRDate(startsOn) : "",
+        data_inicio: startsOn ? formatBRDate(`${startsOn}T12:00:00-03:00`) : "",
         dias_afastamento: String(restDays),
       })
     : null;

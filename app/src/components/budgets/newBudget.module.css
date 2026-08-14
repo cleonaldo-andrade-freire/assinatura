@@ -1,9 +1,32 @@
+.section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  padding: 16px 18px;
+}
+
+.sectionTitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0 0 14px;
+}
+
+.sectionDivider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 16px 0;
+}
+
 .itemRow {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: var(--surface-sunken);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
 

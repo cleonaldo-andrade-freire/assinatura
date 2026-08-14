@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { FinalizeTreatmentModal } from "@/components/treatments/FinalizeTreatmentModal";
 import { TreatmentDetailModal } from "@/components/treatments/TreatmentDetailModal";
+import { NewTreatmentModal } from "@/components/treatments/NewTreatmentModal";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDate } from "@/lib/date";
 import type { Treatment } from "@/lib/database.types";
@@ -54,6 +55,7 @@ export function TreatmentsPanel({
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [detailTreatment, setDetailTreatment] = useState<Treatment | null>(null);
+  const [newTreatmentOpen, setNewTreatmentOpen] = useState(false);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -119,7 +121,10 @@ export function TreatmentsPanel({
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <button type="button" onClick={() => setNewTreatmentOpen(true)} className={`${styles.btn} ${styles.btnPrimary}`}>
+          + Novo tratamento
+        </button>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-soft)", cursor: "pointer" }}>
           <input
             type="checkbox"
@@ -133,7 +138,7 @@ export function TreatmentsPanel({
 
       {treatments.length === 0 ? (
         <div className={styles.emptyState}>
-          {showFinalized ? "Nenhum tratamento cadastrado ainda." : "Nenhum tratamento em aberto — aprove um orçamento pra gerar tratamentos aqui."}
+          {showFinalized ? "Nenhum tratamento cadastrado ainda." : "Nenhum tratamento em aberto — adicione um ou aprove um orçamento pra gerar tratamentos aqui."}
         </div>
       ) : (
         <>
@@ -197,6 +202,14 @@ export function TreatmentsPanel({
           </button>
         </div>
       )}
+
+      <NewTreatmentModal
+        open={newTreatmentOpen}
+        onClose={() => setNewTreatmentOpen(false)}
+        clinicId={clinicId}
+        patientId={patientId}
+        onCreated={(created) => setTreatments((prev) => [created, ...prev])}
+      />
 
       <TreatmentDetailModal
         open={detailTreatment !== null}

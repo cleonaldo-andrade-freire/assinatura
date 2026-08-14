@@ -1,25 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
 
 /**
  * Linha "Observação" do detalhe de agendamento — sempre visível (mesmo
- * vazia) com edição inline, porque a observação pode surgir depois de
- * agendado (ex.: paciente liga com mais informação), não só na criação.
+ * vazia), porque a observação pode surgir depois de agendado (ex.: paciente
+ * liga com mais informação), não só na criação. Edição em modal — inline
+ * dentro do card ficava ruim (textarea empurrando o resto do conteúdo).
  */
 export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clinicId: string; appointmentId: string; notes: string | null }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(notes ?? "");
   const [saving, setSaving] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
   function startEdit() {
     setDraft(notes ?? "");
-    setEditing(true);
+    setOpen(true);
   }
 
   async function handleSave() {
@@ -35,37 +38,12 @@ export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clin
         push(data.message || data.error || "Falha ao salvar a observação.");
         return;
       }
-      setEditing(false);
+      setOpen(false);
       push("Observação salva.", "success");
       router.refresh();
     } finally {
       setSaving(false);
     }
-  }
-
-  if (editing) {
-    return (
-      <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-        <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 6 }}>Observação</span>
-        <textarea
-          className={styles.input}
-          rows={3}
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Motivo da consulta, anotação da recepção…"
-        />
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button type="button" disabled={saving} onClick={handleSave} className={`${styles.btn} ${styles.btnPrimary}`}>
-            {saving ? "Salvando…" : "Salvar"}
-          </button>
-          <button type="button" disabled={saving} onClick={() => setEditing(false)} className={`${styles.btn} ${styles.btnGhost}`}>
-            Cancelar
-          </button>
-        </div>
-        <ToastStack toasts={toasts} onDismiss={dismiss} />
-      </div>
-    );
   }
 
   return (
@@ -81,6 +59,41 @@ export function AppointmentNotesField({ clinicId, appointmentId, notes }: { clin
           {notes ? "Editar" : "+ Adicionar"}
         </button>
       </span>
+
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className={uiStyles.overlay} onClick={() => !saving && setOpen(false)}>
+            <div className={uiStyles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                <h3 className={uiStyles.dialogTitle}>Observação</h3>
+                <button type="button" className={uiStyles.toastClose} onClick={() => setOpen(false)} aria-label="Fechar">
+                  ×
+                </button>
+              </div>
+
+              <textarea
+                className={styles.input}
+                rows={6}
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Motivo da consulta, anotação da recepção…"
+              />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+                <button type="button" disabled={saving} onClick={() => setOpen(false)} className={`${styles.btn} ${styles.btnGhost}`}>
+                  Cancelar
+                </button>
+                <button type="button" disabled={saving} onClick={handleSave} className={`${styles.btn} ${styles.btnPrimary}`}>
+                  {saving ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );

@@ -234,7 +234,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td>{formatBRDate(p.dueDate)}</td>
+                  <td>{formatBRDate(`${p.dueDate}T12:00:00-03:00`)}</td>
                   <td>R$ {p.value.toFixed(2)}</td>
                   <td>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
                   <td>

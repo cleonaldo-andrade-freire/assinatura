@@ -37,7 +37,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
     paciente_nome: c.patient_name,
     paciente_cpf: c.patient_cpf ?? "",
     data_emissao: formatBRDate(c.created_at),
-    data_inicio: formatBRDate(c.starts_on),
+    data_inicio: formatBRDate(`${c.starts_on}T12:00:00-03:00`),
     dias_afastamento: String(c.rest_days),
   });
 
@@ -62,7 +62,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           {c.patient_cpf && detailRow("CPF", c.patient_cpf)}
           {c.patient_phone && detailRow("WhatsApp", `+55 ${formatBRPhoneLocal(c.patient_phone)}`)}
           {detailRow("Dentista responsável", `${c.dentist_name} — CRO ${c.dentist_cro}/${c.dentist_cro_uf}`)}
-          {detailRow("Início do afastamento", formatBRDate(c.starts_on))}
+          {detailRow("Início do afastamento", formatBRDate(`${c.starts_on}T12:00:00-03:00`))}
           {detailRow("Dias de afastamento", String(c.rest_days))}
           {/* CID sempre visível aqui pra clínica — a flag `hide_cid_on_patient_pdf`
               só controla o que aparece no PDF entregue ao paciente. */}

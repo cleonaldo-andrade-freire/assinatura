@@ -305,7 +305,7 @@ export default async function EditPatientPage({
             <tbody>
               {budgets.map((b) => (
                 <tr key={b.id}>
-                  <td>{formatBRDate(b.budget_date)}</td>
+                  <td>{formatBRDate(`${b.budget_date}T12:00:00-03:00`)}</td>
                   <td className={styles.rowTitle}>{b.description}</td>
                   <td data-label="Valor">{formatMoney(budgetTotalById.get(b.id) ?? 0)}</td>
                   <td data-label="Status">

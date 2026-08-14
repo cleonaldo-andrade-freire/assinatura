@@ -53,7 +53,7 @@ export default async function OrcamentoPage({ searchParams }: { searchParams: { 
         <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data</dt>
-            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(b.budget_date)}</dd>
+            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(`${b.budget_date}T12:00:00-03:00`)}</dd>
           </div>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Responsável</dt>
