@@ -400,22 +400,18 @@ export function AssinaturaClient() {
   }
 
   async function sendSignature(pdfBlob: Blob) {
-    const reader = new FileReader();
-    const base64: string = await new Promise((resolve, reject) => {
-      reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(pdfBlob);
-    });
+    // FormData com o PDF como arquivo binário, não JSON com base64 — base64
+    // dentro de um corpo JSON grande falhava consistentemente no Safari/
+    // Chrome de iPhone (WebKit), mesmo funcionando certinho no desktop.
+    const form = new FormData();
+    form.append("name", submitPayloadRef.current!.name);
+    form.append("cpf", submitPayloadRef.current!.cpf);
+    form.append("signed_at_client", new Date().toISOString());
+    form.append("pdf", pdfBlob, "anamnese.pdf");
 
     const res = await fetch(`/api/anamnesis/${encodeURIComponent(token || "")}/sign`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: submitPayloadRef.current!.name,
-        cpf: submitPayloadRef.current!.cpf,
-        signed_at_client: new Date().toISOString(),
-        pdf_base64: base64,
-      }),
+      body: form,
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
   }
