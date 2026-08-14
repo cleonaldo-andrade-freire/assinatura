@@ -10,13 +10,14 @@ import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
+import { DebitsPanel } from "@/components/debits/DebitsPanel";
 import { PatientImagesPanel } from "@/components/patientImages/PatientImagesPanel";
 import { AppointmentDetailTrigger } from "@/components/dashboard/AppointmentDetailTrigger";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
-import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription, Treatment } from "@/lib/database.types";
+import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription, Treatment, TreatmentDebit } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
@@ -45,6 +46,8 @@ export default async function EditPatientPage({
     bgPage?: string;
     tpPage?: string;
     tpShowFinalized?: string;
+    dbPage?: string;
+    dbPaidPage?: string;
     tab?: string;
   };
 }) {
@@ -155,6 +158,53 @@ export default async function EditPatientPage({
     .range(tpFrom, tpTo);
   const treatments = (treatmentsData as Treatment[]) ?? [];
   const treatmentsTotalPages = Math.max(1, Math.ceil((treatmentsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  const debitsOpenPage = Math.max(1, parseInt(searchParams.dbPage ?? "1", 10) || 1);
+  const dbFrom = (debitsOpenPage - 1) * DOCS_PAGE_SIZE;
+  const dbTo = dbFrom + DOCS_PAGE_SIZE - 1;
+  const { data: openDebitsData, count: openDebitsCount } = await supabase
+    .from("treatment_debits")
+    .select("*", { count: "exact" })
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .eq("status", "aberto")
+    .order("created_at", { ascending: false })
+    .range(dbFrom, dbTo);
+  const openDebits = (openDebitsData as TreatmentDebit[]) ?? [];
+  const openDebitsTotalPages = Math.max(1, Math.ceil((openDebitsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  const debitsPaidPage = Math.max(1, parseInt(searchParams.dbPaidPage ?? "1", 10) || 1);
+  const dbpFrom = (debitsPaidPage - 1) * DOCS_PAGE_SIZE;
+  const dbpTo = dbpFrom + DOCS_PAGE_SIZE - 1;
+  const { data: paidDebitsData, count: paidDebitsCount } = await supabase
+    .from("treatment_debits")
+    .select("*", { count: "exact" })
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .eq("status", "pago")
+    .order("paid_at", { ascending: false })
+    .range(dbpFrom, dbpTo);
+  const paidDebits = (paidDebitsData as TreatmentDebit[]) ?? [];
+  const paidDebitsTotalPages = Math.max(1, Math.ceil((paidDebitsCount ?? 0) / DOCS_PAGE_SIZE));
+
+  // Totais — soma em JS a partir de um select só do valor (ficha de
+  // paciente não tem milhares de débitos, não compensa uma view/RPC só
+  // pra isso).
+  const { data: openAmountsData } = await supabase
+    .from("treatment_debits")
+    .select("amount")
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .eq("status", "aberto");
+  const totalToReceive = (openAmountsData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+
+  const { data: paidAmountsData } = await supabase
+    .from("treatment_debits")
+    .select("amount")
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .eq("status", "pago");
+  const totalReceived = (paidAmountsData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
 
   // Não existe `patient_id` em `anamneses` (tabela bem mais antiga, com histórico
   // real de antes do cadastro de pacientes existir) — o vínculo aqui é por
@@ -347,6 +397,23 @@ export default async function EditPatientPage({
     />
   );
 
+  const debitosPanel = (
+    <DebitsPanel
+      clinicId={clinic.id}
+      patientId={patient.id}
+      initialOpenDebits={openDebits}
+      openPage={debitsOpenPage}
+      openTotalPages={openDebitsTotalPages}
+      openCount={openDebitsCount ?? 0}
+      totalToReceive={totalToReceive}
+      initialPaidDebits={paidDebits}
+      paidPage={debitsPaidPage}
+      paidTotalPages={paidDebitsTotalPages}
+      paidCount={paidDebitsCount ?? 0}
+      totalReceived={totalReceived}
+    />
+  );
+
   const imagensPanel = <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
 
   const atestadosPanel =
@@ -448,6 +515,7 @@ export default async function EditPatientPage({
           agendamentos: agendamentosPanel,
           orcamentos: orcamentosPanel,
           tratamentos: tratamentosPanel,
+          debitos: debitosPanel,
           imagens: imagensPanel,
           atestados: atestadosPanel,
           prescricoes: prescricoesPanel,
