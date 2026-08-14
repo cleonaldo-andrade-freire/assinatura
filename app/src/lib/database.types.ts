@@ -479,3 +479,15 @@ export interface TreatmentEvolution {
   image_keys: string[];
   created_at: string;
 }
+
+/** Imagem solta na galeria do paciente (aba Imagens) — sem vínculo com tratamento/evolução. */
+export interface PatientImage {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  file_name: string;
+  storage_key: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}

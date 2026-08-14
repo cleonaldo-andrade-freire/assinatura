@@ -10,6 +10,7 @@ import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
+import { PatientImagesPanel } from "@/components/patientImages/PatientImagesPanel";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
@@ -345,6 +346,8 @@ export default async function EditPatientPage({
     />
   );
 
+  const imagensPanel = <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
+
   const atestadosPanel =
     certificates.length === 0 ? (
       <div className={styles.emptyState}>
@@ -444,6 +447,7 @@ export default async function EditPatientPage({
           agendamentos: agendamentosPanel,
           orcamentos: orcamentosPanel,
           tratamentos: tratamentosPanel,
+          imagens: imagensPanel,
           atestados: atestadosPanel,
           prescricoes: prescricoesPanel,
         }}

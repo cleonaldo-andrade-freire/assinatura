@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { EvolutionImageUploader } from "@/components/treatments/EvolutionImageUploader";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
-import { brDateOnly, formatBRDate } from "@/lib/date";
+import { brDateOnly, formatBRDate, formatBRTime } from "@/lib/date";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -479,7 +479,9 @@ export function TreatmentDetailModal({
                         ) : (
                           <div key={e.id} className={tp.evolutionCard}>
                             <div className={tp.evolutionHeader}>
-                              <span className={tp.evolutionDate}>{formatBRDate(`${e.evolution_date}T12:00:00-03:00`)}</span>
+                              <span className={tp.evolutionDate}>
+                                {formatBRDate(`${e.evolution_date}T12:00:00-03:00`)} · {formatBRTime(e.created_at)}
+                              </span>
                               <div style={{ display: "flex", gap: 10 }}>
                                 <button
                                   type="button"

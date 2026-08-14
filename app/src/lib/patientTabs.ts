@@ -11,6 +11,7 @@ export const PATIENT_TABS = [
   { key: "agendamentos", label: "Agendamentos" },
   { key: "orcamentos", label: "Orçamentos" },
   { key: "tratamentos", label: "Tratamentos" },
+  { key: "imagens", label: "Imagens" },
   { key: "anamneses", label: "Anamneses" },
   { key: "atestados", label: "Atestados" },
   { key: "prescricoes", label: "Prescrições" },
