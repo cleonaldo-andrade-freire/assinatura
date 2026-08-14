@@ -34,6 +34,9 @@ export function NewTreatmentModal({
   onClose: () => void;
   clinicId: string;
   patientId: string;
+  /** Uma chamada por dente/região marcado — mesmo tratamento em vários
+   * dentes vira um lançamento cada, valor cheio em cada um (não dividido),
+   * mesmo padrão do orçamento. */
   onCreated: (treatment: Treatment) => void;
 }) {
   const router = useRouter();
@@ -87,23 +90,28 @@ export function NewTreatmentModal({
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/clinics/${clinicId}/patients/${patientId}/treatments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          treatment_name: treatmentName,
-          tooth_region: toothSelection[0] || null,
-          price: parseMoneyInput(price),
-          price_table_name: selectedTable?.name ?? null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        push("Falha ao criar. Tenta de novo.");
-        return;
+      const regions = toothSelection.length > 0 ? toothSelection : [""];
+      const results = await Promise.all(
+        regions.map((toothRegion) =>
+          fetch(`/api/clinics/${clinicId}/patients/${patientId}/treatments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              treatment_name: treatmentName,
+              tooth_region: toothRegion || null,
+              price: parseMoneyInput(price),
+              price_table_name: selectedTable?.name ?? null,
+            }),
+          }).then(async (res) => ({ ok: res.ok, data: await res.json() }))
+        )
+      );
+      const failed = results.filter((r) => !r.ok).length;
+      results.filter((r) => r.ok).forEach((r) => onCreated(r.data.treatment as Treatment));
+      if (failed > 0) {
+        push(failed === results.length ? "Falha ao criar. Tenta de novo." : `${failed} tratamento(s) não foram criados. Tenta de novo.`);
+        if (failed === results.length) return;
       }
-      onCreated(data.treatment as Treatment);
-      push("Tratamento adicionado.", "success");
+      push(results.length > 1 ? `${results.length - failed} tratamentos adicionados.` : "Tratamento adicionado.", "success");
       onClose();
       router.refresh();
     } finally {
@@ -182,7 +190,7 @@ export function NewTreatmentModal({
             </div>
           )}
 
-          <ToothRegionSelect value={toothSelection} onChange={setToothSelection} single />
+          <ToothRegionSelect value={toothSelection} onChange={setToothSelection} />
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)", flexShrink: 0 }}>
@@ -190,7 +198,7 @@ export function NewTreatmentModal({
             Cancelar
           </button>
           <button type="button" disabled={saving} onClick={handleSave} className={`${styles.btn} ${styles.btnPrimary}`}>
-            {saving ? "Salvando…" : "Adicionar"}
+            {saving ? "Salvando…" : toothSelection.length > 1 ? `Adicionar ${toothSelection.length} tratamentos` : "Adicionar"}
           </button>
         </div>
       </div>
