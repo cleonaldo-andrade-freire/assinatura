@@ -1,22 +1,20 @@
 import crypto from "crypto";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import type { SignatureProvider, SignRequest, SignResult } from "./types";
+import type { CheckSignatureResult, RequestSignatureResult, SignatureProvider, SignRequest } from "./types";
 
 /**
- * Assinatura A3 em nuvem ainda não contratada — este provider "assina"
- * carimbando o PDF com um aviso bem visível de que a assinatura é simulada,
- * sem validade jurídica. Implementa o mesmo contrato de `SignatureProvider`
- * que um provider real (BirdID/Soluti/Certisign) vai implementar depois, para
- * que a troca não exija mudar `certificates.ts` nem os endpoints que chamam
- * `getSignatureProvider()`.
+ * Provider de dev/testes: resolve na hora (sem o vaivém real de aprovação no
+ * app), carimbando o PDF com um aviso bem visível de que a assinatura é
+ * simulada, sem validade jurídica. Usado quando `SIGNATURE_PROVIDER` não é
+ * `certisign` — ver `index.ts`.
  *
  * `SIGNATURE_MOCK_FORCE_FAIL=1` força o branch de falha, só para exercitar a
- * UI de erro manualmente — não é uma feature para manter no provider real.
+ * UI de erro manualmente.
  */
 export const mockProvider: SignatureProvider = {
   name: "mock",
 
-  async sign(request: SignRequest): Promise<SignResult> {
+  async requestSignature(request: SignRequest): Promise<RequestSignatureResult> {
     if (process.env.SIGNATURE_MOCK_FORCE_FAIL === "1") {
       return { status: "falha", errorMessage: "Falha simulada (SIGNATURE_MOCK_FORCE_FAIL=1)." };
     }
@@ -66,5 +64,9 @@ export const mockProvider: SignatureProvider = {
     } catch (err) {
       return { status: "falha", errorMessage: err instanceof Error ? err.message : "Erro desconhecido ao assinar." };
     }
+  },
+
+  async checkSignature(): Promise<CheckSignatureResult> {
+    return { status: "falha", errorMessage: "mockProvider sempre resolve em requestSignature; checkSignature não deveria ser chamado." };
   },
 };

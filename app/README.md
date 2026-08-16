@@ -76,6 +76,21 @@ Adicionar um plano novo: direto em `/admin/plans/new`, sem precisar mexer em có
 
 `signatures` já guardava `sha256`, `ip`, `user_agent`, `signed_at_client`/`signed_at_server` desde o início, mas nada na interface mostrava isso. `/dashboard/anamneses/[id]` exibe as respostas da anamnese + toda essa trilha (link "Ver detalhes" na lista do dashboard) — é a evidência que sustenta a validade jurídica (MP 2.200-2/2001, Lei 14.063/2020) em caso de contestação.
 
+## Assinatura digital de atestados/prescrições (Certisign)
+
+Diferente da assinatura eletrônica simples da anamnese (seção acima), atestados e prescrições exigem assinatura com certificado ICP-Brasil da dentista responsável (CRO), hoje um A3 em nuvem da Certisign (RemoteID). O provider trocável fica em `lib/signature/` (`getSignatureProvider()`, `SIGNATURE_PROVIDER=mock|certisign`).
+
+Fluxo real (Certisign), assíncrono por natureza — a dentista precisa confirmar a assinatura no app dela (PIN/biometria):
+1. `issueCertificate`/`issuePrescription` gera o PDF e chama `provider.requestSignature()`, que sobe o documento (`document/upload`) e cria o fluxo de assinatura (`document/create`, signatário no array `signers`, nunca `serverSigners` — a assinatura tem que ser pessoal da dentista, não automática via certificado de empresa). O registro fica `aguardando_assinatura`, com `signature_sign_url` (link pra ela assinar) e `signature_provider_doc_id` salvos.
+2. O dashboard mostra o botão "Assinar agora" (abre `signature_sign_url`) e faz polling leve (`router.refresh()` a cada 6s) enquanto pendente — ver `CertificateActions`/`PrescriptionActions`.
+3. Quando ela assina, a Certisign chama `POST /api/webhooks/certisign` (configurar no painel do Portal de Assinaturas com trigger `FLOW`) — esse é o caminho **autoritativo** de conclusão. O payload já traz `apiDownload`, uma URL pronta com a `key` certa pra baixar o PDF assinado (não confundir com o `id` do documento — são valores diferentes). Proteger o endpoint registrando um header customizado no callback com o valor de `CERTISIGN_WEBHOOK_SECRET`.
+4. `GET /api/cron/check-signatures` (Vercel Cron, protegido por `CRON_SECRET`) é só uma rede de segurança — reconsulta `document/flowActions` pros pendentes, pro caso do webhook falhar; nesse caminho a `key` do `document/package` é "chutada" como o `id` do documento, então pode não resolver mesmo com a assinatura já concluída (fica `pendente`, sem virar `falha`).
+
+Pendências que só dá pra confirmar testando no sandbox/com o suporte da Certisign antes de ir pra produção:
+- Valor numérico do enum `PadraoAssinatura` (campo `signatureStandard` em `document/create`) correto pra PAdES (é o que evita `document/package` devolver um zip CAdES+manifesto+.p7s). Confirmado pela doc oficial que o campo se chama `signatureStandard`, não `signatureFormatId` (nome antigo, corrigido — não existia na API real).
+- `flowActions` e `package` (usados no fallback de reconciliação — cron e botão "Verificar assinatura agora") não aparecem no catálogo público do portal do desenvolvedor (só `upload`/`create`/`createBatch` estão documentados lá). Testar isolado com curl antes de confiar nesse caminho — se não existirem nesse formato, só o webhook resolve a assinatura.
+- Se a página de assinatura (`signUrl`) funciona sem o plugin Chrome quando a signatária usa certificado RemoteID em nuvem — a doc da Certisign menciona um plugin Chrome pra listar certificados locais, o que não deveria se aplicar ao fluxo mobile/RemoteID, mas vale confirmar com o suporte antes de liberar pra dentista assinar pelo iPhone.
+
 ## Painel mobile / PWA
 
 `ClinicShell`/`shell.module.css` tem um layout mobile dedicado (só dentro de `@media`, não muda nada no desktop nem no `AdminShell`, que é uma folha de estilo separada e continua desktop-only):

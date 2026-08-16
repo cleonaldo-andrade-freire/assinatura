@@ -40,21 +40,23 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
         </div>
       ) : (
         <>
-          <div
-            style={{
-              background: "#f7ecd9",
-              border: "1px solid #e9d2a3",
-              color: "#7a5a17",
-              borderRadius: "var(--radius-sm)",
-              padding: "10px 14px",
-              fontSize: 13,
-              marginBottom: 16,
-              textAlign: "center",
-            }}
-          >
-            ⚠️ Assinatura digital simulada — sem validade jurídica, aguardando a contratação do certificado A3 em
-            nuvem pela clínica.
-          </div>
+          {c.signature_provider !== "certisign" && (
+            <div
+              style={{
+                background: "#f7ecd9",
+                border: "1px solid #e9d2a3",
+                color: "#7a5a17",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 14px",
+                fontSize: 13,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              ⚠️ Assinatura digital simulada — sem validade jurídica, aguardando a contratação do certificado A3 em
+              nuvem pela clínica.
+            </div>
+          )}
 
           <div className="card">
             <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>

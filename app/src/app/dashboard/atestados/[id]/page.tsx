@@ -83,20 +83,53 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           <p className={styles.panelHeaderTitle}>Assinatura</p>
         </div>
         <div className={styles.panelBody}>
-          <div
-            style={{
-              background: "#f7ecd9",
-              border: "1px solid #e9d2a3",
-              color: "#7a5a17",
-              borderRadius: "var(--radius-sm)",
-              padding: "12px 14px",
-              fontSize: 13.5,
-              marginBottom: 16,
-            }}
-          >
-            ⚠️ Assinatura digital simulada — sem validade jurídica, aguardando a contratação do certificado A3 em
-            nuvem (ICP-Brasil).
-          </div>
+          {c.signature_provider === "certisign" ? (
+            c.status === "assinado" ? (
+              <div
+                style={{
+                  background: "#e3f3e6",
+                  border: "1px solid #b8ddc0",
+                  color: "#1e5e2f",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "12px 14px",
+                  fontSize: 13.5,
+                  marginBottom: 16,
+                }}
+              >
+                ✅ Assinado digitalmente com certificado ICP-Brasil A3 em nuvem (Certisign).
+              </div>
+            ) : c.status === "aguardando_assinatura" ? (
+              <div
+                style={{
+                  background: "#e7eef9",
+                  border: "1px solid #b9cbea",
+                  color: "#1f3f70",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "12px 14px",
+                  fontSize: 13.5,
+                  marginBottom: 16,
+                }}
+              >
+                ⏳ Aguardando a dentista confirmar a assinatura no app Certisign (PIN/biometria). Esta página atualiza
+                sozinha quando ela confirmar.
+              </div>
+            ) : null
+          ) : (
+            <div
+              style={{
+                background: "#f7ecd9",
+                border: "1px solid #e9d2a3",
+                color: "#7a5a17",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 14px",
+                fontSize: 13.5,
+                marginBottom: 16,
+              }}
+            >
+              ⚠️ Assinatura digital simulada — sem validade jurídica, aguardando a contratação do certificado A3 em
+              nuvem (ICP-Brasil).
+            </div>
+          )}
 
           {c.revoked_at && (
             <div
@@ -118,7 +151,11 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
 
           {detailRow("Status", c.status)}
           {c.signature_provider && detailRow("Provedor", c.signature_provider)}
-          {c.signature_provider_doc_id && detailRow("ID da assinatura (simulado)", c.signature_provider_doc_id)}
+          {c.signature_provider_doc_id &&
+            detailRow(
+              c.signature_provider === "certisign" ? "ID da assinatura (Certisign)" : "ID da assinatura (simulado)",
+              c.signature_provider_doc_id
+            )}
           {c.signed_at && detailRow("Assinado em", formatBRDateTime(c.signed_at, "medium"))}
           {c.signature_error && detailRow("Erro", c.signature_error)}
           {c.sha256 && detailRow("Hash SHA-256 do PDF", <code>{c.sha256}</code>)}
@@ -142,6 +179,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
               status={c.status}
               hasPhone={!!c.patient_phone}
               revoked={!!c.revoked_at}
+              signUrl={c.signature_sign_url}
             />
           </div>
         </div>

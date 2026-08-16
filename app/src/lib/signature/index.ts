@@ -1,14 +1,15 @@
+import { certisignProvider } from "./certisignProvider";
 import { mockProvider } from "./mockProvider";
 import type { SignatureProvider } from "./types";
 
-export type { SignatureProvider, SignRequest, SignResult } from "./types";
+export type { CheckSignatureResult, RequestSignatureResult, SignatureProvider, SignRequest } from "./types";
 
 /**
- * Único ponto de troca do provider de assinatura. Hoje só existe o mock —
- * quando o certificado A3 em nuvem for contratado, um provider real
- * (BirdID/Soluti/Certisign) entra aqui por trás de `SIGNATURE_PROVIDER`, sem
- * mudar `certificates.ts` nem os endpoints que chamam esta função.
+ * Único ponto de troca do provider de assinatura. `SIGNATURE_PROVIDER=certisign`
+ * liga o provider real (Portal de Assinaturas); qualquer outro valor (ou
+ * ausente) mantém o mock, útil pra dev local e testes sem depender da
+ * dentista aprovar no celular a cada rodada.
  */
 export function getSignatureProvider(): SignatureProvider {
-  return mockProvider;
+  return process.env.SIGNATURE_PROVIDER === "certisign" ? certisignProvider : mockProvider;
 }

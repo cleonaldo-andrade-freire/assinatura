@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isValidCPF } from "@/lib/validation";
 
 const bodySchema = z.object({
   dentist_name: z.string().min(1),
   dentist_cro: z.string().min(1),
   dentist_cro_uf: z.string().length(2),
+  dentist_cpf: z.string().refine(isValidCPF, "CPF inválido").optional(),
   dentist_phone: z.string().min(10).optional(),
   dentist_email: z.string().email().optional(),
   clinic_address: z.string().optional(),
@@ -31,6 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
       dentist_name: parsed.data.dentist_name,
       dentist_cro: parsed.data.dentist_cro,
       dentist_cro_uf: parsed.data.dentist_cro_uf.toUpperCase(),
+      dentist_cpf: parsed.data.dentist_cpf ?? null,
       dentist_phone: parsed.data.dentist_phone ?? null,
       dentist_email: parsed.data.dentist_email ?? null,
       clinic_address: parsed.data.clinic_address ?? null,

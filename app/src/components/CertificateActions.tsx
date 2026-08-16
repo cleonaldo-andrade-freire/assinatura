@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { RevokeDocumentButton } from "@/components/RevokeDocumentButton";
@@ -13,17 +13,46 @@ export function CertificateActions({
   status,
   hasPhone,
   revoked,
+  signUrl,
 }: {
   clinicId: string;
   certificateId: string;
   status: CertificateStatus;
   hasPhone: boolean;
   revoked: boolean;
+  signUrl?: string | null;
 }) {
   const router = useRouter();
   const [retrying, setRetrying] = useState(false);
   const [resending, setResending] = useState(false);
+  const [checking, setChecking] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+
+  async function handleCheckSignature() {
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/certificates/${certificateId}/check-signature`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        push("Falha ao verificar o status da assinatura.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  // Enquanto aguarda a dentista confirmar no app Certisign, reconsulta
+  // periodicamente — o webhook é o caminho principal, isso é só pra não
+  // depender só dele (e não deixar a tela parada esperando indefinidamente).
+  useEffect(() => {
+    if (status !== "aguardando_assinatura") return;
+    const interval = setInterval(handleCheckSignature, 6000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   async function handleRetry() {
     setRetrying(true);
@@ -56,6 +85,21 @@ export function CertificateActions({
 
   return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {status === "aguardando_assinatura" && signUrl && (
+        <a href={signUrl} target="_blank" rel="noreferrer" className={`${styles.btn} ${styles.btnPrimary}`}>
+          Assinar agora ↗
+        </a>
+      )}
+      {status === "aguardando_assinatura" && (
+        <button
+          type="button"
+          onClick={handleCheckSignature}
+          disabled={checking}
+          className={`${styles.btn} ${styles.btnGhost}`}
+        >
+          {checking ? "Verificando…" : "Verificar assinatura agora"}
+        </button>
+      )}
       {status === "falha" && (
         <button
           type="button"

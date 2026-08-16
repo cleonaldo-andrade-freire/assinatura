@@ -30,6 +30,7 @@ export interface Clinic {
   dentist_name: string | null;
   dentist_cro: string | null;
   dentist_cro_uf: string | null;
+  dentist_cpf: string | null;
   dentist_phone: string | null;
   dentist_email: string | null;
   clinic_address: string | null;
@@ -95,6 +96,8 @@ export interface Certificate {
   status: CertificateStatus;
   signature_provider: string | null;
   signature_provider_doc_id: string | null;
+  signature_document_key: string | null;
+  signature_sign_url: string | null;
   signature_requested_at: string | null;
   signed_at: string | null;
   signature_error: string | null;
@@ -183,6 +186,8 @@ export interface Prescription {
   status: PrescriptionStatus;
   signature_provider: string | null;
   signature_provider_doc_id: string | null;
+  signature_document_key: string | null;
+  signature_sign_url: string | null;
   signature_requested_at: string | null;
   signed_at: string | null;
   signature_error: string | null;

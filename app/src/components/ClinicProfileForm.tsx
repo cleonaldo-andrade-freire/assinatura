@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
+import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -11,6 +11,7 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
   const [name, setName] = useState(clinic.dentist_name ?? "");
   const [cro, setCro] = useState(clinic.dentist_cro ?? "");
   const [croUf, setCroUf] = useState(clinic.dentist_cro_uf ?? "");
+  const [cpf, setCpf] = useState(clinic.dentist_cpf ? formatCPF(clinic.dentist_cpf) : "");
   const [phone, setPhone] = useState(clinic.dentist_phone ? formatBRPhoneLocal(clinic.dentist_phone) : "");
   const [email, setEmail] = useState(clinic.dentist_email ?? "");
   const [address, setAddress] = useState(clinic.clinic_address ?? "");
@@ -31,6 +32,7 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
           dentist_name: name.trim(),
           dentist_cro: cro.trim(),
           dentist_cro_uf: croUf.trim(),
+          dentist_cpf: cpf.trim() ? cpf.replace(/\D/g, "") : undefined,
           dentist_phone: phone.trim() ? toE164BR(phone) : undefined,
           dentist_email: email.trim() || undefined,
           clinic_address: address.trim() || undefined,
@@ -115,6 +117,24 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
                 required
               />
             </div>
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="dentistCpf" className={styles.label}>
+              CPF (titular do certificado digital)
+            </label>
+            <input
+              id="dentistCpf"
+              type="text"
+              inputMode="numeric"
+              className={styles.input}
+              value={cpf}
+              onChange={(e) => setCpf(formatCPF(e.target.value))}
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+            <p className={styles.hint} style={{ marginTop: 4 }}>
+              Precisa bater com o CPF do certificado A3 usado pra assinar os documentos (Certisign).
+            </p>
           </div>
           <div className={styles.formRow}>
             <div className={styles.field}>
