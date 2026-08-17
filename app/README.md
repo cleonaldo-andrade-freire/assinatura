@@ -1,18 +1,23 @@
-# Anamnese SaaS — app
+# Consultório sem papel — app
 
-Painel multi-clínica + API que substitui os webhooks do n8n para clínicas novas. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (Vercel).
+Painel multi-clínica + API para consultório odontológico, tudo integrado pelo WhatsApp: anamnese com assinatura eletrônica, agenda com confirmação/lembrete automático (redução de falta), atestados e prescrições com assinatura digital (ICP-Brasil via Certisign), orçamentos, tratamentos e evoluções clínicas, débitos/recibos financeiros do paciente, despesas da clínica e pedidos de prótese — nasceu como "anamnese via WhatsApp" mas cresceu pra cobrir a rotina inteira de um consultório de dentista. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (Vercel).
 
 ## Configurando o Supabase (uma vez)
 
 1. Crie uma conta e um projeto grátis em [supabase.com](https://supabase.com).
 2. Em **Project Settings → API**, copie a `URL`, a `anon public key` e a `service_role key`.
-3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode também `supabase/002_add_clinic_logo.sql`, `supabase/003_add_whatsapp_number.sql`, `supabase/004_conversation_engine.sql`, `supabase/005_plan_tiers.sql`, `supabase/006_pending_plan.sql`, `supabase/007_clinic_price_override.sql`, `supabase/008_plans_table.sql`, `supabase/009_plan_overage_price.sql`, `supabase/010_dental_certificates.sql`, `supabase/011_patients.sql`, `supabase/012_clinic_profile.sql`, `supabase/013_cid10.sql`, `supabase/014_certificate_templates.sql`, `supabase/015_patient_photo.sql`, `supabase/016_prescriptions.sql`, `supabase/017_prescription_templates.sql`, `supabase/018_medications.sql`, `supabase/019_document_validation.sql`, `supabase/020_rate_limit_attempts.sql` e `supabase/021_prescription_dispensing.sql`, nessa ordem.
-4. Em **Storage**, crie cinco buckets:
-   - `signed-pdfs` — **privado** (PDFs assinados)
+3. Em **SQL Editor → New query**, cole o conteúdo de `supabase/schema.sql` e clique em **Run** — isso cria as tabelas, os enums e as políticas de Row Level Security. Depois, rode os demais arquivos `supabase/NNN_*.sql` **em ordem numérica** (002, 003, 004...) até o último existente na pasta — a lista cresce a cada funcionalidade nova, então em vez de enumerar cada arquivo aqui (o que ficaria desatualizado rápido), confie na ordem numérica dos nomes.
+4. Em **Storage**, crie os buckets:
+   - `signed-pdfs` — **privado** (PDFs de anamnese assinada)
    - `clinic-logos` — **público** (logo de cada clínica, usado na página de assinatura e no PDF)
    - `certificate-pdfs` — **privado** (PDFs de atestado odontológico)
-   - `patient-photos` — **privado** (foto de cada paciente cadastrado)
    - `prescription-pdfs` — **privado** (PDFs de prescrição odontológica)
+   - `patient-photos` — **privado** (foto de cada paciente cadastrado)
+   - `patient-images` — **privado** (radiografias e fotos clínicas do paciente)
+   - `treatment-evolution-images` — **privado** (fotos anexadas à evolução clínica de um tratamento)
+   - `budget-pdfs` — **privado** (PDFs de orçamento)
+   - `receipt-pdfs` — **privado** (PDFs de recibo de pagamento)
+   - `expense-receipts` — **privado** (comprovantes de despesa da clínica)
 5. Preencha essas informações no `.env` (veja `.env.example`).
 
 Não precisa de Postgres/Docker local — dá pra desenvolver direto contra o projeto Supabase (inclusive o gratuito).

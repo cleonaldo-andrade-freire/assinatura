@@ -144,3 +144,25 @@ Antes de escrever qualquer código de multi-tenant: rodar a Fase 0. Oferecer a v
 ---
 
 *Rascunho de trabalho, não um documento final. Versão web (design) disponível em: https://claude.ai/code/artifact/aa37d09b-570d-49b2-aeea-17d6e405ba30*
+
+---
+
+## 9. Atualização — 2026-08-16: o produto passou da anamnese
+
+Este plano foi escrito quando o único produto era "anamnese + assinatura via WhatsApp". Isso mudou — vale reler o diagnóstico das seções 1–3 com essa lente:
+
+**Já entregue (itens que a seção 1 listava como "falta para virar produto"):**
+- Isolamento de dados por clínica: feito, Postgres/Supabase com RLS por `clinic_id` (não mais pasta de arquivo por token).
+- Onboarding sem mexer em n8n/Evolution API por cliente: feito — clínica nova conecta o próprio WhatsApp sozinha via QR Code (`/dashboard/whatsapp`), sem intervenção manual.
+- Cobrança recorrente e controle de acesso por assinatura: feito — integração Asaas completa (trial, troca de plano self-service, excedente cobrado automaticamente, bloqueio real só no trial).
+
+**Escopo do produto, hoje, bem além da anamnese** — um consultório odontológico inteiro, sem papel, operado pelo WhatsApp:
+- **Agenda com confirmação e lembrete automático via WhatsApp** — reduz falta: paciente recebe link de confirmação ao agendar, mais lembrete no dia anterior e no mesmo dia (se ainda não confirmou); pode confirmar/cancelar tocando no link ou respondendo em texto livre. *(Importante para qualquer material de venda: a marcação de "faltou" em si ainda é manual pela recepção — o que é automático é o lembrete/confirmação que reduz a chance de esquecimento, não uma detecção automática de falta.)*
+- **Atestados e prescrições** com modelos próprios, busca de medicamentos/CID-10, envio do PDF assinado por WhatsApp, e verificação pública de autenticidade (`/validar`). Assinatura com certificado ICP-Brasil real (Certisign) está implementada mas **pausada, sem ter rodado em produção** (bloqueio de conta/API do lado da Certisign, ver memória do projeto) — hoje roda em modo mock; não anunciar "assinatura digital ICP-Brasil" como ativa até isso ser validado.
+- **Orçamentos** a partir de tabela de preços, com envio por WhatsApp e aprovação que já gera o tratamento correspondente.
+- **Tratamentos e evoluções clínicas** (com fotos/imagens) — substitui o prontuário de papel.
+- **Financeiro do paciente** (débitos, pagamentos parciais, recibo em PDF enviado por WhatsApp) e **despesas da clínica** (inclusive recorrentes, geradas automaticamente).
+- **Próteses**: kanban de 5 etapas com o paciente avisado por WhatsApp a cada mudança de etapa.
+- **Ficha única do paciente** reunindo tudo isso (agendamentos, orçamentos, tratamentos, débitos, imagens, anamneses, atestados, prescrições) numa só tela.
+
+**O que fica obsoleto neste documento:** a seção 4 (planos por "anamneses/mês") não reflete mais o produto — hoje a tabela `plans` no banco ainda cobra assim (herança do desenho original, ver `supabase/008_plans_table.sql`), mas isso já não captura o valor real entregue. Repricing sugerido tratado separadamente (conversa de 2026-08-16 sobre landing page + planos) — não duplicar aqui; ao revisar preço, checar o estado atual em `src/app/page.tsx`/tabela `plans` em vez de usar a tabela da seção 4 como referência.

@@ -41,6 +41,7 @@ export function AppointmentDetailBody({
   events,
   compact,
   onChanged,
+  hideActionsCard,
 }: {
   clinicId: string;
   appointment: Appointment;
@@ -51,6 +52,10 @@ export function AppointmentDetailBody({
   compact?: boolean;
   /** Ver AppointmentActions — só o modal client-fetched (fora da agenda) precisa. */
   onChanged?: () => void;
+  /** Modais de detalhe renderizam as ações como barra fixa no topo (fora
+   * daqui, ver AppointmentDetailModal/DetailModalShell) — evita duplicar o
+   * card "Ações" no meio da lista que rola. A página cheia não usa isso. */
+  hideActionsCard?: boolean;
 }) {
   const panelStyle = compact ? { marginBottom: 0 } : undefined;
   return (
@@ -90,23 +95,25 @@ export function AppointmentDetailBody({
         </div>
       </div>
 
-      <div className={styles.panel} style={panelStyle}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Ações</p>
+      {!hideActionsCard && (
+        <div className={styles.panel} style={panelStyle}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Ações</p>
+          </div>
+          <div className={styles.panelBody}>
+            <AppointmentActions
+              clinicId={clinicId}
+              appointmentId={a.id}
+              patientId={a.patient_id}
+              status={a.status}
+              urgent={a.urgent}
+              scheduledAt={a.scheduled_at}
+              durationMinutes={a.duration_minutes}
+              onChanged={onChanged}
+            />
+          </div>
         </div>
-        <div className={styles.panelBody}>
-          <AppointmentActions
-            clinicId={clinicId}
-            appointmentId={a.id}
-            patientId={a.patient_id}
-            status={a.status}
-            urgent={a.urgent}
-            scheduledAt={a.scheduled_at}
-            durationMinutes={a.duration_minutes}
-            onChanged={onChanged}
-          />
-        </div>
-      </div>
+      )}
 
       <div className={styles.panel} style={panelStyle}>
         <div className={styles.panelHeader}>

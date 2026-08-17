@@ -68,6 +68,27 @@ export function brDayRangeUtc(dateStr: string): { fromIso: string; toIso: string
   };
 }
 
+const MONTH_NAMES_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** "2026-08" (ou "2026-08-01") → "agosto de 2026" — string pura, sem passar por `Date` (mesmo cuidado de `formatDateBR` em pdfTextLayout.ts: evita o dia voltar por causa do fuso). */
+export function formatBRMonthLabel(monthStr: string): string {
+  const [year, month] = monthStr.slice(0, 7).split("-").map(Number);
+  return `${MONTH_NAMES_PT[month - 1]} de ${year}`;
+}
+
 export function firstOfMonth(dateStr: string): string {
   return `${dateStr.slice(0, 7)}-01`;
 }

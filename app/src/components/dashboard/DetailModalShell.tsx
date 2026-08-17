@@ -14,10 +14,13 @@ import uiStyles from "@/components/ui/ui.module.css";
 export function DetailModalShell({
   title,
   subtitle,
+  actions,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Barra de ações fixa entre o cabeçalho e a área que rola. */
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -58,6 +61,7 @@ export function DetailModalShell({
             ×
           </button>
         </div>
+        {actions && <div className={uiStyles.dialogActionsBar}>{actions}</div>}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>
           {children}
         </div>

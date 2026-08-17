@@ -10,13 +10,18 @@ const bodySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "use apenas letras minúsculas, números e hífen"),
   name: z.string().min(1),
   monthly_price: z.number().positive(),
-  monthly_limit: z.number().int().positive(),
-  overage_price: z.number().positive(),
   features: z.array(z.string()).default([]),
   display_order: z.number().int().default(0),
   featured: z.boolean().default(false),
   active: z.boolean().default(true),
 });
+
+// `monthly_limit`/`overage_price` continuam NOT NULL no schema (herança do
+// desenho antigo, cobrado por volume de anamnese) mas não são mais usados em
+// lugar nenhum do código — o produto não mede/cobra por anamnese excedente
+// desde 2026-08. Preenchidos com um valor alto/zero só pra satisfazer a
+// constraint, sem pedir esses números no formulário de criar plano.
+const LEGACY_UNUSED_LIMIT_FIELDS = { monthly_limit: 999999, overage_price: 0 };
 
 /** Cria um plano novo — vira imediatamente selecionável (se `active`) em nova clínica, troca de plano e na landing. */
 export async function POST(req: NextRequest) {
@@ -36,7 +41,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "id_taken" }, { status: 409 });
   }
 
-  const { data: plan, error } = await supabase.from("plans").insert(parsed.data).select("*").single();
+  const { data: plan, error } = await supabase
+    .from("plans")
+    .insert({ ...parsed.data, ...LEGACY_UNUSED_LIMIT_FIELDS })
+    .select("*")
+    .single();
   if (error) {
     return NextResponse.json({ error: "insert_failed", message: error.message }, { status: 500 });
   }

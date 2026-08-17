@@ -7,12 +7,16 @@ import { ClickableRow } from "@/components/ui/ClickableRow";
 import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
-import { getPlanById } from "@/lib/plans";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Conversation } from "@/lib/database.types";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 5;
+
+function onlyDigits(v: string | null | undefined): string {
+  return (v ?? "").replace(/\D/g, "");
+}
 
 function initials(name: string): string {
   return name
@@ -39,28 +43,43 @@ export default async function AnamnesesPage({
 
   const supabase = await createSupabaseServerClient();
 
-  const [{ count: totalCount }, { count: signedCount }, { data: signatures }, { data: activeConversations }, usedThisMonth, plan] =
-    await Promise.all([
-      supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
-      supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
-      supabase.from("signatures").select("id, anamnesis_id").eq("clinic_id", clinic.id),
-      supabase
-        .from("conversations")
-        .select("*")
-        .eq("clinic_id", clinic.id)
-        .in("status", ["active", "abandoned"])
-        .order("created_at", { ascending: false }),
-      countMonthlyAnamneses(supabase, clinic.id),
-      getPlanById(supabase, clinic.plan),
-    ]);
+  const [
+    { count: totalCount },
+    { count: signedCount },
+    { data: signatures },
+    { data: activeConversations },
+    { data: patientsWithCpf },
+    usedThisMonth,
+  ] = await Promise.all([
+    supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
+    supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
+    supabase.from("signatures").select("id, anamnesis_id").eq("clinic_id", clinic.id),
+    supabase
+      .from("conversations")
+      .select("*")
+      .eq("clinic_id", clinic.id)
+      .in("status", ["active", "abandoned"])
+      .order("created_at", { ascending: false }),
+    supabase.from("patients").select("id, cpf").eq("clinic_id", clinic.id).not("cpf", "is", null),
+    countMonthlyAnamneses(supabase, clinic.id),
+  ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
   const signedIds = Array.from(signatureByAnamnesis.keys());
   const conversations = (activeConversations as Conversation[]) ?? [];
 
+  // anamneses é anterior à tabela `patients` — não tem FK, só o CPF digitado
+  // na conversa do WhatsApp. Resolve pra foto por CPF (só dígitos, pra não
+  // depender de como cada lado formatou a máscara).
+  const patientIdByCpf = new Map<string, string>();
+  for (const p of patientsWithCpf ?? []) {
+    const digits = onlyDigits(p.cpf);
+    if (digits) patientIdByCpf.set(digits, p.id);
+  }
+
   let query = supabase
     .from("anamneses")
-    .select("id, token, patient_name, created_at", { count: "exact" })
+    .select("id, token, patient_name, patient_cpf, created_at", { count: "exact" })
     .eq("clinic_id", clinic.id);
   if (q) query = query.ilike("patient_name", `%${q}%`);
   if (status === "signed") {
@@ -73,9 +92,6 @@ export default async function AnamnesesPage({
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const activeConversationCount = conversations.filter((c) => c.status === "active").length;
   const pendingCount = (totalCount ?? 0) - (signedCount ?? 0);
-  const monthlyLimit = plan?.monthly_limit ?? 0;
-  const monthlyPct = monthlyLimit > 0 ? Math.min(100, Math.round((usedThisMonth / monthlyLimit) * 100)) : 0;
-  const overThisMonth = usedThisMonth > monthlyLimit;
 
   function pageHref(p: number) {
     const params = new URLSearchParams();
@@ -104,35 +120,8 @@ export default async function AnamnesesPage({
     >
       <div className={styles.statGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>
-            {usedThisMonth}/{monthlyLimit}
-          </div>
+          <div className={styles.statValue}>{usedThisMonth}</div>
           <div className={styles.statLabel}>Anamneses este mês</div>
-          <div
-            style={{
-              marginTop: 8,
-              height: 5,
-              borderRadius: 999,
-              background: "var(--surface-sunken)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${monthlyPct}%`,
-                height: "100%",
-                background: overThisMonth ? "var(--danger)" : "var(--brand)",
-              }}
-            />
-          </div>
-          {overThisMonth && (
-            <a
-              href="/dashboard/configuracoes#assinatura"
-              style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--danger)", fontWeight: 600 }}
-            >
-              {usedThisMonth - monthlyLimit} excedente{usedThisMonth - monthlyLimit === 1 ? "" : "s"} este mês →
-            </a>
-          )}
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>{signedCount ?? 0}</div>
@@ -270,7 +259,15 @@ export default async function AnamnesesPage({
                     <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
                       <td>
                         <span className={styles.rowMain}>
-                          <div className={styles.rowAvatarPlaceholder}>{initials(a.patient_name)}</div>
+                          <PatientAvatar
+                            clinicId={clinic.id}
+                            patientId={patientIdByCpf.get(onlyDigits(a.patient_cpf)) ?? null}
+                            name={a.patient_name}
+                            size={28}
+                            radius="7px"
+                            tone="brand"
+                            label={initials(a.patient_name)}
+                          />
                           <span className={styles.rowTitle}>{a.patient_name}</span>
                         </span>
                       </td>

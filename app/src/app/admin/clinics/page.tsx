@@ -49,8 +49,8 @@ export default async function AdminClinicsPage() {
 
   function usageFor(c: Clinic) {
     const used = usageByClinic.get(c.id) ?? 0;
-    const limit = c.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : planById.get(c.plan)?.monthly_limit ?? 0;
-    return { used, limit, over: used > limit };
+    if (c.subscription_status !== "trialing") return { used, limit: null as number | null, over: false };
+    return { used, limit: TRIAL_ANAMNESIS_LIMIT as number | null, over: used > TRIAL_ANAMNESIS_LIMIT };
   }
 
   const stats = {
@@ -137,10 +137,10 @@ export default async function AdminClinicsPage() {
                     </td>
                     <td>
                       <span style={{ fontWeight: 600, color: usage.over ? "var(--danger)" : "var(--ink)" }}>
-                        {usage.used}/{usage.limit}
+                        {usage.limit != null ? `${usage.used}/${usage.limit}` : usage.used}
                       </span>
                       {usage.over && (
-                        <div style={{ fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}>excedente</div>
+                        <div style={{ fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}>passou do trial</div>
                       )}
                     </td>
                     <td>

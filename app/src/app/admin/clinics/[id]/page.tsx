@@ -57,8 +57,8 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
   ]);
 
   const signedAnamnesisIds = new Set((signatures ?? []).map((s) => s.anamnesis_id));
-  const monthlyLimit = typedClinic.subscription_status === "trialing" ? TRIAL_ANAMNESIS_LIMIT : plan?.monthly_limit ?? 0;
-  const overThisMonth = usedThisMonth > monthlyLimit;
+  const isTrialing = typedClinic.subscription_status === "trialing";
+  const overTrial = isTrialing && usedThisMonth > TRIAL_ANAMNESIS_LIMIT;
 
   let payments: AsaasPayment[] = [];
   if (typedClinic.asaas_subscription_id) {
@@ -95,13 +95,11 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
           <div className={styles.statLabel}>Assinadas</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue} style={{ color: overThisMonth ? "var(--danger)" : undefined }}>
-            {usedThisMonth}/{monthlyLimit}
+          <div className={styles.statValue} style={{ color: overTrial ? "var(--danger)" : undefined }}>
+            {isTrialing ? `${usedThisMonth}/${TRIAL_ANAMNESIS_LIMIT}` : usedThisMonth}
           </div>
-          <div className={styles.statLabel}>
-            {typedClinic.subscription_status === "trialing" ? "Anamneses do trial" : "Anamneses este mês"}
-          </div>
-          {overThisMonth && (
+          <div className={styles.statLabel}>{isTrialing ? "Anamneses do trial" : "Anamneses este mês"}</div>
+          {overTrial && (
             <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}>
               passou do limite
             </div>

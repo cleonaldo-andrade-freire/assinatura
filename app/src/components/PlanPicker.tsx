@@ -100,7 +100,7 @@ export function PlanPicker({
             >
               <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--ink)" }}>{p.name}</div>
               <div style={{ fontSize: 13, color: "var(--ink-soft)", margin: "2px 0 10px" }}>
-                R$ {p.monthly_price.toFixed(2).replace(".", ",")}/mês · {p.monthly_limit} anamneses
+                R$ {p.monthly_price.toFixed(2).replace(".", ",")}/mês
               </div>
               {isPending ? (
                 <button
@@ -134,8 +134,8 @@ export function PlanPicker({
         message={
           target && targetPlan
             ? isTrialing
-              ? `Isso já gera a primeira fatura do plano ${targetPlan.name}, com vencimento hoje. Assim que o pagamento for confirmado, o limite de ${targetPlan.monthly_limit} anamneses/mês passa a valer.`
-              : `${targetIsUpgrade ? "O valor novo" : "O valor menor"} só entra na sua próxima cobrança — nada muda nem é cobrado agora. O novo limite de anamneses (${targetPlan.monthly_limit}/mês) também só passa a valer nessa data.`
+              ? `Isso já gera a primeira fatura do plano ${targetPlan.name}, com vencimento hoje.`
+              : `${targetIsUpgrade ? "O valor novo" : "O valor menor"} só entra na sua próxima cobrança — nada muda nem é cobrado agora.`
             : ""
         }
         confirmLabel={isTrialing ? "Confirmar plano" : "Agendar troca"}

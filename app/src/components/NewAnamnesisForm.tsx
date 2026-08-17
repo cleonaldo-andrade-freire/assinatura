@@ -6,10 +6,27 @@ import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
 import type { QuestionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; templates: QuestionTemplate[] }) {
+export function NewAnamnesisForm({
+  clinicId,
+  templates,
+  initialPatientName,
+  initialPatientPhone,
+  bare,
+  onSuccess,
+}: {
+  clinicId: string;
+  templates: QuestionTemplate[];
+  /** Pré-preenche o paciente (ex.: botão "Nova anamnese" na ficha do paciente). */
+  initialPatientName?: string;
+  initialPatientPhone?: string | null;
+  /** Sem o cartão (`.panel`) ao redor — pro caso de já estar dentro de um modal. */
+  bare?: boolean;
+  /** Usado quando o formulário roda dentro de um modal — fecha o modal em vez de mostrar o aviso inline. */
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
-  const [patientName, setPatientName] = useState("");
-  const [patientPhone, setPatientPhone] = useState("");
+  const [patientName, setPatientName] = useState(initialPatientName ?? "");
+  const [patientPhone, setPatientPhone] = useState(initialPatientPhone ? formatBRPhoneLocal(initialPatientPhone) : "");
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [billingBlocked, setBillingBlocked] = useState(false);
@@ -46,9 +63,13 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
         }
         return;
       }
-      setSent(true);
-      setPatientName("");
-      setPatientPhone("");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        setSent(true);
+        setPatientName("");
+        setPatientPhone("");
+      }
       router.refresh();
     } finally {
       setSending(false);
@@ -56,14 +77,134 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
   }
 
   if (templates.length === 0) {
+    const message = (
+      <p style={{ color: "var(--ink-soft)" }}>
+        Você ainda não tem nenhum modelo de anamnese cadastrado.{" "}
+        <a href="/dashboard/templates/new">Crie um modelo primeiro</a>.
+      </p>
+    );
+    if (bare) return message;
     return (
       <div className={styles.panel}>
-        <div className={styles.panelBody}>
-          <p style={{ color: "var(--ink-soft)" }}>
-            Você ainda não tem nenhum modelo de anamnese cadastrado.{" "}
-            <a href="/dashboard/templates/new">Crie um modelo primeiro</a>.
-          </p>
+        <div className={styles.panelBody}>{message}</div>
+      </div>
+    );
+  }
+
+  const alerts = (
+    <>
+      {error && (
+        <div
+          style={{
+            background: "var(--danger-tint)",
+            border: "1px solid #e9c6c6",
+            color: "#7a2a2a",
+            borderRadius: "var(--radius-sm)",
+            padding: "12px 14px",
+            fontSize: 14,
+            marginBottom: 18,
+          }}
+        >
+          {error} {billingBlocked && <a href="/dashboard/configuracoes#assinatura">Ver planos e assinar →</a>}
         </div>
+      )}
+      {sent && (
+        <div
+          style={{
+            background: "var(--brand-tint)",
+            color: "var(--brand-deep)",
+            borderRadius: "var(--radius-sm)",
+            padding: "12px 14px",
+            marginBottom: 18,
+            fontSize: 14,
+          }}
+        >
+          Anamnese iniciada — a primeira pergunta já foi enviada.
+        </div>
+      )}
+    </>
+  );
+
+  const submitButton = (
+    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
+      {sending ? "Enviando…" : "Iniciar anamnese"}
+    </button>
+  );
+
+  const fieldGroups = (
+    <>
+      <div className={styles.field}>
+        <label htmlFor="patientName" className={styles.label}>
+          Nome do paciente
+        </label>
+        <input
+          id="patientName"
+          type="text"
+          className={styles.input}
+          value={patientName}
+          onChange={(e) => setPatientName(e.target.value)}
+          required
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="patientPhone" className={styles.label}>
+          WhatsApp do paciente
+        </label>
+        <div style={{ display: "flex" }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "0 12px",
+              border: "1.5px solid var(--line)",
+              borderRight: "none",
+              borderRadius: "var(--radius-sm) 0 0 var(--radius-sm)",
+              background: "var(--surface-sunken)",
+              color: "var(--ink-soft)",
+            }}
+          >
+            🇧🇷 +55
+          </span>
+          <input
+            id="patientPhone"
+            type="text"
+            inputMode="numeric"
+            className={styles.input}
+            style={{ borderRadius: "0 var(--radius-sm) var(--radius-sm) 0" }}
+            placeholder="(79) 99999-9999"
+            value={patientPhone}
+            onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
+            required
+          />
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="templateId" className={styles.label}>
+          Modelo de anamnese
+        </label>
+        <select id="templateId" className={styles.select} value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({t.questions.length} perguntas)
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+
+  if (bare) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flexShrink: 0 }}>{alerts}</div>
+        <form onSubmit={handleSubmit} className={styles.form} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 6, paddingBottom: 2 }}>
+            {fieldGroups}
+          </div>
+          <div style={{ flexShrink: 0, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)" }}>{submitButton}</div>
+        </form>
       </div>
     );
   }
@@ -71,108 +212,10 @@ export function NewAnamnesisForm({ clinicId, templates }: { clinicId: string; te
   return (
     <div className={styles.panel}>
       <div className={styles.panelBody}>
-        {error && (
-          <div
-            style={{
-              background: "var(--danger-tint)",
-              border: "1px solid #e9c6c6",
-              color: "#7a2a2a",
-              borderRadius: "var(--radius-sm)",
-              padding: "12px 14px",
-              fontSize: 14,
-              marginBottom: 18,
-            }}
-          >
-            {error} {billingBlocked && <a href="/dashboard/configuracoes#assinatura">Ver planos e assinar →</a>}
-          </div>
-        )}
-        {sent && (
-          <div
-            style={{
-              background: "var(--brand-tint)",
-              color: "var(--brand-deep)",
-              borderRadius: "var(--radius-sm)",
-              padding: "12px 14px",
-              marginBottom: 18,
-              fontSize: 14,
-            }}
-          >
-            Anamnese iniciada — a primeira pergunta já foi enviada.
-          </div>
-        )}
-
+        {alerts}
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.field}>
-            <label htmlFor="patientName" className={styles.label}>
-              Nome do paciente
-            </label>
-            <input
-              id="patientName"
-              type="text"
-              className={styles.input}
-              value={patientName}
-              onChange={(e) => setPatientName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="patientPhone" className={styles.label}>
-              WhatsApp do paciente
-            </label>
-            <div style={{ display: "flex" }}>
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 12px",
-                  border: "1.5px solid var(--line)",
-                  borderRight: "none",
-                  borderRadius: "var(--radius-sm) 0 0 var(--radius-sm)",
-                  background: "var(--surface-sunken)",
-                  color: "var(--ink-soft)",
-                }}
-              >
-                🇧🇷 +55
-              </span>
-              <input
-                id="patientPhone"
-                type="text"
-                inputMode="numeric"
-                className={styles.input}
-                style={{ borderRadius: "0 var(--radius-sm) var(--radius-sm) 0" }}
-                placeholder="(79) 99999-9999"
-                value={patientPhone}
-                onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
-                required
-              />
-            </div>
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="templateId" className={styles.label}>
-              Modelo de anamnese
-            </label>
-            <select
-              id="templateId"
-              className={styles.select}
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-              required
-            >
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.questions.length} perguntas)
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.formActions}>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-              {sending ? "Enviando…" : "Iniciar anamnese"}
-            </button>
-          </div>
+          {fieldGroups}
+          <div className={styles.formActions}>{submitButton}</div>
         </form>
       </div>
     </div>

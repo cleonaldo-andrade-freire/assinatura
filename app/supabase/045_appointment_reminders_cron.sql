@@ -29,7 +29,7 @@ select cron.schedule(
   '*/30 * * * *',
   $$
   select net.http_get(
-    url := 'https://anamnese.erodontologia.com.br/api/cron/appointment-reminders',
+    url := 'https://app.erodontologia.com.br/api/cron/appointment-reminders',
     headers := jsonb_build_object(
       'Authorization',
       'Bearer ' || (

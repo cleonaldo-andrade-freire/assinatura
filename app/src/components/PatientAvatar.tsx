@@ -11,14 +11,25 @@ export function PatientAvatar({
   patientId,
   name,
   size = 36,
+  radius = "50%",
+  tone = "neutral",
+  label,
 }: {
   clinicId: string;
   patientId: string | null;
   name: string;
   size?: number;
+  /** Formato do avatar — "50%" (círculo, padrão) ou um valor em px pra quadrado arredondado. */
+  radius?: string;
+  /** "brand" reproduz o mesmo tom usado nas linhas de tabela (fundo --brand-tint). */
+  tone?: "neutral" | "brand";
+  /** Sobrescreve o fallback de 1 letra — ex. iniciais de 2 letras nas listas em grid. */
+  label?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const fallbackLabel = label ?? name.trim().charAt(0).toUpperCase() ?? "?";
+  const background = tone === "brand" ? "var(--brand-tint)" : "var(--surface-sunken)";
+  const color = tone === "brand" ? "var(--brand-deep)" : "var(--ink-faint)";
 
   if (!patientId || failed) {
     return (
@@ -27,9 +38,9 @@ export function PatientAvatar({
         style={{
           width: size,
           height: size,
-          borderRadius: "50%",
-          background: "var(--surface-sunken)",
-          color: "var(--ink-faint)",
+          borderRadius: radius,
+          background,
+          color,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -38,7 +49,7 @@ export function PatientAvatar({
           flexShrink: 0,
         }}
       >
-        {initial}
+        {fallbackLabel}
       </span>
     );
   }
@@ -49,7 +60,7 @@ export function PatientAvatar({
       src={`/api/clinics/${clinicId}/patients/${patientId}/photo`}
       alt=""
       onError={() => setFailed(true)}
-      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+      style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", flexShrink: 0 }}
     />
   );
 }

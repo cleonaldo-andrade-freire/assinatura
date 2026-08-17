@@ -16,7 +16,7 @@ export default async function AdminPlansPage() {
   return (
     <AdminShell
       title="Planos"
-      subtitle="Preços e limites disponíveis — a landing pública e o cadastro de clínicas usam esses valores direto"
+      subtitle="Preços disponíveis — a landing pública e o cadastro de clínicas usam esses valores direto"
       actions={
         <Link href="/admin/plans/new" className={`${styles.btn} ${styles.btnPrimary}`}>
           + Novo plano
@@ -32,8 +32,6 @@ export default async function AdminPlansPage() {
               <tr>
                 <th>Nome</th>
                 <th>Preço/mês</th>
-                <th>Limite</th>
-                <th>Excedente</th>
                 <th>Ordem</th>
                 <th>Status</th>
                 <th></th>
@@ -49,8 +47,6 @@ export default async function AdminPlansPage() {
                     <div className={styles.rowMeta}>/{p.id}</div>
                   </td>
                   <td>R$ {p.monthly_price.toFixed(2).replace(".", ",")}</td>
-                  <td>{p.monthly_limit} anamneses</td>
-                  <td>R$ {p.overage_price.toFixed(2).replace(".", ",")}</td>
                   <td>{p.display_order}</td>
                   <td>
                     {p.active ? (

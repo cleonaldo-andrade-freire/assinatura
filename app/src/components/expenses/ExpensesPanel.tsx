@@ -6,11 +6,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { MarkPaidModal } from "@/components/expenses/MarkPaidModal";
-import { NewExpenseModal } from "@/components/expenses/NewExpenseModal";
+import { ExpenseFormModal } from "@/components/expenses/ExpenseFormModal";
 import { ExpenseReceiptButton } from "@/components/expenses/ExpenseReceiptButton";
 import { EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
 import { formatMoneyDisplay } from "@/lib/money";
-import { formatBRDateTime } from "@/lib/date";
+import { formatBRDateTime, addMonthsToDateStr } from "@/lib/date";
 import { formatDateBR } from "@/lib/pdfTextLayout";
 import type { Expense } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -33,6 +33,15 @@ export function ExpensesPanel({
   paidTotalPages,
   paidCount,
   totalPaidThisMonth,
+  currentParams,
+  month,
+  monthLabel,
+  todayStr,
+  overdueCount,
+  overdueTotal,
+  overdueActive,
+  fixedMonthlyCost,
+  momDeltaPct,
 }: {
   clinicId: string;
   categoryOptions: string[];
@@ -46,19 +55,34 @@ export function ExpensesPanel({
   paidTotalPages: number;
   paidCount: number;
   totalPaidThisMonth: number;
+  /** Filtros ativos (q/category/nature/recurring/overdue), sem page/month — base pra todo link gerado aqui, senão paginar ou trocar de mês derrubava o filtro em uso. */
+  currentParams: Record<string, string>;
+  month: string;
+  monthLabel: string;
+  todayStr: string;
+  overdueCount: number;
+  overdueTotal: number;
+  overdueActive: boolean;
+  fixedMonthlyCost: number;
+  momDeltaPct: number | null;
 }) {
   const router = useRouter();
 
-  function pendingHrefFor(p: number) {
-    const params = new URLSearchParams();
-    params.set("expPage", String(p));
+  function hrefWith(overrides: Record<string, string | number>) {
+    const params = new URLSearchParams(currentParams);
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v === "" || v == null) params.delete(k);
+      else params.set(k, String(v));
+    }
     return `/dashboard/despesas?${params.toString()}`;
+  }
+  function pendingHrefFor(p: number) {
+    return hrefWith({ expPage: p });
   }
   function paidHrefFor(p: number) {
-    const params = new URLSearchParams();
-    params.set("expPaidPage", String(p));
-    return `/dashboard/despesas?${params.toString()}`;
+    return hrefWith({ expPaidPage: p, month });
   }
+  const overdueHref = hrefWith({ overdue: overdueActive ? "" : "1", expPage: 1 });
 
   const [pendingExpenses, setPendingExpenses] = useState(initialPendingExpenses);
   const [paidExpenses, setPaidExpenses] = useState(initialPaidExpenses);
@@ -76,6 +100,7 @@ export function ExpensesPanel({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [cancelingPaymentId, setCancelingPaymentId] = useState<string | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toasts, push, dismiss } = useToasts();
 
   const expensesToPay = pendingExpenses.filter((e) => selectedPending.has(e.id));
@@ -166,18 +191,36 @@ export function ExpensesPanel({
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <NewExpenseModal clinicId={clinicId} categoryOptions={categoryOptions} />
-      </div>
-
       <div className={ex.totals}>
         <div className={`${ex.totalCard} ${ex.totalCardDue}`}>
           <p className={ex.totalCardLabel}>A pagar</p>
           <p className={ex.totalCardValue}>{formatMoney(totalDue)}</p>
         </div>
+        <a
+          href={overdueHref}
+          className={`${ex.totalCard} ${ex.totalCardDue}`}
+          style={{ textDecoration: "none", outline: overdueActive ? "2px solid var(--danger)" : "none" }}
+        >
+          <p className={ex.totalCardLabel}>Vencidas</p>
+          <p className={ex.totalCardValue}>
+            {overdueCount} · {formatMoney(overdueTotal)}
+          </p>
+        </a>
         <div className={`${ex.totalCard} ${ex.totalCardPaid}`}>
-          <p className={ex.totalCardLabel}>Pago no mês</p>
-          <p className={ex.totalCardValue}>{formatMoney(totalPaidThisMonth)}</p>
+          <p className={ex.totalCardLabel}>Pago em {monthLabel}</p>
+          <p className={ex.totalCardValue}>
+            {formatMoney(totalPaidThisMonth)}
+            {momDeltaPct != null && (
+              <span style={{ fontSize: 12, fontWeight: 700, marginLeft: 6, color: momDeltaPct > 0 ? "var(--danger)" : "var(--brand-deep)" }}>
+                {momDeltaPct > 0 ? "↑" : momDeltaPct < 0 ? "↓" : ""}
+                {Math.abs(momDeltaPct)}%
+              </span>
+            )}
+          </p>
+        </div>
+        <div className={ex.totalCard}>
+          <p className={ex.totalCardLabel}>Custo fixo mensal</p>
+          <p className={ex.totalCardValue}>{formatMoney(fixedMonthlyCost)}</p>
         </div>
       </div>
 
@@ -185,6 +228,11 @@ export function ExpensesPanel({
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Pendente</p>
           {pendingCount > 0 && <span className={ex.categoryTag}>{pendingCount}</span>}
+          {overdueActive && (
+            <a href={hrefWith({ overdue: "" })} className={styles.hint} style={{ marginLeft: "auto" }}>
+              Mostrando só vencidas — limpar
+            </a>
+          )}
         </div>
         <div className={styles.panelBody}>
           {pendingExpenses.length === 0 ? (
@@ -205,10 +253,24 @@ export function ExpensesPanel({
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                         {e.nature && <span className={ex.categoryTag}>{EXPENSE_NATURE_LABEL[e.nature]}</span>}
                         {e.category && <span className={ex.categoryTag}>{e.category}</span>}
-                        <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
+                        {e.due_date < todayStr ? (
+                          <span className={ex.dueTag} style={{ background: "var(--danger-tint)", color: "var(--danger)" }}>
+                            Venceu {formatDateBR(e.due_date)}
+                          </span>
+                        ) : (
+                          <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
+                        )}
                       </div>
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingExpense(e)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ flexShrink: 0 }}
+                    >
+                      Editar
+                    </button>
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(e.id)}
@@ -227,9 +289,19 @@ export function ExpensesPanel({
       </div>
 
       <div className={styles.panel} style={{ marginBottom: 0 }}>
-        <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Pago</p>
+        <div className={styles.panelHeader} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <p className={styles.panelHeaderTitle} style={{ margin: 0, paddingRight: 8 }}>Pago</p>
           {paidCount > 0 && <span className={ex.categoryTag}>{paidCount}</span>}
+          
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            <a href={hrefWith({ month: addMonthsToDateStr(`${month}-01`, -1).slice(0, 7), expPaidPage: 1 })} className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: "4px 10px" }}>
+              ‹
+            </a>
+            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 130, textAlign: "center" }}>{monthLabel}</span>
+            <a href={hrefWith({ month: addMonthsToDateStr(`${month}-01`, 1).slice(0, 7), expPaidPage: 1 })} className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: "4px 10px" }}>
+              ›
+            </a>
+          </div>
         </div>
         <div className={styles.panelBody}>
           {paidExpenses.length === 0 ? (
@@ -267,6 +339,14 @@ export function ExpensesPanel({
                     </button>
                     <button
                       type="button"
+                      onClick={() => setEditingExpense(e)}
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ flexShrink: 0 }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setConfirmDeleteId(e.id)}
                       className={`${styles.btn} ${styles.btnGhost}`}
                       style={{ color: "var(--danger)", flexShrink: 0 }}
@@ -294,6 +374,14 @@ export function ExpensesPanel({
       )}
 
       <MarkPaidModal open={markingPaid} onClose={() => setMarkingPaid(false)} expenses={expensesToPay} onConfirm={handleConfirmPaid} />
+
+      <ExpenseFormModal
+        clinicId={clinicId}
+        categoryOptions={categoryOptions}
+        open={editingExpense !== null}
+        onClose={() => setEditingExpense(null)}
+        expense={editingExpense}
+      />
 
       <ConfirmDialog
         open={confirmDeleteId !== null}

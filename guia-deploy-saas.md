@@ -1,6 +1,6 @@
 # Guia de deploy — App SaaS (Fatia 1) na Vercel + Supabase
 
-Este guia cobre publicar o app novo (`app/` neste repositório) na Vercel, usando o Supabase como banco de dados, autenticação e armazenamento de PDF. O app substitui o Typebot/n8n para clínicas novas — cada clínica cadastra os próprios modelos de anamnese e conduz a conversa pelo motor próprio do app.
+Este guia cobre publicar o app novo (`app/` neste repositório) na Vercel, usando o Supabase como banco de dados, autenticação e armazenamento de PDF. O app substitui o Typebot/n8n para clínicas novas — cada clínica cadastra os próprios modelos de anamnese e conduz a conversa pelo motor próprio do app. Hoje o produto já vai muito além da anamnese: agenda com confirmação e lembrete automático via WhatsApp (redução de falta), atestados e prescrições com assinatura digital, orçamentos, tratamentos/evoluções, financeiro do paciente, despesas da clínica e pedidos de prótese — um consultório odontológico inteiro sem papel, operado pelo WhatsApp.
 
 > Histórico: a primeira tentativa de deploy foi planejada pro EasyPanel (com Dockerfile). Migramos pra Vercel porque é a plataforma nativa do Next.js — sem precisar manter um servidor Node rodando 24/7, cada rota de API vira uma função serverless. O `Dockerfile` continua no repo caso um dia seja necessário rodar em outro lugar, mas não é o caminho usado hoje.
 
@@ -10,8 +10,8 @@ Este guia cobre publicar o app novo (`app/` neste repositório) na Vercel, usand
 
 1. Em [supabase.com](https://supabase.com), crie um projeto novo (região São Paulo/`sa-east-1`).
 2. Em **Project Settings → API**, anote: `URL`, `anon public key`, `service_role key`.
-3. Em **SQL Editor → New query**, rode nesta ordem: `app/supabase/schema.sql`, `app/supabase/002_add_clinic_logo.sql`, `app/supabase/003_add_whatsapp_number.sql`, `app/supabase/004_conversation_engine.sql`, `app/supabase/005_plan_tiers.sql`, `app/supabase/006_pending_plan.sql`, `app/supabase/007_clinic_price_override.sql`, `app/supabase/008_plans_table.sql`, `app/supabase/009_plan_overage_price.sql`.
-4. Em **Storage**, crie dois buckets: **`signed-pdfs`** (privado) e **`clinic-logos`** (público).
+3. Em **SQL Editor → New query**, rode `app/supabase/schema.sql` e, na sequência, todos os demais `app/supabase/NNN_*.sql` **em ordem numérica** (002, 003, 004... até o último arquivo da pasta) — a lista de migrations só cresce, então confie na numeração dos nomes em vez de uma lista fixa aqui.
+4. Em **Storage**, crie os buckets (todos privados, exceto `clinic-logos`, que é público): `signed-pdfs`, `clinic-logos`, `certificate-pdfs`, `prescription-pdfs`, `patient-photos`, `patient-images`, `treatment-evolution-images`, `budget-pdfs`, `receipt-pdfs`, `expense-receipts`. Ver `app/README.md` pra que serve cada um.
 
 ⚠️ Confirme que é **esse mesmo projeto** Supabase que o app em produção vai usar — rodar as migrations num projeto e apontar `NEXT_PUBLIC_SUPABASE_URL` de produção pra outro é um jeito garantido de tudo parecer quebrado sem erro nenhum.
 

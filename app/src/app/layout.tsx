@@ -15,14 +15,14 @@ const fraunces = Fraunces({
 // revisitadas o dia inteiro (agenda, sidebar) pedem uma sans mais neutra.
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-jakarta",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Anamnese SaaS",
-  description: "Anamnese e assinatura eletrônica via WhatsApp",
+  title: "DentalAgil",
+  description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, prescrições e orçamentos.",
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Anamnese",
+    title: "DentalAgil",
   },
 };
 

@@ -3,18 +3,20 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { NewAnamnesisForm } from "@/components/NewAnamnesisForm";
-import type { QuestionTemplate } from "@/lib/database.types";
+import type { Patient, QuestionTemplate } from "@/lib/database.types";
 
-export default async function NewAnamnesisPage() {
+export default async function NewAnamnesisPage({ searchParams }: { searchParams: { patientId?: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("question_templates")
-    .select("*")
-    .eq("clinic_id", clinic.id)
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: patientData }] = await Promise.all([
+    supabase.from("question_templates").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
+    searchParams.patientId
+      ? supabase.from("patients").select("*").eq("id", searchParams.patientId).eq("clinic_id", clinic.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const patient = patientData as Patient | null;
 
   return (
     <ClinicShell
@@ -23,7 +25,12 @@ export default async function NewAnamnesisPage() {
       title="Nova anamnese"
       subtitle="O paciente recebe a primeira pergunta no WhatsApp assim que você confirmar"
     >
-      <NewAnamnesisForm clinicId={clinic.id} templates={(data as QuestionTemplate[]) ?? []} />
+      <NewAnamnesisForm
+        clinicId={clinic.id}
+        templates={(data as QuestionTemplate[]) ?? []}
+        initialPatientName={patient?.name}
+        initialPatientPhone={patient?.phone}
+      />
     </ClinicShell>
   );
 }

@@ -130,7 +130,7 @@ export function NewClinicForm({ plans }: { plans: PlanRecord[] }) {
                 <select id="plan" className={styles.select} value={plan} onChange={(e) => setPlan(e.target.value)}>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} — R$ {p.monthly_price.toFixed(2).replace(".", ",")}/mês ({p.monthly_limit} anamneses)
+                      {p.name} — R$ {p.monthly_price.toFixed(2).replace(".", ",")}/mês
                     </option>
                   ))}
                 </select>

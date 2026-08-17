@@ -56,7 +56,7 @@ export default function LoginPage() {
           </div>
           <div className="field">
             <label htmlFor="password">Senha</label>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ position: "relative" }}>
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -64,10 +64,52 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
                 required
-                style={{ flex: 1 }}
+                style={{ paddingRight: 42 }}
               />
-              <button type="button" onClick={() => setShowPassword((v) => !v)} className="btn-ghost" style={{ flex: "none" }}>
-                {showPassword ? "Ocultar" : "Ver"}
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Ocultar senha" : "Ver senha"}
+                aria-pressed={showPassword}
+                style={{
+                  position: "absolute",
+                  right: 4,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                  background: "none",
+                  border: "none",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--ink-faint)",
+                  cursor: "pointer",
+                }}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M3 3l18 18M10.6 10.6a3 3 0 004.24 4.24M6.6 6.6C4.2 8.2 2.5 10.5 2 12c1.4 4 5.7 7 10 7 1.7 0 3.3-.4 4.7-1.2M9.9 4.2C10.6 4.1 11.3 4 12 4c4.3 0 8.6 3 10 7-.5 1.4-1.4 2.9-2.5 4.1"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M2 12c1.4-4 5.7-7 10-7s8.6 3 10 7c-1.4 4-5.7 7-10 7s-8.6-3-10-7z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+                  </svg>
+                )}
               </button>
             </div>
             <div style={{ textAlign: "right", marginTop: 6 }}>

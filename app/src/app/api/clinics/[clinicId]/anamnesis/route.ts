@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canAcceptAnamnesis } from "@/lib/billing";
 import { safeEqual } from "@/lib/safeEqual";
 import { createAnamnesis } from "@/lib/anamnesis";
-import { chargeOverageIfNeeded, countTotalAnamneses } from "@/lib/usage";
+import { countTotalAnamneses } from "@/lib/usage";
 import { upsertPatientFromContact } from "@/lib/patients";
 
 const answerSchema = z.object({
@@ -63,7 +63,6 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   }
 
   await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone, input.patient_cpf);
-  await chargeOverageIfNeeded(supabase, clinic, anamnesis.id);
 
   return NextResponse.json({ token: anamnesis.token }, { status: 201 });
 }

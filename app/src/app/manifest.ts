@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Anamnese SaaS",
-    short_name: "Anamnese",
-    description: "Anamnese e assinatura eletrônica via WhatsApp",
+    name: "DentalAgil",
+    short_name: "DentalAgil",
+    description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, prescrições e orçamentos.",
     // "/" e não "/dashboard": pacientes também podem instalar o atalho a
     // partir do link de assinatura recebido no WhatsApp — mandar todo mundo
     // pro painel da clínica deixava esse caso num beco sem saída (redirect

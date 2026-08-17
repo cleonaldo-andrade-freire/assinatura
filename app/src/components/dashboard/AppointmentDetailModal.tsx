@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { AppointmentDetailBody } from "@/components/dashboard/AppointmentDetailBody";
+import { AppointmentActions } from "@/components/AppointmentActions";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 
@@ -61,11 +62,25 @@ export function AppointmentDetailModal({
             ×
           </button>
         </div>
+        {appointment && (
+          <div className={uiStyles.dialogActionsBar}>
+            <AppointmentActions
+              clinicId={clinicId}
+              appointmentId={appointment.id}
+              patientId={appointment.patient_id}
+              status={appointment.status}
+              urgent={appointment.urgent}
+              scheduledAt={appointment.scheduled_at}
+              durationMinutes={appointment.duration_minutes}
+              onChanged={load}
+            />
+          </div>
+        )}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>
           {loading && !appointment ? (
             <p style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Carregando…</p>
           ) : appointment ? (
-            <AppointmentDetailBody clinicId={clinicId} appointment={appointment} events={events} compact onChanged={load} />
+            <AppointmentDetailBody clinicId={clinicId} appointment={appointment} events={events} compact onChanged={load} hideActionsCard />
           ) : (
             <p style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Agendamento não encontrado.</p>
           )}

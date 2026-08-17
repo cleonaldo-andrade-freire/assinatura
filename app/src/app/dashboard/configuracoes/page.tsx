@@ -12,7 +12,6 @@ import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { countMonthlyAnamneses, countTotalAnamneses } from "@/lib/usage";
 import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { UsageCharge } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
@@ -29,7 +28,7 @@ const SUBSCRIPTION_STATUS_CLASS: Record<string, string> = {
   canceled: styles.statusDanger,
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: { success?: string, error?: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
@@ -52,21 +51,12 @@ export default async function SettingsPage() {
   }
 
   const supabase = await createSupabaseServerClient();
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
 
   const isTrialing = clinic.subscription_status === "trialing";
 
-  const [usedThisMonth, usedInTrial, { data: monthlyCharges }, activePlans, currentPlan] = await Promise.all([
+  const [usedThisMonth, usedInTrial, activePlans, currentPlan] = await Promise.all([
     countMonthlyAnamneses(supabase, clinic.id),
     isTrialing ? countTotalAnamneses(supabase, clinic.id) : Promise.resolve(0),
-    supabase
-      .from("usage_charges")
-      .select("*")
-      .eq("clinic_id", clinic.id)
-      .gte("created_at", startOfMonth.toISOString())
-      .order("created_at", { ascending: false }),
     getActivePlans(supabase),
     getPlanById(supabase, clinic.plan),
   ]);
@@ -75,11 +65,7 @@ export default async function SettingsPage() {
   // seletor mesmo assim (senão sumiria da tela sem explicação nenhuma).
   const plans = currentPlan && !activePlans.some((p) => p.id === currentPlan.id) ? [...activePlans, currentPlan] : activePlans;
 
-  const limit = isTrialing ? TRIAL_ANAMNESIS_LIMIT : currentPlan?.monthly_limit ?? 0;
   const used = isTrialing ? usedInTrial : usedThisMonth;
-  const overageCount = isTrialing ? 0 : Math.max(0, used - limit);
-  const charges = (monthlyCharges as UsageCharge[]) ?? [];
-  const chargedTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
   const monthlyPrice = currentPlan ? effectiveMonthlyPrice(clinic, currentPlan) : 0;
 
   return (
@@ -89,6 +75,24 @@ export default async function SettingsPage() {
       title="Configurações"
       subtitle="Dados do responsável técnico, WhatsApp, identidade visual e assinatura da clínica"
     >
+      {searchParams.success && (
+        <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderLeft: "4px solid var(--brand)", borderRadius: 8, marginBottom: 24 }}>
+          <p style={{ margin: 0, fontWeight: 600, color: "var(--brand)" }}>Ação concluída com sucesso!</p>
+          <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--ink-soft)" }}>
+            {searchParams.success === "certificado_vinculado" 
+              ? "O seu certificado digital foi vinculado à sua conta com sucesso." 
+              : searchParams.success}
+          </p>
+        </div>
+      )}
+
+      {searchParams.error && (
+        <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderLeft: "4px solid var(--status-danger)", borderRadius: 8, marginBottom: 24 }}>
+          <p style={{ margin: 0, fontWeight: 600, color: "var(--status-danger)" }}>Ops, ocorreu um erro</p>
+          <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--ink-soft)" }}>{searchParams.error}</p>
+        </div>
+      )}
+
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>Logo da clínica</p>
@@ -161,6 +165,37 @@ export default async function SettingsPage() {
         </div>
       </div>
 
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <p className={styles.panelHeaderTitle}>Certificado Digital em Nuvem</p>
+        </div>
+        <div className={styles.panelBody}>
+          <p className={styles.hint} style={{ marginBottom: 14 }}>
+            Vincule seu certificado em nuvem (Certisign, BirdID, etc.) para assinar atestados e receituários
+            diretamente pela plataforma, com validade legal do ITI.
+          </p>
+          
+          {clinic.psc_certificate_pem ? (
+            <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderRadius: 8, marginBottom: 16 }}>
+              <p style={{ margin: 0, fontWeight: 600, color: "var(--ink)" }}>✅ Certificado Vinculado</p>
+              {clinic.psc_certificate_alias && (
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
+                  Alias: {clinic.psc_certificate_alias}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderRadius: 8, marginBottom: 16 }}>
+              <p style={{ margin: 0, color: "var(--ink-soft)" }}>❌ Nenhum certificado vinculado no momento.</p>
+            </div>
+          )}
+
+          <a href="/api/psc/auth" className={`${styles.btn} ${styles.btnGhost}`}>
+            {clinic.psc_certificate_pem ? "Vincular outro certificado" : "Vincular Certificado Digital"}
+          </a>
+        </div>
+      </div>
+
       <div id="assinatura" style={{ scrollMarginTop: 20 }}>
         <h2 className={styles.pageTitle} style={{ fontSize: 20, margin: "8px 0 16px" }}>
           Assinatura
@@ -190,10 +225,8 @@ export default async function SettingsPage() {
             <div className={styles.statLabel}>Status da assinatura</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>
-              {used}/{limit}
-            </div>
-            <div className={styles.statLabel}>{isTrialing ? "Anamneses do período de teste" : "Anamneses usadas este mês"}</div>
+            <div className={styles.statValue}>{isTrialing ? `${used}/${TRIAL_ANAMNESIS_LIMIT}` : used}</div>
+            <div className={styles.statLabel}>{isTrialing ? "Anamneses do período de teste" : "Anamneses este mês"}</div>
           </div>
         </div>
 
@@ -215,26 +248,6 @@ export default async function SettingsPage() {
             )}
           </div>
         </div>
-
-        {overageCount > 0 && (
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <p className={styles.panelHeaderTitle}>Excedente do mês</p>
-            </div>
-            <div className={styles.panelBody}>
-              <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: "0 0 4px" }}>
-                Você já passou {overageCount} anamnese{overageCount === 1 ? "" : "s"} do limite do plano
-                ({limit}/mês) — R$ {(currentPlan?.overage_price ?? 0).toFixed(2).replace(".", ",")} por anamnese
-                extra, somado direto na sua próxima fatura (não gera cobrança separada).
-              </p>
-              {charges.length > 0 && (
-                <p style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, margin: "8px 0 0" }}>
-                  Excedente já incluído na fatura: R$ {chargedTotal.toFixed(2).replace(".", ",")}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {payments.length > 0 && (
           <div className={styles.panel}>

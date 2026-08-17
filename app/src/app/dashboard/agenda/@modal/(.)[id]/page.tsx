@@ -3,6 +3,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DetailModalShell } from "@/components/dashboard/DetailModalShell";
 import { AppointmentDetailBody } from "@/components/dashboard/AppointmentDetailBody";
+import { AppointmentActions } from "@/components/AppointmentActions";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
 
 /**
@@ -33,8 +34,21 @@ export default async function AppointmentDetailModal({ params }: { params: { id:
   const events = (eventsData as AppointmentEvent[]) ?? [];
 
   return (
-    <DetailModalShell title="Agendamento">
-      <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} compact />
+    <DetailModalShell
+      title="Agendamento"
+      actions={
+        <AppointmentActions
+          clinicId={clinic.id}
+          appointmentId={a.id}
+          patientId={a.patient_id}
+          status={a.status}
+          urgent={a.urgent}
+          scheduledAt={a.scheduled_at}
+          durationMinutes={a.duration_minutes}
+        />
+      }
+    >
+      <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} compact hideActionsCard />
     </DetailModalShell>
   );
 }

@@ -13,11 +13,27 @@ import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
 import { DebitsPanel } from "@/components/debits/DebitsPanel";
 import { PatientImagesPanel } from "@/components/patientImages/PatientImagesPanel";
 import { AppointmentDetailTrigger } from "@/components/dashboard/AppointmentDetailTrigger";
+import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
+import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
+import { NewPrescriptionTrigger } from "@/components/NewPrescriptionTrigger";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
-import type { Anamnesis, Appointment, Budget, BudgetItem, Certificate, Patient, Prescription, Treatment, TreatmentDebit } from "@/lib/database.types";
+import type {
+  Anamnesis,
+  Appointment,
+  Budget,
+  BudgetItem,
+  Certificate,
+  CertificateTemplate,
+  Patient,
+  Prescription,
+  PrescriptionTemplate,
+  QuestionTemplate,
+  Treatment,
+  TreatmentDebit,
+} from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
@@ -63,6 +79,16 @@ export default async function EditPatientPage({
     .maybeSingle();
   if (!data) notFound();
   const patient = data as Patient;
+
+  const dentistConfigured = !!(clinic.dentist_name && clinic.dentist_cro && clinic.dentist_cro_uf);
+  const [{ data: certificateTemplatesData }, { data: prescriptionTemplatesData }, { data: questionTemplatesData }] = await Promise.all([
+    supabase.from("certificate_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
+    supabase.from("prescription_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
+    supabase.from("question_templates").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
+  ]);
+  const certificateTemplates = (certificateTemplatesData as CertificateTemplate[]) ?? [];
+  const prescriptionTemplates = (prescriptionTemplatesData as PrescriptionTemplate[]) ?? [];
+  const questionTemplates = (questionTemplatesData as QuestionTemplate[]) ?? [];
 
   const activeTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "agendamentos";
   // Preserva a aba atual nos links de paginação — sem isso, paginar dentro
@@ -242,44 +268,59 @@ export default async function EditPatientPage({
 
   const anamnesesPanel = !patient.phone ? (
     <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra ver as anamneses vinculadas.</div>
-  ) : anamneses.length === 0 ? (
-    <div className={styles.emptyState}>Nenhuma anamnese registrada pra este telefone ainda.</div>
   ) : (
     <>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {anamneses.map((a) => (
-            <tr key={a.id}>
-              <td>{formatBRDate(a.created_at)}</td>
-              <td>
-                {signedAnamnesisIds.has(a.id) ? (
-                  <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
-                ) : (
-                  <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
-                )}
-              </td>
-              <td>
-                <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Pagination
-        page={anamnesesPage}
-        totalPages={anamnesesTotalPages}
-        count={anamnesesCount}
-        itemLabel="anamnese"
-        itemLabelPlural="anamneses"
-        hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { anPage: p })}
-      />
+      <div style={{ marginBottom: 14 }}>
+        <NewAnamnesisTrigger
+          clinicId={clinic.id}
+          templates={questionTemplates}
+          patientName={patient.name}
+          patientPhone={patient.phone}
+          className={`${styles.btn} ${styles.btnPrimary}`}
+        >
+          + Nova anamnese
+        </NewAnamnesisTrigger>
+      </div>
+      {anamneses.length === 0 ? (
+        <div className={styles.emptyState}>Nenhuma anamnese registrada pra este telefone ainda.</div>
+      ) : (
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {anamneses.map((a) => (
+                <tr key={a.id}>
+                  <td>{formatBRDate(a.created_at)}</td>
+                  <td>
+                    {signedAnamnesisIds.has(a.id) ? (
+                      <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
+                    ) : (
+                      <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
+                    )}
+                  </td>
+                  <td>
+                    <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={anamnesesPage}
+            totalPages={anamnesesTotalPages}
+            count={anamnesesCount}
+            itemLabel="anamnese"
+            itemLabelPlural="anamneses"
+            hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { anPage: p })}
+          />
+        </>
+      )}
     </>
   );
 
@@ -416,93 +457,127 @@ export default async function EditPatientPage({
 
   const imagensPanel = <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
 
-  const atestadosPanel =
-    certificates.length === 0 ? (
-      <div className={styles.emptyState}>
-        Nenhum atestado emitido pra este paciente ainda — só aparecem aqui os emitidos buscando ou cadastrando pelo
-        nome dele.
+  const atestadosPanel = (
+    <>
+      <div style={{ marginBottom: 14 }}>
+        <NewCertificateTrigger
+          clinicId={clinic.id}
+          templates={certificateTemplates}
+          dentistConfigured={dentistConfigured}
+          patientId={patient.id}
+          patientName={patient.name}
+          patientCpf={patient.cpf}
+          patientPhone={patient.phone}
+          className={`${styles.btn} ${styles.btnPrimary}`}
+        >
+          + Novo atestado
+        </NewCertificateTrigger>
       </div>
-    ) : (
-      <>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Dias de afastamento</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {certificates.map((c) => (
-              <tr key={c.id}>
-                <td>{formatBRDate(c.created_at)}</td>
-                <td>{c.rest_days}</td>
-                <td>
-                  <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
-                    {DOCUMENT_STATUS_LABEL[c.status]}
-                  </span>
-                </td>
-                <td>
-                  <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
-                </td>
+      {certificates.length === 0 ? (
+        <div className={styles.emptyState}>
+          Nenhum atestado emitido pra este paciente ainda — só aparecem aqui os emitidos buscando ou cadastrando pelo
+          nome dele.
+        </div>
+      ) : (
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Dias de afastamento</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination
-          page={certificatesPage}
-          totalPages={certificatesTotalPages}
-          count={certificatesCount ?? 0}
-          itemLabel="atestado"
-          hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { page: p })}
-        />
-      </>
-    );
+            </thead>
+            <tbody>
+              {certificates.map((c) => (
+                <tr key={c.id}>
+                  <td>{formatBRDate(c.created_at)}</td>
+                  <td>{c.rest_days}</td>
+                  <td>
+                    <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
+                      {DOCUMENT_STATUS_LABEL[c.status]}
+                    </span>
+                  </td>
+                  <td>
+                    <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={certificatesPage}
+            totalPages={certificatesTotalPages}
+            count={certificatesCount ?? 0}
+            itemLabel="atestado"
+            hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { page: p })}
+          />
+        </>
+      )}
+    </>
+  );
 
-  const prescricoesPanel =
-    prescriptions.length === 0 ? (
-      <div className={styles.emptyState}>
-        Nenhuma prescrição emitida pra este paciente ainda — só aparecem aqui as emitidas buscando ou cadastrando
-        pelo nome dele.
+  const prescricoesPanel = (
+    <>
+      <div style={{ marginBottom: 14 }}>
+        <NewPrescriptionTrigger
+          clinicId={clinic.id}
+          templates={prescriptionTemplates}
+          dentistConfigured={dentistConfigured}
+          patientId={patient.id}
+          patientName={patient.name}
+          patientCpf={patient.cpf}
+          patientPhone={patient.phone}
+          className={`${styles.btn} ${styles.btnPrimary}`}
+        >
+          + Nova prescrição
+        </NewPrescriptionTrigger>
       </div>
-    ) : (
-      <>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Itens</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {prescriptions.map((p) => (
-              <tr key={p.id}>
-                <td>{formatBRDate(p.created_at)}</td>
-                <td>{p.items.length}</td>
-                <td>
-                  <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>
-                    {DOCUMENT_STATUS_LABEL[p.status]}
-                  </span>
-                </td>
-                <td>
-                  <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
-                </td>
+      {prescriptions.length === 0 ? (
+        <div className={styles.emptyState}>
+          Nenhuma prescrição emitida pra este paciente ainda — só aparecem aqui as emitidas buscando ou cadastrando
+          pelo nome dele.
+        </div>
+      ) : (
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Itens</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination
-          page={prescriptionsPage}
-          totalPages={prescriptionsTotalPages}
-          count={prescriptionsCount ?? 0}
-          itemLabel="prescrição"
-          hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { rxPage: p })}
-        />
-      </>
-    );
+            </thead>
+            <tbody>
+              {prescriptions.map((p) => (
+                <tr key={p.id}>
+                  <td>{formatBRDate(p.created_at)}</td>
+                  <td>{p.items.length}</td>
+                  <td>
+                    <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>
+                      {DOCUMENT_STATUS_LABEL[p.status]}
+                    </span>
+                  </td>
+                  <td>
+                    <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={prescriptionsPage}
+            totalPages={prescriptionsTotalPages}
+            count={prescriptionsCount ?? 0}
+            itemLabel="prescrição"
+            hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { rxPage: p })}
+          />
+        </>
+      )}
+    </>
+  );
 
   return (
     <ClinicShell clinicName={clinic.name} clinicLogoUrl={clinic.logo_url} title={patient.name}>

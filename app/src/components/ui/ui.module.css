@@ -96,6 +96,27 @@
   gap: 10px;
 }
 
+/* Barra de ações fixa logo abaixo do cabeçalho do modal de detalhe (fora da
+   área que rola) — pedido explícito pra não perder as ações rolando a lista
+   pra ver o histórico. Encostada à direita (perto do X), sem linha
+   divisória — só ícones, pedido explícito. */
+.dialogActionsBar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+/* Status terminal (atendido/cancelado/faltou) não tem ação nenhuma pra
+   mostrar — AppointmentActions retorna Fragment vazio nesse caso, então o
+   :empty aqui recolhe a barra inteira (senão sobrava o espaço em branco). */
+.dialogActionsBar:empty {
+  display: none;
+}
+
 .dialogBtn {
   display: inline-flex;
   align-items: center;

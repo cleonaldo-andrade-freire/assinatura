@@ -1,5 +1,7 @@
 # ![alt text](image.png) — Anamnese via WhatsApp com assinatura caseira
 
+> ⚠️ **Arquitetura legada.** Este guia descreve o fluxo original (Evolution API + n8n + Typebot + `assinatura.html` estático), útil só pra clínicas que ainda estejam configuradas assim. Toda clínica nova usa o motor de conversa próprio do app (`app/`), que cobre não só a anamnese como agenda com confirmação/lembrete automático, atestados e prescrições com assinatura digital, orçamentos, tratamentos, financeiro do paciente, despesas e próteses — tudo sem n8n/Typebot. Ver `app/README.md`, seção "Duas formas de uma clínica funcionar".
+
 Arquitetura completa (você já tem as partes 1 e 2):
 
 ```

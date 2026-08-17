@@ -57,25 +57,26 @@ export function PatientSearchField({
   }, [name, clinicId]);
 
   return (
-    <div className={styles.field} style={{ position: "relative" }}>
+    <div className={styles.field}>
       <label htmlFor="patientSearch" className={styles.label}>
         {label}
       </label>
-      <input
-        id="patientSearch"
-        type="text"
-        className={styles.input}
-        value={name}
-        onChange={(e) => {
-          onChangeName(e.target.value);
-          setShowSuggestions(true);
-        }}
-        onFocus={() => setShowSuggestions(true)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-        autoComplete="off"
-        required
-      />
-      {showSuggestions && suggestions.length > 0 && (
+      <div style={{ position: "relative" }}>
+        <input
+          id="patientSearch"
+          type="text"
+          className={styles.input}
+          value={name}
+          onChange={(e) => {
+            onChangeName(e.target.value);
+            setShowSuggestions(true);
+          }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          autoComplete="off"
+          required
+        />
+        {showSuggestions && suggestions.length > 0 && (
         <ul
           style={{
             position: "absolute",
@@ -156,7 +157,8 @@ export function PatientSearchField({
             </li>
           ))}
         </ul>
-      )}
+        )}
+      </div>
       {hint && <p className={styles.hint}>{hint}</p>}
     </div>
   );

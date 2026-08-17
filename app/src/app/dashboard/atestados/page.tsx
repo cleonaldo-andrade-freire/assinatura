@@ -10,9 +10,19 @@ import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
 import type { Certificate } from "@/lib/database.types";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
 
 export default async function CertificatesPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const clinic = await getCurrentClinic();
@@ -118,7 +128,20 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
               <tbody>
                 {certificates.map((c) => (
                   <ClickableRow key={c.id} href={`/dashboard/atestados/${c.id}`}>
-                    <td className={styles.rowTitle}>{c.patient_name}</td>
+                    <td>
+                      <span className={styles.rowMain}>
+                        <PatientAvatar
+                          clinicId={clinic.id}
+                          patientId={c.patient_id}
+                          name={c.patient_name}
+                          size={28}
+                          radius="7px"
+                          tone="brand"
+                          label={initials(c.patient_name)}
+                        />
+                        <span className={styles.rowTitle}>{c.patient_name}</span>
+                      </span>
+                    </td>
                     <td data-label="Data">{formatBRDate(c.created_at)}</td>
                     <td data-label="Dias de afastamento">{c.rest_days}</td>
                     <td data-label="Status">

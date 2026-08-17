@@ -4,10 +4,10 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { NewPrescriptionForm } from "@/components/NewPrescriptionForm";
-import type { PrescriptionTemplate } from "@/lib/database.types";
+import type { Patient, PrescriptionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-export default async function NewPrescriptionPage() {
+export default async function NewPrescriptionPage({ searchParams }: { searchParams: { patientId?: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
@@ -32,11 +32,13 @@ export default async function NewPrescriptionPage() {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data: templates } = await supabase
-    .from("prescription_templates")
-    .select("*")
-    .eq("clinic_id", clinic.id)
-    .order("name", { ascending: true });
+  const [{ data: templates }, { data: patientData }] = await Promise.all([
+    supabase.from("prescription_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
+    searchParams.patientId
+      ? supabase.from("patients").select("*").eq("id", searchParams.patientId).eq("clinic_id", clinic.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const patient = patientData as Patient | null;
 
   return (
     <ClinicShell
@@ -45,7 +47,14 @@ export default async function NewPrescriptionPage() {
       title="Nova prescrição"
       subtitle="A assinatura do dentista responsável é simulada nesta versão — ver aviso no PDF gerado"
     >
-      <NewPrescriptionForm clinicId={clinic.id} templates={(templates as PrescriptionTemplate[]) ?? []} />
+      <NewPrescriptionForm
+        clinicId={clinic.id}
+        templates={(templates as PrescriptionTemplate[]) ?? []}
+        initialPatientId={patient?.id}
+        initialPatientName={patient?.name}
+        initialPatientCpf={patient?.cpf}
+        initialPatientPhone={patient?.phone}
+      />
     </ClinicShell>
   );
 }

@@ -10,9 +10,19 @@ import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
 import type { Prescription } from "@/lib/database.types";
+import { PatientAvatar } from "@/components/PatientAvatar";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
 
 export default async function PrescriptionsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const clinic = await getCurrentClinic();
@@ -118,7 +128,20 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
               <tbody>
                 {prescriptions.map((p) => (
                   <ClickableRow key={p.id} href={`/dashboard/prescricoes/${p.id}`}>
-                    <td className={styles.rowTitle}>{p.patient_name}</td>
+                    <td>
+                      <span className={styles.rowMain}>
+                        <PatientAvatar
+                          clinicId={clinic.id}
+                          patientId={p.patient_id}
+                          name={p.patient_name}
+                          size={28}
+                          radius="7px"
+                          tone="brand"
+                          label={initials(p.patient_name)}
+                        />
+                        <span className={styles.rowTitle}>{p.patient_name}</span>
+                      </span>
+                    </td>
                     <td data-label="Data">{formatBRDate(p.created_at)}</td>
                     <td data-label="Itens">{p.items.length}</td>
                     <td data-label="Status">

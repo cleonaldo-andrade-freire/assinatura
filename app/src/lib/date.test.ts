@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToDateStr, addMonthsToDateStr, brDayRangeUtc, firstOfMonth, firstOfNextMonth, mondayOfWeek, monthGridDays } from "./date";
+import {
+  addDaysToDateStr,
+  addMonthsToDateStr,
+  brDayRangeUtc,
+  firstOfMonth,
+  firstOfNextMonth,
+  formatBRMonthLabel,
+  mondayOfWeek,
+  monthGridDays,
+} from "./date";
+
+describe("formatBRMonthLabel", () => {
+  it("formata mês e ano a partir de 'YYYY-MM'", () => {
+    expect(formatBRMonthLabel("2026-08")).toBe("agosto de 2026");
+  });
+
+  it("aceita 'YYYY-MM-DD' também, ignorando o dia", () => {
+    expect(formatBRMonthLabel("2026-01-15")).toBe("janeiro de 2026");
+  });
+
+  it("não passa por Date/fuso — mesmo cuidado de formatDateBR", () => {
+    expect(formatBRMonthLabel("2026-12")).toBe("dezembro de 2026");
+  });
+});
 
 describe("addDaysToDateStr", () => {
   it("soma dias, inclusive atravessando o fim do mês", () => {
