@@ -61,6 +61,7 @@ export async function issueCertificate(certificateId: string): Promise<Certifica
   const result = await provider.requestSignature({
     pdfBytes,
     documentId: certificateId,
+    clinicId: clinic.id,
     signerName: certificate.dentist_name,
     signerDocument: `CRO ${certificate.dentist_cro}/${certificate.dentist_cro_uf}`,
     signerCpf: (clinic as Clinic).dentist_cpf ?? "",

@@ -60,6 +60,7 @@ export async function issuePrescription(prescriptionId: string): Promise<Prescri
   const result = await provider.requestSignature({
     pdfBytes,
     documentId: prescriptionId,
+    clinicId: clinic.id,
     signerName: prescription.dentist_name,
     signerDocument: `CRO ${prescription.dentist_cro}/${prescription.dentist_cro_uf}`,
     signerCpf: (clinic as Clinic).dentist_cpf ?? "",

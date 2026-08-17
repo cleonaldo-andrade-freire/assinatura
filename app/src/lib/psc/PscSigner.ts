@@ -65,7 +65,7 @@ export class PscSigner extends Signer {
       key: forge.pki.rsa.generateKeyPair({ bits: 1024 }).privateKey, // Chave dummy apenas para o node-forge não quebrar
       certificate: cert,
       digestAlgorithm: forge.pki.oids.sha256,
-      authenticatedAttributes: authenticatedAttributes,
+      authenticatedAttributes: authenticatedAttributes as any,
     });
 
     // O método sign() do p7 preenche os signers com os atributos e assina. 

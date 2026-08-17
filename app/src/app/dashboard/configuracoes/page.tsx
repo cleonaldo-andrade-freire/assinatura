@@ -190,7 +190,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             </div>
           )}
 
-          <a href="/api/psc/auth" className={`${styles.btn} ${styles.btnGhost}`}>
+          <a href={`/api/auth/certisign?clinicId=${clinic.id}`} className={`${styles.btn} ${styles.btnGhost}`}>
             {clinic.psc_certificate_pem ? "Vincular outro certificado" : "Vincular Certificado Digital"}
           </a>
         </div>

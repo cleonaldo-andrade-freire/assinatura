@@ -10,6 +10,7 @@
 export interface SignRequest {
   pdfBytes: Uint8Array;
   documentId: string; // certificates.id / prescriptions.id
+  clinicId: string; // ID da clínica, necessário para buscar credenciais (PSC)
   signerName: string; // dentist_name
   signerDocument: string; // ex.: "CRO 12345/SE"
   signerCpf: string; // dentist_cpf, sem máscara — individualIdentificationCode na Certisign
