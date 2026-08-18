@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/check-signatures",
-      "schedule": "0 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
