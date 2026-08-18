@@ -37,13 +37,14 @@ internal static class Program
 
         builder.Services.AddSingleton<ICertificateProvider, WindowsStoreProvider>();
 
-        // Origens permitidas via env var (AGENT_ALLOWED_ORIGINS, separadas por
-        // vírgula) — antes ficava hardcoded no código (com um domínio de
-        // produção placeholder), exigindo recompilar o agente pra cada
-        // domínio novo. Agora dá pra apontar pra qualquer ambiente sem tocar
-        // no código: variável de ambiente ou (se ausente) as origens padrão
-        // de dev.
-        var allowedOrigins = (Environment.GetEnvironmentVariable("AGENT_ALLOWED_ORIGINS")
+        // Origens permitidas via appsettings.json (chave "AGENT_ALLOWED_ORIGINS",
+        // separadas por vírgula) OU variável de ambiente de mesmo nome — o
+        // builder.Configuration já lê os dois automaticamente. Antes ficava
+        // hardcoded no código (com um domínio de produção placeholder),
+        // exigindo recompilar o agente pra cada domínio novo. O instalador
+        // (installer/install.ps1) escreve o appsettings.json com o domínio
+        // real na hora de instalar em cada máquina.
+        var allowedOrigins = (builder.Configuration["AGENT_ALLOWED_ORIGINS"]
                 ?? "http://localhost:3000")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
