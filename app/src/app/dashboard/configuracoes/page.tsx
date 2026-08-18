@@ -14,6 +14,11 @@ import { formatBRDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import styles from "@/styles/shell.module.css";
 
+// Gerado por agent/pack.ps1 e publicado como release no GitHub — reenviar
+// (nova release) sempre que o agente ou a URL de produção embutida mudarem.
+const AGENT_INSTALLER_URL =
+  "https://github.com/cleonaldo-andrade-freire/assinatura/releases/download/agent-installer-v1.1.0/AssinaturaDigitalAgent.zip";
+
 const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
   trialing: "Em período de teste",
   active: "Em dia",
@@ -167,32 +172,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
 
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Certificado Digital em Nuvem</p>
+          <p className={styles.panelHeaderTitle}>Agente de Assinatura Digital</p>
         </div>
         <div className={styles.panelBody}>
           <p className={styles.hint} style={{ marginBottom: 14 }}>
-            Vincule seu certificado em nuvem (Certisign, BirdID, etc.) para assinar atestados e receituários
-            diretamente pela plataforma, com validade legal do ITI.
+            Instale o agente no computador Windows do dentista responsável pra assinar atestados e receituários
+            direto com o certificado digital (e-CPF/e-CNPJ) instalado na máquina — sem precisar de certificado em
+            nuvem.
           </p>
-          
-          {clinic.psc_certificate_pem ? (
-            <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderRadius: 8, marginBottom: 16 }}>
-              <p style={{ margin: 0, fontWeight: 600, color: "var(--ink)" }}>✅ Certificado Vinculado</p>
-              {clinic.psc_certificate_alias && (
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
-                  Alias: {clinic.psc_certificate_alias}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderRadius: 8, marginBottom: 16 }}>
-              <p style={{ margin: 0, color: "var(--ink-soft)" }}>❌ Nenhum certificado vinculado no momento.</p>
-            </div>
-          )}
-
-          <a href={`/api/auth/certisign?clinicId=${clinic.id}`} className={`${styles.btn} ${styles.btnGhost}`}>
-            {clinic.psc_certificate_pem ? "Vincular outro certificado" : "Vincular Certificado Digital"}
+          <a
+            href={AGENT_INSTALLER_URL}
+            className={`${styles.btn} ${styles.btnGhost}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Baixar Agente de Assinatura Digital
           </a>
+          <p className={styles.hint} style={{ marginTop: 10, fontSize: 12.5 }}>
+            Extraia o .zip e dê duplo clique em "Instalar.bat". O Windows pode avisar que é de origem desconhecida —
+            clique em "Mais informações" → "Executar assim mesmo".
+          </p>
         </div>
       </div>
 

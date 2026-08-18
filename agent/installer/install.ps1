@@ -3,8 +3,15 @@
 # deste script — ver README.md nesta pasta pra gerar/atualizar esse arquivo.
 
 param(
-    [string]$ProductionUrl
+    # pack.ps1 substitui este placeholder pela URL de produção atual antes de
+    # zipar — rodando este script direto (sem passar por pack.ps1), fica sem
+    # valor e cai no prompt interativo abaixo.
+    [string]$ProductionUrl = "__DEFAULT_PRODUCTION_URL__"
 )
+
+if ($ProductionUrl -eq "__DEFAULT_PRODUCTION_URL__") {
+    $ProductionUrl = $null
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -38,8 +45,11 @@ Copy-Item -Path $sourceExe -Destination $installDir -Force
 $exePath = Join-Path $installDir "Agent.exe"
 $settingsPath = Join-Path $installDir "appsettings.json"
 
-# 3. Pergunta (ou usa o parametro -ProductionUrl) a URL de producao do sistema
-if (-not $ProductionUrl) {
+# 3. URL de producao: ja vem embutida (pack.ps1) — so pergunta se estiver
+# faltando (rodando este script direto, sem passar pelo pack.ps1).
+if ($ProductionUrl) {
+    Write-Host "URL de producao (jah configurada no pacote): $ProductionUrl"
+} else {
     Write-Host ""
     $ProductionUrl = Read-Host "URL de producao do sistema (ex: https://app.suaclinica.com.br) - deixe em branco pra usar so localhost"
 }
