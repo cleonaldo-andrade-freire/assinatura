@@ -8,8 +8,9 @@ import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
-import type { Conversation } from "@/lib/database.types";
+import type { Conversation, QuestionTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
+import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 5;
@@ -50,6 +51,7 @@ export default async function AnamnesesPage({
     { data: activeConversations },
     { data: patientsWithCpf },
     usedThisMonth,
+    { data: templatesData },
   ] = await Promise.all([
     supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
     supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
@@ -62,6 +64,7 @@ export default async function AnamnesesPage({
       .order("created_at", { ascending: false }),
     supabase.from("patients").select("id, cpf").eq("clinic_id", clinic.id).not("cpf", "is", null),
     countMonthlyAnamneses(supabase, clinic.id),
+    supabase.from("question_templates").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
   ]);
 
   const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
@@ -112,9 +115,9 @@ export default async function AnamnesesPage({
           <Link href="/dashboard/templates" className={`${styles.btn} ${styles.btnGhost}`}>
             Modelos de anamnese
           </Link>
-          <Link href="/dashboard/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+          <NewAnamnesisTrigger clinicId={clinic.id} templates={(templatesData as QuestionTemplate[]) ?? []} className={`${styles.btn} ${styles.btnPrimary}`}>
             + Nova anamnese
-          </Link>
+          </NewAnamnesisTrigger>
         </div>
       }
     >

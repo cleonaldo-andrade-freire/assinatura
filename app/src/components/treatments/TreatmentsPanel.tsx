@@ -57,8 +57,8 @@ export function TreatmentsPanel({
   const [detailTreatment, setDetailTreatment] = useState<Treatment | null>(null);
   const [newTreatmentOpen, setNewTreatmentOpen] = useState(false);
 
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteIds, setConfirmDeleteIds] = useState<string[] | null>(null);
+  const [deletingIds, setDeletingIds] = useState(false);
 
   const [finalizeIds, setFinalizeIds] = useState<string[] | null>(null);
   const { toasts, push, dismiss } = useToasts();
@@ -74,24 +74,32 @@ export function TreatmentsPanel({
     });
   }
 
-  async function handleDelete(id: string) {
-    setDeletingId(id);
+  async function handleDelete(ids: string[]) {
+    setDeletingIds(true);
     try {
-      const res = await fetch(`/api/clinics/${clinicId}/treatments/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        push("Falha ao excluir. Tenta de novo.");
-        return;
+      const results = await Promise.all(
+        ids.map((id) => fetch(`/api/clinics/${clinicId}/treatments/${id}`, { method: "DELETE" }).then((res) => ({ id, ok: res.ok })))
+      );
+      const succeededIds = results.filter((r) => r.ok).map((r) => r.id);
+      const failed = results.length - succeededIds.length;
+
+      if (succeededIds.length > 0) {
+        setTreatments((prev) => prev.filter((t) => !succeededIds.includes(t.id)));
+        setSelected((prev) => {
+          const next = new Set(prev);
+          succeededIds.forEach((id) => next.delete(id));
+          return next;
+        });
       }
-      setTreatments((prev) => prev.filter((t) => t.id !== id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      setConfirmDeleteId(null);
+      if (failed > 0) {
+        push(failed === results.length ? "Falha ao excluir. Tenta de novo." : `${failed} tratamento(s) não foram excluídos.`);
+      } else {
+        push(succeededIds.length === 1 ? "Tratamento excluído." : `${succeededIds.length} tratamentos excluídos.`, "success");
+      }
+      setConfirmDeleteIds(null);
       router.refresh();
     } finally {
-      setDeletingId(null);
+      setDeletingIds(false);
     }
   }
 
@@ -142,7 +150,7 @@ export function TreatmentsPanel({
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selected.size > 0 ? 56 : 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {treatments.map((t) => {
               const subtitleParts = [t.price_table_name, t.status === "finalizado" && t.finalized_at ? `finalizado em ${formatBRDate(t.finalized_at)}` : null].filter(
                 Boolean
@@ -177,7 +185,7 @@ export function TreatmentsPanel({
                     )}
                     <button
                       type="button"
-                      onClick={() => setConfirmDeleteId(t.id)}
+                      onClick={() => setConfirmDeleteIds([t.id])}
                       className={`${styles.btn} ${styles.btnGhost}`}
                       style={{ color: "var(--danger)" }}
                     >
@@ -197,9 +205,19 @@ export function TreatmentsPanel({
           <span>
             {selected.size} tratamento{selected.size === 1 ? "" : "s"} selecionado{selected.size === 1 ? "" : "s"}
           </span>
-          <button type="button" onClick={() => setFinalizeIds(Array.from(selected))} className={`${styles.btn} ${styles.btnPrimary}`}>
-            Finalizar
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteIds(Array.from(selected))}
+              className={`${styles.btn} ${styles.btnGhost}`}
+              style={{ color: "var(--danger)" }}
+            >
+              Excluir
+            </button>
+            <button type="button" onClick={() => setFinalizeIds(Array.from(selected))} className={`${styles.btn} ${styles.btnPrimary}`}>
+              Finalizar
+            </button>
+          </div>
         </div>
       )}
 
@@ -220,10 +238,6 @@ export function TreatmentsPanel({
           setTreatments((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
           setDetailTreatment(updated);
         }}
-        onDeleted={(id) => {
-          setTreatments((prev) => prev.filter((t) => t.id !== id));
-          setDetailTreatment(null);
-        }}
       />
 
       <FinalizeTreatmentModal
@@ -234,15 +248,15 @@ export function TreatmentsPanel({
       />
 
       <ConfirmDialog
-        open={confirmDeleteId !== null}
-        title="Excluir tratamento"
-        message="Isso remove o tratamento da ficha do paciente. O orçamento que gerou ele não é afetado."
+        open={confirmDeleteIds !== null}
+        title={confirmDeleteIds && confirmDeleteIds.length > 1 ? `Excluir ${confirmDeleteIds.length} tratamentos` : "Excluir tratamento"}
+        message="Isso remove o(s) tratamento(s) da ficha do paciente. O orçamento que gerou eles não é afetado."
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         danger
-        loading={deletingId !== null}
-        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
-        onCancel={() => setConfirmDeleteId(null)}
+        loading={deletingIds}
+        onConfirm={() => confirmDeleteIds && handleDelete(confirmDeleteIds)}
+        onCancel={() => setConfirmDeleteIds(null)}
       />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>

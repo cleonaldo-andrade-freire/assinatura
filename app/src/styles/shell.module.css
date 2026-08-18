@@ -238,13 +238,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 32px 40px 24px;
+  padding: 16px 40px 16px;
 }
 
 .pageTitle {
   font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
-  font-size: 26px;
+  font-size: 22px;
   color: var(--brand-deep);
   margin: 0;
 }
@@ -393,21 +393,21 @@
 .statGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 28px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .statCard {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-sm);
 }
 
 .statValue {
   font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--brand-deep);
   line-height: 1.1;
@@ -486,8 +486,8 @@
 /* ============================== Action menu (kebab) ============================== */
 
 .menuTrigger {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -509,8 +509,8 @@
 /* Botões só-ícone da barra de ações flutuante do modal de agendamento —
    mesmo footprint 38x38 do .menuTrigger ("⋯") pra alinhar na mesma linha. */
 .iconActionBtn {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -716,7 +716,7 @@
 
 .table thead th {
   text-align: left;
-  padding: 12px 24px;
+  padding: 8px 16px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -727,7 +727,7 @@
 }
 
 .table tbody td {
-  padding: 14px 24px;
+  padding: 4px 16px;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   vertical-align: middle;
@@ -743,6 +743,14 @@
 
 .table tbody tr:hover {
   background: var(--surface-sunken);
+}
+
+/* Botões de ação dentro de linhas de tabela (Editar/Excluir etc.) — o
+   min-height:44px do .btn base é pensado pra toque em formulário, mas deixa
+   as linhas do grid mais altas do que precisa. */
+.table .btn {
+  min-height: 32px;
+  padding: 6px 12px;
 }
 
 .rowMain {
@@ -984,7 +992,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   max-width: 640px;
 }
 

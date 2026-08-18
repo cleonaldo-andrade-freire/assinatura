@@ -177,13 +177,21 @@ const NAV_ITEMS = [
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 
+// Itens que a atendente (staff) pode ver no menu.
+const STAFF_ALLOWED_HREFS = new Set([
+  "/dashboard",
+  "/dashboard/agenda",
+  "/dashboard/pacientes",
+  "/dashboard/anamneses",
+  "/dashboard/proteses",
+]);
+
 // No celular a barra fixa só tem espaço confortável pra 3 destinos + "Mais"
 // — Agenda e Pacientes são as telas mais checadas na correria da recepção,
 // Configurações entra fixa por pedido explícito. O resto (Anamneses,
 // Atestados, Prescrições, Próteses) vive atrás do "Mais" só no celular; no
 // desktop a sidebar mostra todo mundo inline, sem essa distinção.
 const MOBILE_PRIMARY_HREFS = new Set(["/dashboard/agenda", "/dashboard/pacientes", "/dashboard/configuracoes"]);
-const MORE_NAV_ITEMS = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href));
 
 function initials(name: string): string {
   return name
@@ -201,12 +209,23 @@ interface ClinicShellProps {
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
+  /** Papel do usuário logado — controla quais itens aparecem no menu.
+   * Default: "owner" (sem restrições) para manter compatibilidade com
+   * chamadas existentes que ainda não passam esse prop. */
+  role?: "owner" | "staff";
 }
 
-export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, actions, children }: ClinicShellProps) {
+export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, actions, children, role = "owner" }: ClinicShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Filtra itens do menu pelo papel do usuário
+  const visibleNavItems = role === "staff"
+    ? NAV_ITEMS.filter((item) => STAFF_ALLOWED_HREFS.has(item.href))
+    : NAV_ITEMS;
+  const mobilePrimaryItems = visibleNavItems.filter((item) => MOBILE_PRIMARY_HREFS.has(item.href));
+  const moreNavItems = visibleNavItems.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href));
   // Só lê localStorage depois de montar (evita mismatch de hidratação entre
   // servidor e cliente — o servidor não tem como saber a preferência salva).
   const [collapsed, setCollapsed] = useState(false);
@@ -265,8 +284,8 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => renderNavLink(item, MOBILE_PRIMARY_HREFS.has(item.href) ? undefined : styles.navExtra))}
-          {MORE_NAV_ITEMS.length > 0 && (
+          {visibleNavItems.map((item) => renderNavLink(item, MOBILE_PRIMARY_HREFS.has(item.href) ? undefined : styles.navExtra))}
+          {moreNavItems.length > 0 && (
             <button
               type="button"
               title="Mais"
@@ -280,7 +299,7 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
           )}
         </nav>
 
-        {MORE_NAV_ITEMS.length > 0 && moreOpen && (
+        {moreNavItems.length > 0 && moreOpen && (
           <>
             <button
               type="button"
@@ -289,7 +308,7 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
               onClick={() => setMoreOpen(false)}
             />
             <div className={styles.navMorePanel} role="menu">
-              {MORE_NAV_ITEMS.map((item) => renderNavLink(item, styles.navMorePanelLink, () => setMoreOpen(false)))}
+              {moreNavItems.map((item) => renderNavLink(item, styles.navMorePanelLink, () => setMoreOpen(false)))}
             </div>
           </>
         )}

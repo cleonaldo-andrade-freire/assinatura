@@ -46,8 +46,6 @@ export function NewCertificateForm({
 
   const [patientId, setPatientId] = useState<string | null>(initialPatientId ?? null);
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
-  const [patientCpf, setPatientCpf] = useState(initialPatientCpf ? formatCPF(initialPatientCpf) : "");
-  const [patientPhone, setPatientPhone] = useState(initialPatientPhone ? formatBRPhoneLocal(initialPatientPhone) : "");
 
   const [cid, setCid] = useState("");
   const [cidSuggestions, setCidSuggestions] = useState<CidSuggestion[]>([]);
@@ -61,7 +59,6 @@ export function NewCertificateForm({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cidDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cpfError = patientCpf.trim() && !isValidCPF(patientCpf) ? "CPF inválido." : null;
 
   const { isAgentRunning, signHash } = useAgent();
   const [showAgentSelector, setShowAgentSelector] = useState(false);
@@ -92,8 +89,6 @@ export function NewCertificateForm({
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
     setPatientName(s.name);
-    setPatientCpf(s.cpf ? formatCPF(s.cpf) : "");
-    setPatientPhone(s.phone ? formatBRPhoneLocal(s.phone) : "");
   }
 
   function handleSelectTemplate(id: string) {
@@ -108,16 +103,6 @@ export function NewCertificateForm({
     if (template.rest_days_default != null) setRestDays(template.rest_days_default);
   }
 
-  const reasonPreview = reason.includes("{{")
-    ? resolveReasonSegments(reason, {
-        paciente_nome: patientName.trim(),
-        paciente_cpf: patientCpf.trim(),
-        data_emissao: formatBRDate(new Date().toISOString()),
-        data_inicio: startsOn ? formatBRDate(`${startsOn}T12:00:00-03:00`) : "",
-        dias_afastamento: String(restDays),
-      })
-    : null;
-
   function goToCreated(certificate: Certificate) {
     if (onSuccess) {
       onSuccess(certificate);
@@ -130,11 +115,8 @@ export function NewCertificateForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!patientName.trim()) return;
     setError(null);
-    if (cpfError) {
-      setError(cpfError);
-      return;
-    }
     
     if (isLocalAgentMode) {
       setShowAgentSelector(true);
@@ -152,8 +134,6 @@ export function NewCertificateForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_name: patientName.trim(),
-          patient_cpf: patientCpf.trim() || undefined,
-          patient_phone: patientPhone.trim() ? toE164BR(patientPhone) : undefined,
           patient_id: patientId ?? undefined,
           cid: cid.trim() || undefined,
           hide_cid_on_patient_pdf: hideCid,
@@ -200,7 +180,7 @@ export function NewCertificateForm({
   const alerts = <>{error && <div className="error-box">{error}</div>}</>;
 
   const submitButton = (
-    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending || !!cpfError}>
+    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
       {sending ? "Emitindo…" : "Emitir atestado"}
     </button>
   );
@@ -233,39 +213,6 @@ export function NewCertificateForm({
         onSelect={pickPatientSuggestion}
         hint={bare ? undefined : "Busca no cadastro de pacientes da clínica — se não encontrar, um cadastro novo é criado automaticamente ao emitir o atestado."}
       />
-
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor="patientCpf" className={styles.label}>
-            CPF (opcional)
-          </label>
-          <input
-            id="patientCpf"
-            type="text"
-            inputMode="numeric"
-            className={styles.input}
-            value={patientCpf}
-            onChange={(e) => setPatientCpf(formatCPF(e.target.value))}
-            placeholder="000.000.000-00"
-            maxLength={14}
-          />
-          {cpfError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{cpfError}</div>}
-        </div>
-        <div className={styles.field}>
-          <label htmlFor="patientPhone" className={styles.label}>
-            WhatsApp (opcional)
-          </label>
-          <input
-            id="patientPhone"
-            type="text"
-            inputMode="numeric"
-            className={styles.input}
-            value={patientPhone}
-            onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
-            placeholder="(79) 99999-9999"
-          />
-        </div>
-      </div>
 
       <div className={styles.formRow}>
         <div className={styles.field}>
@@ -355,10 +302,9 @@ export function NewCertificateForm({
             ))}
           </ul>
         )}
-        <p className={styles.hint}>Sugestões vêm de um conjunto inicial de códigos odontológicos — o campo aceita qualquer código digitado.</p>
         <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13.5 }}>
           <input type="checkbox" checked={hideCid} onChange={(e) => setHideCid(e.target.checked)} />
-          Ocultar CID no atestado do paciente (Lei nº 9.436/97) — fica salvo só no registro interno
+          Ocultar CID no atestado do paciente (Lei nº 9.436/97) — fica salvo só no registro
         </label>
       </div>
 
@@ -375,16 +321,6 @@ export function NewCertificateForm({
           placeholder="Atesto, para os devidos fins, que o(a) paciente esteve sob meus cuidados odontológicos…"
           required
         />
-        <p className={styles.hint}>
-          Pode usar <code>{"{{paciente_nome}}"}</code>, <code>{"{{paciente_cpf}}"}</code>, <code>{"{{data_emissao}}"}</code>,{" "}
-          <code>{"{{data_inicio}}"}</code> e <code>{"{{dias_afastamento}}"}</code> — esses trechos saem em <strong>negrito</strong> no PDF final.
-        </p>
-        {reasonPreview && (
-          <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", fontSize: 13.5 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase" }}>Prévia</p>
-            {reasonPreview.map((seg, i) => (seg.variable ? <strong key={i}>{seg.text}</strong> : <span key={i}>{seg.text}</span>))}
-          </div>
-        )}
       </div>
     </>
   );

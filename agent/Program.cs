@@ -19,13 +19,32 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
 
         var app = BuildWebApplication(args);
-        var hostTask = app.RunAsync();
+
+        // StartAsync (não RunAsync) pra observar AGORA se o bind da porta
+        // falhar — com RunAsync "fire-and-forget", uma segunda instância do
+        // Agent.exe já aberta faz a porta falhar silenciosamente e o ícone
+        // da bandeja fica "zumbi": aparece, mas não responde nada, sem
+        // nenhum aviso em lugar nenhum.
+        try
+        {
+            app.StartAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Não foi possível iniciar o agente na porta {Port}.\n\n" +
+                "Provavelmente já existe outra instância do Agent.exe rodando — feche todas pelo Gerenciador de Tarefas (aba Detalhes) e abra de novo.\n\n" +
+                $"Detalhe técnico: {ex.Message}",
+                "Agente de Assinatura Digital — erro ao iniciar",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
 
         using var trayIcon = CreateTrayIcon();
         Application.Run();
 
         app.StopAsync().GetAwaiter().GetResult();
-        hostTask.GetAwaiter().GetResult();
     }
 
     private static WebApplication BuildWebApplication(string[] args)
@@ -134,11 +153,27 @@ internal static class Program
 
         return new NotifyIcon
         {
-            Icon = SystemIcons.Shield,
+            Icon = LoadTrayIcon(),
             Text = "Agente de Assinatura Digital",
             Visible = true,
             ContextMenuStrip = menu,
         };
+    }
+
+    // O ícone do executável (ApplicationIcon em Agent.csproj, agent.ico) já
+    // vem embutido no .exe — reaproveita ele pro ícone da bandeja também, em
+    // vez de duplicar o arquivo como recurso separado. Cai pro ícone padrão
+    // do Windows só se a extração falhar por algum motivo.
+    private static Icon LoadTrayIcon()
+    {
+        try
+        {
+            return Icon.ExtractAssociatedIcon(GetExecutablePath()) ?? SystemIcons.Shield;
+        }
+        catch
+        {
+            return SystemIcons.Shield;
+        }
     }
 
     private static bool IsAutoStartEnabled()

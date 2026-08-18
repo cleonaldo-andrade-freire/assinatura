@@ -30,10 +30,13 @@ if (-not (Test-Path $sourceExe)) {
     exit 1
 }
 
-# 1. Fecha uma instalacao anterior, se estiver rodando (senao a copia falha)
-$running = Get-Process -Name "Agent" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$installDir*" }
+# 1. Fecha QUALQUER instancia do agente rodando, de qualquer pasta (nao so
+# a instalada) -- senao a copia falha, e duas instancias ao mesmo tempo
+# brigam pela porta 52310 (uma delas fica com o icone na bandeja mas sem
+# responder nada, sem aviso nenhum).
+$running = Get-Process -Name "Agent" -ErrorAction SilentlyContinue
 if ($running) {
-    Write-Host "Fechando instancia anterior do agente..."
+    Write-Host "Fechando instancia(s) anterior(es) do agente..."
     $running | Stop-Process -Force
     Start-Sleep -Seconds 1
 }

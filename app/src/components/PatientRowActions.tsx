@@ -8,7 +8,7 @@ import styles from "@/styles/shell.module.css";
 
 function TrashIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v12a1 1 0 001 1h6a1 1 0 001-1V7"
         stroke="currentColor"
@@ -53,7 +53,7 @@ export function PatientRowActions({ clinicId, patientId }: { clinicId: string; p
           aria-label="Excluir paciente"
           title="Excluir"
           className={`${styles.btn} ${styles.btnGhost}`}
-          style={{ padding: 7, color: "var(--danger)" }}
+          style={{ padding: 5, color: "var(--danger)", minHeight: "auto", height: 28, width: 28 }}
         >
           <TrashIcon />
         </button>

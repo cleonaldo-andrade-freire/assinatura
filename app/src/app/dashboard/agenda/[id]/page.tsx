@@ -1,47 +1,10 @@
-import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ClinicShell } from "@/components/clinic/ClinicShell";
-import { AppointmentDetailBody } from "@/components/dashboard/AppointmentDetailBody";
-import type { Appointment, AppointmentEvent } from "@/lib/database.types";
-import styles from "@/styles/shell.module.css";
+import { redirect } from "next/navigation";
 
-export default async function AppointmentDetailPage({ params }: { params: { id: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
-
-  const supabase = await createSupabaseServerClient();
-  const { data: appointment } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("id", params.id)
-    .eq("clinic_id", clinic.id)
-    .maybeSingle();
-  if (!appointment) notFound();
-  const a = appointment as Appointment;
-
-  const { data: eventsData } = await supabase
-    .from("appointment_events")
-    .select("*")
-    .eq("appointment_id", a.id)
-    .order("created_at", { ascending: false });
-  const events = (eventsData as AppointmentEvent[]) ?? [];
-
-  return (
-    <ClinicShell
-      clinicName={clinic.name}
-      clinicLogoUrl={clinic.logo_url}
-      title="Agendamento"
-      actions={
-        <Link href="/dashboard/agenda" className={`${styles.btn} ${styles.btnGhost}`}>
-          ← Voltar
-        </Link>
-      }
-    >
-      <div className={styles.narrowContent}>
-        <AppointmentDetailBody clinicId={clinic.id} appointment={a} events={events} />
-      </div>
-    </ClinicShell>
-  );
+/**
+ * Acesso direto a /dashboard/agenda/[id] (via URL, F5, link compartilhado)
+ * redireciona para a agenda com query ?detail=<id>, que faz a página da
+ * agenda abrir o modal de detalhe automaticamente.
+ */
+export default function AppointmentDetailPage({ params }: { params: { id: string } }) {
+  redirect(`/dashboard/agenda?detail=${params.id}`);
 }

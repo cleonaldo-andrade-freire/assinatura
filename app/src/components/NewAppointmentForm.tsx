@@ -301,22 +301,24 @@ export function NewAppointmentForm({
             )}
           </div>
 
-          <div className={styles.field}>
-            <label htmlFor="patientPhone" className={styles.label}>
-              WhatsApp do paciente
-            </label>
-            <input
-              id="patientPhone"
-              type="text"
-              inputMode="numeric"
-              className={styles.input}
-              value={patientPhone}
-              onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
-              placeholder="(79) 99999-9999"
-              required
-            />
-            {phoneError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{phoneError}</div>}
-          </div>
+          {(!showSuggestions && !patientId && patientName.trim().length > 0) && (
+            <div className={styles.field}>
+              <label htmlFor="patientPhone" className={styles.label}>
+                WhatsApp do paciente
+              </label>
+              <input
+                id="patientPhone"
+                type="text"
+                inputMode="numeric"
+                className={styles.input}
+                value={patientPhone}
+                onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
+                placeholder="(79) 99999-9999"
+                required
+              />
+              {phoneError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{phoneError}</div>}
+            </div>
+          )}
         </div>
 
         <div className={styles.fgroup}>
@@ -424,28 +426,30 @@ export function NewAppointmentForm({
             </div>
           </div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={urgent}
-              onChange={(e) => setUrgent(e.target.checked)}
-              style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
-            />
-            <span style={{ fontSize: 13.5 }}>Marcar como urgência</span>
-          </label>
-
-          <div className={styles.field}>
-            <label htmlFor="notes" className={styles.label}>
-              Observação (opcional)
+          <div className={styles.formRow} style={{ alignItems: "flex-start" }}>
+            <div className={styles.field} style={{ flex: 1 }}>
+              <label htmlFor="notes" className={styles.label}>
+                Observação (opcional)
+              </label>
+              <input
+                id="notes"
+                type="text"
+                className={styles.input}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Motivo da consulta…"
+              />
+            </div>
+            
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 32, cursor: "pointer", flexShrink: 0 }}>
+              <input
+                type="checkbox"
+                checked={urgent}
+                onChange={(e) => setUrgent(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: "var(--brand)" }}
+              />
+              <span style={{ fontSize: 13.5, fontWeight: 500 }}>Urgência</span>
             </label>
-            <textarea
-              id="notes"
-              className={styles.input}
-              rows={bare ? 2 : 3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Motivo da consulta, anotação da recepção…"
-            />
           </div>
         </div>
     </>
@@ -474,7 +478,7 @@ export function NewAppointmentForm({
           >
             {fieldGroups}
           </div>
-          <div style={{ flexShrink: 0, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)" }}>
+          <div style={{ flexShrink: 0, paddingTop: 14, marginTop: 10 }}>
             {submitButton}
           </div>
         </form>

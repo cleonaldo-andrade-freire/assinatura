@@ -6,8 +6,10 @@ import { CancelledAppointmentsPanel } from "@/components/dashboard/CancelledAppo
 import { UpcomingReturnsPanel } from "@/components/dashboard/UpcomingReturnsPanel";
 import { UnfinishedTreatmentsPanel, type UnfinishedTreatmentGroup } from "@/components/dashboard/UnfinishedTreatmentsPanel";
 import { OpenDebitsPanel, type OpenDebitGroup } from "@/components/dashboard/OpenDebitsPanel";
+import { DailyAgendaPanel } from "@/components/dashboard/DailyAgendaPanel";
 import { brDateOnly, firstOfMonth, firstOfNextMonth } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
+import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -37,6 +39,20 @@ export default async function DashboardPage({
   const returnPage = Math.max(1, parseInt(searchParams.returnPage ?? "1", 10) || 1);
   const returnFrom = (returnPage - 1) * PAGE_SIZE;
   const returnTo = returnFrom + PAGE_SIZE - 1;
+
+  // "Agenda de Hoje"
+  const startOfToday = `${todayDate}T00:00:00-03:00`;
+  const endOfToday = `${todayDate}T23:59:59-03:00`;
+  
+  const { data: todayAppointmentsData } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("clinic_id", clinic.id)
+    .gte("scheduled_at", startOfToday)
+    .lte("scheduled_at", endOfToday)
+    .order("scheduled_at", { ascending: true });
+    
+  const todayAppointments = (todayAppointmentsData as Appointment[]) ?? [];
 
   // "Consultas canceladas" — mais recente pro mais antigo. Não existe uma
   // coluna dedicada de "cancelado_em"; `updated_at` é atualizado junto com o
@@ -86,6 +102,29 @@ export default async function DashboardPage({
     .lt("paid_at", monthEnd);
   const monthlyExpense = (expenseData ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
   const monthlyBalance = monthlyRevenue - monthlyExpense;
+
+  // Balanço do dia
+  const dayStart = startOfToday;
+  const dayEnd = endOfToday;
+
+  const { data: dailyRevenueData } = await supabase
+    .from("treatment_debits")
+    .select("amount")
+    .eq("clinic_id", clinic.id)
+    .eq("status", "pago")
+    .gte("paid_at", dayStart)
+    .lte("paid_at", dayEnd);
+  const dailyRevenue = (dailyRevenueData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+
+  const { data: dailyExpenseData } = await supabase
+    .from("expenses")
+    .select("amount")
+    .eq("clinic_id", clinic.id)
+    .eq("status", "pago")
+    .gte("paid_at", dayStart)
+    .lte("paid_at", dayEnd);
+  const dailyExpense = (dailyExpenseData ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
+  const dailyBalance = dailyRevenue - dailyExpense;
 
   // Pacientes com tratamento em aberto e com débito em aberto — agrupado em JS
   // (poucos registros na prática, não compensa uma view/RPC só pra isso).
@@ -152,38 +191,20 @@ export default async function DashboardPage({
       title="Dashboard"
       subtitle="Cancelamentos e retornos que precisam de um contato"
     >
-      <div className={styles.statGrid}>
-        <div className={styles.statCard}>
-          <div className={styles.statValue}>{formatMoney(monthlyRevenue)}</div>
-          <div className={styles.statLabel}>Receitas do mês</div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statValue} style={{ color: "var(--danger)" }}>
-            {formatMoney(monthlyExpense)}
-          </div>
-          <div className={styles.statLabel}>Despesas do mês</div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statValue} style={{ color: monthlyBalance < 0 ? "var(--danger)" : "var(--brand-deep)" }}>
-            {formatMoney(monthlyBalance)}
-          </div>
-          <div className={styles.statLabel}>Saldo do mês</div>
-        </div>
-      </div>
+      <DashboardKPIs
+        monthlyRevenue={monthlyRevenue}
+        monthlyExpense={monthlyExpense}
+        monthlyBalance={monthlyBalance}
+        dailyRevenue={dailyRevenue}
+        dailyExpense={dailyExpense}
+        dailyBalance={dailyBalance}
+      />
 
-      <UnfinishedTreatmentsPanel groups={unfinishedGroups} />
-      <OpenDebitsPanel groups={openDebitGroups} />
-
-      <CancelledAppointmentsPanel
+      <DailyAgendaPanel
         clinicId={clinic.id}
+        appointments={todayAppointments}
         professionalName={professionalName}
         todayDate={todayDate}
-        items={cancelledAppointments}
-        page={cancelPage}
-        totalPages={cancelledTotalPages}
-        count={cancelledCount ?? 0}
-        otherPageParam="returnPage"
-        otherPageValue={returnPage}
       />
 
       <UpcomingReturnsPanel
@@ -197,6 +218,21 @@ export default async function DashboardPage({
         otherPageParam="cancelPage"
         otherPageValue={cancelPage}
       />
+
+      <CancelledAppointmentsPanel
+        clinicId={clinic.id}
+        professionalName={professionalName}
+        todayDate={todayDate}
+        items={cancelledAppointments}
+        page={cancelPage}
+        totalPages={cancelledTotalPages}
+        count={cancelledCount ?? 0}
+        otherPageParam="returnPage"
+        otherPageValue={returnPage}
+      />
+
+      <UnfinishedTreatmentsPanel groups={unfinishedGroups} />
+      <OpenDebitsPanel groups={openDebitGroups} />
     </ClinicShell>
   );
 }

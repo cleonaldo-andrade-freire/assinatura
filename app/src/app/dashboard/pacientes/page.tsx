@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PatientRowActions } from "@/components/PatientRowActions";
 import { PatientAvatar } from "@/components/PatientAvatar";
+import { NewPatientTrigger } from "@/components/NewPatientTrigger";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -43,9 +44,9 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
       title="Pacientes"
       subtitle="Cadastro de pacientes da clínica"
       actions={
-        <Link href="/dashboard/pacientes/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+        <NewPatientTrigger clinicId={clinic.id} className={`${styles.btn} ${styles.btnPrimary}`}>
           + Novo paciente
-        </Link>
+        </NewPatientTrigger>
       }
     >
       <div className={styles.panel}>

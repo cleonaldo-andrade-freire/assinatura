@@ -105,9 +105,6 @@ export function UploadImagesModal({
       <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Enviar imagens</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         <div style={{ maxHeight: "60vh", overflowY: "auto" }}>

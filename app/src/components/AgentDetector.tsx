@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+// 127.0.0.1 em vez de "localhost" — em algumas máquinas (VPN/DNS corporativo/
+// extensão de privacidade forçando DNS-over-HTTPS) a resolução do NOME
+// "localhost" quebra (DNS_PROBE_FINISHED_NXDOMAIN no Chrome), mesmo com o
+// agente rodando normalmente. O IP de loopback não depende de resolução de
+// nome nenhuma, então não tem esse problema.
+const AGENT_BASE_URL = "http://127.0.0.1:52310";
+
 export interface AgentCertificate {
   thumbprint: string;
   subjectCommonName: string;
@@ -24,7 +31,7 @@ export function useAgent() {
 
   const checkAgent = async () => {
     try {
-      const res = await fetch("http://localhost:52310/v1/status", { method: "GET" });
+      const res = await fetch(`${AGENT_BASE_URL}/v1/status`, { method: "GET" });
       if (res.ok) {
         setIsAgentRunning(true);
       } else {
@@ -37,7 +44,7 @@ export function useAgent() {
 
   const loadCertificates = async () => {
     try {
-      const res = await fetch("http://localhost:52310/v1/certificates", { method: "GET" });
+      const res = await fetch(`${AGENT_BASE_URL}/v1/certificates`, { method: "GET" });
       if (res.ok) {
         const data = await res.json();
         setCertificates(data);
@@ -48,7 +55,7 @@ export function useAgent() {
   };
 
   const signHash = async (thumbprint: string, hashBase64: string) => {
-    const res = await fetch("http://localhost:52310/v1/sign", {
+    const res = await fetch(`${AGENT_BASE_URL}/v1/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ thumbprint, hashBase64 })

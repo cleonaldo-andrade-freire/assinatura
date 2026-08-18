@@ -9,8 +9,9 @@ import { StopPropagationLink } from "@/components/ui/StopPropagation";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
-import type { Certificate } from "@/lib/database.types";
+import type { Certificate, CertificateTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
+import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
@@ -36,14 +37,17 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
   const supabase = await createSupabaseServerClient();
 
   const startOfMonth = startOfCurrentMonth();
-  const [{ count: totalCount }, { count: totalThisMonth }] = await Promise.all([
+  const [{ count: totalCount }, { count: totalThisMonth }, { data: templatesData }] = await Promise.all([
     supabase.from("certificates").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
     supabase
       .from("certificates")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinic.id)
       .gte("created_at", startOfMonth.toISOString()),
+    supabase.from("certificate_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
   ]);
+  const templates = templatesData as CertificateTemplate[];
+  const dentistConfigured = !!(clinic.dentist_name && clinic.dentist_cro && clinic.dentist_cro_uf);
 
   let query = supabase.from("certificates").select("*", { count: "exact" }).eq("clinic_id", clinic.id);
   if (q) query = query.ilike("patient_name", `%${q}%`);
@@ -69,9 +73,14 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
           <Link href="/dashboard/atestados/templates" className={`${styles.btn} ${styles.btnGhost}`}>
             Modelos de atestado
           </Link>
-          <Link href="/dashboard/atestados/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+          <NewCertificateTrigger
+            clinicId={clinic.id}
+            templates={templates}
+            dentistConfigured={dentistConfigured}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+          >
             + Novo atestado
-          </Link>
+          </NewCertificateTrigger>
         </div>
       }
     >

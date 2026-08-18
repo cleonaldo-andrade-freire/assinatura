@@ -70,9 +70,6 @@ export function NewAppointmentModal({
               {time ? ` às ${formatBRTime(time)}` : ""}
             </p>
           </div>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
         <NewAppointmentForm
           bare

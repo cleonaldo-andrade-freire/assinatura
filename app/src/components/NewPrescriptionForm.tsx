@@ -43,18 +43,13 @@ export function NewPrescriptionForm({
 
   const [patientId, setPatientId] = useState<string | null>(initialPatientId ?? null);
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
-  const [patientCpf, setPatientCpf] = useState(initialPatientCpf ? formatCPF(initialPatientCpf) : "");
-  const [patientPhone, setPatientPhone] = useState(initialPatientPhone ? formatBRPhoneLocal(initialPatientPhone) : "");
 
-  const [items, setItems] = useState<PrescriptionItem[]>([
-    { drug_name: "", dosage: "", instructions: "", generic_allowed: false, control_type: "comum" },
-  ]);
+  const [items, setItems] = useState<PrescriptionItem[]>([]);
   const [notes, setNotes] = useState("");
   const [templateId, setTemplateId] = useState("");
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cpfError = patientCpf.trim() && !isValidCPF(patientCpf) ? "CPF inválido." : null;
 
   const { signHash } = useAgent();
   const [showAgentSelector, setShowAgentSelector] = useState(false);
@@ -63,8 +58,6 @@ export function NewPrescriptionForm({
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
     setPatientName(s.name);
-    setPatientCpf(s.cpf ? formatCPF(s.cpf) : "");
-    setPatientPhone(s.phone ? formatBRPhoneLocal(s.phone) : "");
   }
 
   function handleSelectTemplate(id: string) {
@@ -80,14 +73,6 @@ export function NewPrescriptionForm({
     setNotes(template.notes_template ?? "");
   }
 
-  const notesPreview = notes.includes("{{")
-    ? resolveReasonSegments(notes, {
-        paciente_nome: patientName.trim(),
-        paciente_cpf: patientCpf.trim(),
-        data_emissao: formatBRDate(new Date().toISOString()),
-      })
-    : null;
-
   function goToCreated(prescription: Prescription) {
     if (onSuccess) {
       onSuccess(prescription);
@@ -100,11 +85,8 @@ export function NewPrescriptionForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!patientName.trim()) return;
     setError(null);
-    if (cpfError) {
-      setError(cpfError);
-      return;
-    }
     if (items.some((i) => i.control_type === "controlado_especial")) {
       setError(
         "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."
@@ -128,8 +110,6 @@ export function NewPrescriptionForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_name: patientName.trim(),
-          patient_cpf: patientCpf.trim() || undefined,
-          patient_phone: patientPhone.trim() ? toE164BR(patientPhone) : undefined,
           patient_id: patientId ?? undefined,
           items: items
             .filter((i) => i.drug_name.trim())
@@ -177,7 +157,7 @@ export function NewPrescriptionForm({
   const alerts = <>{error && <div className="error-box">{error}</div>}</>;
 
   const submitButton = (
-    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending || !!cpfError}>
+    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
       {sending ? "Emitindo…" : "Emitir prescrição"}
     </button>
   );
@@ -211,39 +191,6 @@ export function NewPrescriptionForm({
         hint={bare ? undefined : "Busca no cadastro de pacientes da clínica — se não encontrar, um cadastro novo é criado automaticamente ao emitir a prescrição."}
       />
 
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor="patientCpf" className={styles.label}>
-            CPF (opcional)
-          </label>
-          <input
-            id="patientCpf"
-            type="text"
-            inputMode="numeric"
-            className={styles.input}
-            value={patientCpf}
-            onChange={(e) => setPatientCpf(formatCPF(e.target.value))}
-            placeholder="000.000.000-00"
-            maxLength={14}
-          />
-          {cpfError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{cpfError}</div>}
-        </div>
-        <div className={styles.field}>
-          <label htmlFor="patientPhone" className={styles.label}>
-            WhatsApp (opcional)
-          </label>
-          <input
-            id="patientPhone"
-            type="text"
-            inputMode="numeric"
-            className={styles.input}
-            value={patientPhone}
-            onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
-            placeholder="(79) 99999-9999"
-          />
-        </div>
-      </div>
-
       <div className={styles.field}>
         <label className={styles.label}>Medicamentos</label>
         <PrescriptionItemsEditor items={items} onChange={setItems} />
@@ -261,16 +208,6 @@ export function NewPrescriptionForm({
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Ex.: retornar em caso de reação adversa…"
         />
-        <p className={styles.hint}>
-          Pode usar <code>{"{{paciente_nome}}"}</code>, <code>{"{{paciente_cpf}}"}</code> e <code>{"{{data_emissao}}"}</code> — esses trechos saem
-          em <strong>negrito</strong> no PDF final.
-        </p>
-        {notesPreview && (
-          <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", fontSize: 13.5 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase" }}>Prévia</p>
-            {notesPreview.map((seg, i) => (seg.variable ? <strong key={i}>{seg.text}</strong> : <span key={i}>{seg.text}</span>))}
-          </div>
-        )}
       </div>
     </>
   );

@@ -2,7 +2,7 @@ import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentSta
 import { AppointmentActions } from "@/components/AppointmentActions";
 import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";
 import { PatientAvatar } from "@/components/PatientAvatar";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatBRDate, formatBRDateTime, formatBRTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -21,9 +21,9 @@ const ACTOR_LABEL: Record<string, string> = {
 
 function detailRow(label: string, value: React.ReactNode) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "8px 0" }}>
       <span style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>{label}</span>
-      <span style={{ fontSize: 13.5, textAlign: "right" }}>{value}</span>
+      <span style={{ fontSize: 13.5, textAlign: "right", color: "var(--ink)" }}>{value}</span>
     </div>
   );
 }
@@ -69,23 +69,49 @@ export function AppointmentDetailBody({
           </div>
         </div>
         <div className={styles.panelBody}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, marginBottom: 4, borderBottom: "1px solid var(--line)" }}>
-            <PatientAvatar clinicId={clinicId} patientId={a.patient_id} name={a.patient_name} size={52} />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{a.patient_name}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 14, marginBottom: 8 }}>
+            <div
+                style={{ display: "flex", alignItems: "center", gap: 12, cursor: a.patient_id ? "pointer" : "default" }}
+                onClick={() => { if (a.patient_id) window.location.href = `/dashboard/pacientes/${a.patient_id}`; }}
+              >
+              <PatientAvatar clinicId={clinicId} patientId={a.patient_id} name={a.patient_name} size={52} />
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, textDecoration: a.patient_id ? "none" : undefined, transition: "color 0.15s" }}
+                  onMouseEnter={(e) => { if (a.patient_id) e.currentTarget.style.color = "var(--brand)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = ""; }}
+                >{a.patient_name}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+              </div>
+            </div>
+            
+            <div style={{ display: "flex", gap: 8 }}>
+              {/* Círculo de Data */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: "50%", background: "var(--surface-sunken)", color: "var(--ink)", flexShrink: 0 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>
+                  {formatBRDate(a.scheduled_at).substring(0, 5)}
+                </span>
+              </div>
+              {/* Círculo de Horário */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: "50%", background: "var(--surface-sunken)", color: "var(--ink)", flexShrink: 0 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>
+                  {formatBRTime(a.scheduled_at)}
+                </span>
+              </div>
+              {/* Círculo de Duração */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: "50%", background: "var(--surface-sunken)", color: "var(--ink)", flexShrink: 0 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>
+                  {a.duration_minutes} min
+                </span>
+              </div>
             </div>
           </div>
           {!a.patient_id && (
-            <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+            <div style={{ padding: "8px 0" }}>
               <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>
                 Ainda não é paciente cadastrado nesta clínica.
               </span>
             </div>
           )}
-          {detailRow("Profissional", a.professional_name)}
-          {detailRow("Data e horário", formatBRDateTime(a.scheduled_at, "medium"))}
-          {detailRow("Duração", `${a.duration_minutes} min`)}
           {a.return_due_date &&
             detailRow(
               "Retorno previsto",
@@ -109,6 +135,7 @@ export function AppointmentDetailBody({
               urgent={a.urgent}
               scheduledAt={a.scheduled_at}
               durationMinutes={a.duration_minutes}
+              hasPhone={!!a.patient_phone}
               onChanged={onChanged}
             />
           </div>

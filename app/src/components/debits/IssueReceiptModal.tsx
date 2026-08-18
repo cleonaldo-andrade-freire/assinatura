@@ -88,9 +88,6 @@ export function IssueReceiptModal({
       <div className={uiStyles.dialog} style={{ maxWidth: 480 }} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
           <h3 className={uiStyles.dialogTitle}>{issuedReceipt ? "Recibo emitido" : "Emitir recibo"}</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         {issuedReceipt ? (

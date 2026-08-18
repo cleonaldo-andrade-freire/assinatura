@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { RevokeDocumentButton } from "@/components/RevokeDocumentButton";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import type { CertificateStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -26,7 +27,27 @@ export function CertificateActions({
   const [retrying, setRetrying] = useState(false);
   const [resending, setResending] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+
+  async function handleDelete() {
+    setDeleteConfirmOpen(false);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/certificates/${certificateId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || data?.error || "Falha ao excluir o atestado.");
+        return;
+      }
+      push("Atestado excluído.", "success");
+      router.push("/dashboard/atestados");
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleCheckSignature() {
     setChecking(true);
@@ -44,15 +65,6 @@ export function CertificateActions({
     }
   }
 
-  // Enquanto aguarda a dentista confirmar no app Certisign, reconsulta
-  // periodicamente — o webhook é o caminho principal, isso é só pra não
-  // depender só dele (e não deixar a tela parada esperando indefinidamente).
-  useEffect(() => {
-    if (status !== "aguardando_assinatura") return;
-    const interval = setInterval(handleCheckSignature, 6000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
 
   async function handleRetry() {
     setRetrying(true);
@@ -123,6 +135,27 @@ export function CertificateActions({
       {status === "assinado" && !revoked && (
         <RevokeDocumentButton revokeUrl={`/api/clinics/${clinicId}/certificates/${certificateId}/revoke`} />
       )}
+      <button
+        type="button"
+        onClick={() => setDeleteConfirmOpen(true)}
+        disabled={deleting}
+        className={`${styles.btn} ${styles.btnGhost}`}
+        style={{ color: "var(--danger)" }}
+      >
+        {deleting ? "Excluindo…" : "Excluir"}
+      </button>
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title="Excluir este atestado?"
+        description="Remove o registro e o PDF definitivamente — essa ação não pode ser desfeita."
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        danger={true}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
+
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );

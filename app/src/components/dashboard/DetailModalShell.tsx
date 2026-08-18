@@ -52,16 +52,15 @@ export function DetailModalShell({
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Sem botão de fechar — Esc (ou clicar fora) já fecha; a barra de
+           ações sobe pra essa mesma linha do título, ganhando o espaço. */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <div>
             <h3 className={uiStyles.dialogTitle}>{title}</h3>
             {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>{subtitle}</p>}
           </div>
-          <button type="button" className={uiStyles.toastClose} onClick={() => router.back()} aria-label="Fechar">
-            ×
-          </button>
+          {actions}
         </div>
-        {actions && <div className={uiStyles.dialogActionsBar}>{actions}</div>}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>
           {children}
         </div>

@@ -15,6 +15,10 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- Ícone do executável (Explorer/taskbar) — o mesmo é extraído em
+         runtime pro ícone da bandeja, ver CreateTrayIcon() em Program.cs. -->
+    <ApplicationIcon>agent.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

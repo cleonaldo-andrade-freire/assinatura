@@ -152,9 +152,6 @@ export function EvolutionFormModal({
       <div className={`${uiStyles.dialog} ${uiStyles.dialogXWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>{initial ? "Editar evolução" : "Nova evolução"}</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>

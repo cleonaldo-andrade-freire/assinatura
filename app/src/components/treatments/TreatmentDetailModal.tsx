@@ -37,14 +37,12 @@ export function TreatmentDetailModal({
   clinicId,
   treatment,
   onSaved,
-  onDeleted,
 }: {
   open: boolean;
   onClose: () => void;
   clinicId: string;
   treatment: Treatment | null;
   onSaved: (updated: Treatment) => void;
-  onDeleted: (id: string) => void;
 }) {
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
@@ -55,12 +53,11 @@ export function TreatmentDetailModal({
   const [priceTableId, setPriceTableId] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
   const [customName, setCustomName] = useState("");
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [showTreatmentSuggestions, setShowTreatmentSuggestions] = useState(false);
   const [price, setPrice] = useState("");
   const [toothSelection, setToothSelection] = useState<string[]>([]);
   const [savingFields, setSavingFields] = useState(false);
-
-  const [confirmDeleteTreatmentOpen, setConfirmDeleteTreatmentOpen] = useState(false);
-  const [deletingTreatment, setDeletingTreatment] = useState(false);
 
   const [evolutions, setEvolutions] = useState<TreatmentEvolution[]>([]);
   const [loadingEvolutions, setLoadingEvolutions] = useState(false);
@@ -78,7 +75,7 @@ export function TreatmentDetailModal({
 
   // Suprime o Esc daqui enquanto algo aninhado por cima (evolução ou um
   // ConfirmDialog) já trata o próprio Esc — senão os dois fechariam juntos.
-  useEscapeToClose(onClose, open && !evolutionModalOpen && !confirmDeleteTreatmentOpen && confirmDeleteEvolutionId === null);
+  useEscapeToClose(onClose, open && !evolutionModalOpen && confirmDeleteEvolutionId === null);
 
   useEffect(() => {
     if (!open) return;
@@ -101,6 +98,7 @@ export function TreatmentDetailModal({
     setPriceTableId(table?.id ?? "");
     setTreatmentId(item?.id ?? (table ? CUSTOM_TREATMENT_VALUE : ""));
     setCustomName(item ? "" : treatment.treatment_name);
+    setTreatmentSearch(item ? treatmentOptionLabel(item) : treatment.treatment_name);
     setPrice(formatMoneyDisplay(treatment.price));
     setToothSelection(treatment.tooth_region ? [treatment.tooth_region] : []);
   }, [open, treatment, catalog]);
@@ -154,24 +152,6 @@ export function TreatmentDetailModal({
       router.refresh();
     } finally {
       setSavingFields(false);
-    }
-  }
-
-  async function handleDeleteTreatment() {
-    if (!treatment) return;
-    setDeletingTreatment(true);
-    try {
-      const res = await fetch(`/api/clinics/${clinicId}/treatments/${treatment.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        push("Falha ao excluir. Tenta de novo.");
-        return;
-      }
-      onDeleted(treatment.id);
-      setConfirmDeleteTreatmentOpen(false);
-      onClose();
-      router.refresh();
-    } finally {
-      setDeletingTreatment(false);
     }
   }
 
@@ -252,14 +232,11 @@ export function TreatmentDetailModal({
             <div className={`${uiStyles.dialog} ${uiStyles.dialogExtraWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
                 <h3 className={uiStyles.dialogTitle}>Editar tratamento</h3>
-                <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-                  ×
-                </button>
               </div>
 
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20, paddingRight: 6 }}>
                 <div>
-                  <div className={styles.formRow}>
+                  <div className={styles.formRow} style={{ gridTemplateColumns: "140px 1fr 140px", alignItems: "flex-start" }}>
                     <div className={styles.field}>
                       <label className={styles.label}>Plano*</label>
                       <select
@@ -279,7 +256,113 @@ export function TreatmentDetailModal({
                         ))}
                       </select>
                     </div>
-                    <div className={styles.field} style={{ width: 140 }}>
+
+                    <div className={styles.field} style={{ position: "relative" }}>
+                      <label className={styles.label}>Tratamento*</label>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={treatmentSearch}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setTreatmentSearch(v);
+                          setShowTreatmentSuggestions(true);
+                          if (v !== selectedTable?.items.find((i) => i.id === treatmentId)?.name) {
+                            setTreatmentId("");
+                            setPrice("");
+                          }
+                        }}
+                        onFocus={() => setShowTreatmentSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowTreatmentSuggestions(false), 150)}
+                        disabled={!priceTableId}
+                        placeholder="Digite para buscar…"
+                      />
+                      {showTreatmentSuggestions && priceTableId && (
+                        <ul
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            zIndex: 5,
+                            margin: "4px 0 0",
+                            padding: 4,
+                            listStyle: "none",
+                            background: "var(--surface)",
+                            border: "1.5px solid var(--line)",
+                            borderRadius: "var(--radius-sm)",
+                            boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                            maxHeight: 220,
+                            overflowY: "auto",
+                          }}
+                        >
+                          {selectedTable && sortFavoritesFirst(selectedTable.items)
+                            .filter((i) => treatmentOptionLabel(i).toLowerCase().includes(treatmentSearch.toLowerCase()))
+                            .map((i) => (
+                              <li key={i.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => {
+                                    setTreatmentId(i.id);
+                                    setTreatmentSearch(treatmentOptionLabel(i));
+                                    setPrice(formatMoneyDisplay(i.price));
+                                    setShowTreatmentSuggestions(false);
+                                  }}
+                                  style={{
+                                    display: "block",
+                                    width: "100%",
+                                    textAlign: "left",
+                                    padding: "8px 10px",
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    borderRadius: 6,
+                                    fontSize: 13.5,
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                                >
+                                  {treatmentOptionLabel(i)}
+                                </button>
+                              </li>
+                            ))}
+                          {treatmentSearch.trim().length > 0 && (
+                            <li key="custom">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setTreatmentId(CUSTOM_TREATMENT_VALUE);
+                                  setCustomName(treatmentSearch.trim());
+                                  setPrice("");
+                                  setShowTreatmentSuggestions(false);
+                                }}
+                                style={{
+                                  display: "block",
+                                  width: "100%",
+                                  textAlign: "left",
+                                  padding: "8px 10px",
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  borderRadius: 6,
+                                  fontSize: 13.5,
+                                  color: "var(--brand)",
+                                  fontWeight: 600,
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-tint)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                              >
+                                + Tratamento avulso: "{treatmentSearch}"
+                              </button>
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className={styles.field}>
                       <label className={styles.label}>Valor*</label>
                       <input
                         type="text"
@@ -289,31 +372,6 @@ export function TreatmentDetailModal({
                         onChange={(e) => setPrice(formatMoneyInput(e.target.value))}
                       />
                     </div>
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>Tratamento*</label>
-                    <select
-                      className={styles.select}
-                      value={treatmentId}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setTreatmentId(v);
-                        if (v !== CUSTOM_TREATMENT_VALUE) {
-                          const item = selectedTable?.items.find((i) => i.id === v);
-                          if (item) setPrice(formatMoneyDisplay(item.price));
-                        }
-                      }}
-                      disabled={!priceTableId}
-                    >
-                      <option value="">Selecione…</option>
-                      {selectedTable && sortFavoritesFirst(selectedTable.items).map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {treatmentOptionLabel(i)}
-                        </option>
-                      ))}
-                      <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
-                    </select>
                   </div>
 
                   {isCustomTreatment && (
@@ -330,14 +388,6 @@ export function TreatmentDetailModal({
                   <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
                     <button type="button" disabled={savingFields} onClick={handleSaveFields} className={`${styles.btn} ${styles.btnPrimary}`}>
                       {savingFields ? "Salvando…" : "Salvar"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteTreatmentOpen(true)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)" }}
-                    >
-                      Excluir tratamento
                     </button>
                   </div>
                 </div>
@@ -452,18 +502,6 @@ export function TreatmentDetailModal({
               })()}
               index={lightboxIndex}
               onIndexChange={setLightboxIndex}
-            />
-
-            <ConfirmDialog
-              open={confirmDeleteTreatmentOpen}
-              title="Excluir tratamento"
-              message="Isso remove o tratamento e as evoluções registradas nele da ficha do paciente. O orçamento que gerou ele não é afetado."
-              confirmLabel="Excluir"
-              cancelLabel="Cancelar"
-              danger
-              loading={deletingTreatment}
-              onConfirm={handleDeleteTreatment}
-              onCancel={() => setConfirmDeleteTreatmentOpen(false)}
             />
 
             <ConfirmDialog

@@ -39,9 +39,6 @@ export function NewProsthesisOrderModal({ clinicId }: { clinicId: string }) {
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
                 <h3 className={uiStyles.dialogTitle}>Novo serviço de prótese</h3>
-                <button type="button" className={uiStyles.toastClose} onClick={() => setOpen(false)} aria-label="Fechar">
-                  ×
-                </button>
               </div>
               <NewProsthesisOrderForm bare clinicId={clinicId} onSuccess={() => setOpen(false)} />
             </div>

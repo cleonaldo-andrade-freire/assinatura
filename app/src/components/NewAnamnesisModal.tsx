@@ -48,9 +48,6 @@ export function NewAnamnesisModal({
       <div className={uiStyles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
           <h3 className={uiStyles.dialogTitle}>Nova anamnese</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         <NewAnamnesisForm

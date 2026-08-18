@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClinicProfileForm } from "@/components/ClinicProfileForm";
 import { LogoUpload } from "@/components/LogoUpload";
@@ -34,8 +34,9 @@ const SUBSCRIPTION_STATUS_CLASS: Record<string, string> = {
 };
 
 export default async function SettingsPage({ searchParams }: { searchParams: { success?: string, error?: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  const { clinic, role } = auth;
 
   let invoiceUrl: string | null = null;
   let payments: AsaasPayment[] = [];
@@ -79,6 +80,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
       clinicLogoUrl={clinic.logo_url}
       title="Configurações"
       subtitle="Dados do responsável técnico, WhatsApp, identidade visual e assinatura da clínica"
+      role={role}
     >
       {searchParams.success && (
         <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderLeft: "4px solid var(--brand)", borderRadius: 8, marginBottom: 24 }}>
@@ -294,6 +296,23 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             />
           </div>
         </div>
+      {/* Equipe — somente owner */}
+      {role === "owner" && (
+        <div className={styles.panel}>
+          <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p className={styles.panelHeaderTitle}>Equipe</p>
+            <Link href="/dashboard/configuracoes/equipe" className={`${styles.btn} ${styles.btnGhost}`} style={{ fontSize: 13 }}>
+              Gerenciar membros
+            </Link>
+          </div>
+          <div className={styles.panelBody}>
+            <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: 0 }}>
+              Convide atendentes e colaboradores para acessar o sistema com permissões diferenciadas.
+            </p>
+          </div>
+        </div>
+      )}
+
       </div>
     </ClinicShell>
   );

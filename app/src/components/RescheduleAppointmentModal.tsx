@@ -66,9 +66,6 @@ export function RescheduleAppointmentModal({
       <div className={uiStyles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
           <h3 className={uiStyles.dialogTitle}>Remarcar agendamento</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         <form onSubmit={handleSubmit}>

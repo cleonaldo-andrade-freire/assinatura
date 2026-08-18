@@ -49,7 +49,18 @@ export function PatientAvatar({
           flexShrink: 0,
         }}
       >
-        {fallbackLabel}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ width: size * 0.55, height: size * 0.55, opacity: 0.7 }}
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
       </span>
     );
   }
@@ -57,6 +68,11 @@ export function PatientAvatar({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={(el) => {
+        if (el && el.complete && el.naturalWidth === 0) {
+          setFailed(true);
+        }
+      }}
       src={`/api/clinics/${clinicId}/patients/${patientId}/photo`}
       alt=""
       onError={() => setFailed(true)}

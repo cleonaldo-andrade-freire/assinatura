@@ -56,7 +56,10 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
     return map;
   }, [filteredOrders]);
 
-  const visibleStages = showRealizado ? PROSTHESIS_STAGES : PROSTHESIS_STAGES.filter((s) => s !== "realizado");
+  // A coluna "Realizado" fica sempre visível (mesmo comportamento das
+  // outras) — só os cards de paciente dentro dela é que somem quando o
+  // toggle está desmarcado, pra não perder o board de referência.
+  const visibleStages = PROSTHESIS_STAGES;
   const hiddenRealizadoCount = showRealizado ? 0 : byStage.get("realizado")?.length ?? 0;
 
   async function handleDrop(orderId: string, stage: ProsthesisStage) {
@@ -115,6 +118,8 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
       <div className={styles.prosthesisBoard}>
         {visibleStages.map((stage) => {
           const items = byStage.get(stage) ?? [];
+          const isHiddenRealizado = stage === "realizado" && !showRealizado;
+          const displayItems = isHiddenRealizado ? [] : items;
           return (
             <div
               key={stage}
@@ -149,7 +154,7 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
               </div>
 
               <div className={styles.prosthesisColumnBody}>
-                {items.map((o) => (
+                {displayItems.map((o) => (
                   <Link
                     key={o.id}
                     href={`/dashboard/proteses/${o.id}`}
@@ -179,7 +184,13 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
                     </div>
                   </Link>
                 ))}
-                {items.length === 0 && <p className={styles.prosthesisEmptyColumn}>Nada por aqui</p>}
+                {isHiddenRealizado && items.length > 0 ? (
+                  <p className={styles.prosthesisEmptyColumn}>
+                    {items.length} oculto{items.length > 1 ? "s" : ""} — marque "Mostrar realizados" pra ver
+                  </p>
+                ) : (
+                  displayItems.length === 0 && <p className={styles.prosthesisEmptyColumn}>Nada por aqui</p>
+                )}
               </div>
             </div>
           );

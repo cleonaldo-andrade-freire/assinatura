@@ -45,6 +45,7 @@ export default async function AppointmentDetailModal({ params }: { params: { id:
           urgent={a.urgent}
           scheduledAt={a.scheduled_at}
           durationMinutes={a.duration_minutes}
+          hasPhone={!!a.patient_phone}
         />
       }
     >

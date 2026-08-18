@@ -86,6 +86,8 @@ export function NewBudgetModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState<"draft" | "approve" | null>(null);
 
+  const [activeTab, setActiveTab] = useState<"dados" | "valores">("dados");
+
   const canInstallment = PARCELABLE_METHODS.has(paymentMethod);
 
   // Meio de pagamento decide se parcelamento é uma opção — trocar pra um
@@ -161,6 +163,7 @@ export function NewBudgetModal({
     setDownPaymentValue("");
     setBalanceInstallments(1);
     setNotes("");
+    setActiveTab("dados");
   }
 
   function handleClose() {
@@ -259,15 +262,31 @@ export function NewBudgetModal({
   return createPortal(
     <div className={uiStyles.overlay} onClick={handleClose}>
       <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Novo orçamento</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={handleClose} aria-label="Fechar">
-            ×
+        </div>
+
+        <div className={nb.tabs}>
+          <button
+            type="button"
+            className={`${nb.tabBtn} ${activeTab === "dados" ? nb.tabBtnActive : ""}`}
+            onClick={() => setActiveTab("dados")}
+          >
+            Tratamentos
+          </button>
+          <button
+            type="button"
+            className={`${nb.tabBtn} ${activeTab === "valores" ? nb.tabBtnActive : ""}`}
+            onClick={() => setActiveTab("valores")}
+          >
+            Valores e Pagamento
           </button>
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 6 }}>
-          <div className={nb.section}>
+          {activeTab === "dados" && (
+            <>
+              <div className={nb.section}>
             <p className={nb.sectionTitle}>Dados do orçamento</p>
             <div className={styles.formRow} style={{ marginBottom: 0 }}>
               <div className={styles.field} style={{ flex: 2 }}>
@@ -311,11 +330,14 @@ export function NewBudgetModal({
               </div>
             )}
 
-            <button type="button" onClick={openAddTreatment} className={nb.addTreatmentBtn}>
-              + Adicionar tratamento
-            </button>
-          </div>
+              <button type="button" onClick={openAddTreatment} className={nb.addTreatmentBtn}>
+                + Adicionar tratamento
+              </button>
+            </div>
+          </>
+        )}
 
+        {activeTab === "valores" && (
           <div className={nb.section}>
             <p className={nb.sectionTitle}>Valores e forma de pagamento</p>
 
@@ -450,11 +472,12 @@ export function NewBudgetModal({
 
             <hr className={nb.sectionDivider} />
 
-            <div className={styles.field} style={{ marginBottom: 0 }}>
-              <label className={styles.label}>Observações</label>
-              <textarea className={styles.input} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <div className={styles.field} style={{ marginBottom: 0 }}>
+                <label className={styles.label}>Observações</label>
+                <textarea className={styles.input} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)", flexShrink: 0 }}>

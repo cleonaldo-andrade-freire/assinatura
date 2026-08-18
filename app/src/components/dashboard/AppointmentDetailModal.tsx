@@ -58,12 +58,10 @@ export function AppointmentDetailModal({
       <div className={`${uiStyles.dialog} ${uiStyles.dialogTall}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>Agendamento</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
-        </div>
-        {appointment && (
-          <div className={uiStyles.dialogActionsBar}>
+          {/* Sem botão de fechar — todo modal aqui já fecha com Esc
+             (useEscapeToClose acima) ou clicando fora; a barra de ações sobe
+             pra essa mesma linha do título, ganhando o espaço que sobrou. */}
+          {appointment && (
             <AppointmentActions
               clinicId={clinicId}
               appointmentId={appointment.id}
@@ -72,10 +70,11 @@ export function AppointmentDetailModal({
               urgent={appointment.urgent}
               scheduledAt={appointment.scheduled_at}
               durationMinutes={appointment.duration_minutes}
+              hasPhone={!!appointment.patient_phone}
               onChanged={load}
             />
-          </div>
-        )}
+          )}
+        </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 6 }}>
           {loading && !appointment ? (
             <p style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>Carregando…</p>

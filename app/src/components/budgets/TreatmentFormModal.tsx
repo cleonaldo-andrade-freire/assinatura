@@ -53,6 +53,8 @@ export function TreatmentFormModal({
   const [priceTableId, setPriceTableId] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
   const [customName, setCustomName] = useState("");
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [showTreatmentSuggestions, setShowTreatmentSuggestions] = useState(false);
   const [price, setPrice] = useState("");
   const [toothSelection, setToothSelection] = useState<string[]>([]);
 
@@ -62,12 +64,14 @@ export function TreatmentFormModal({
       setPriceTableId(initial.priceTableId ?? "");
       setTreatmentId(initial.priceTableItemId ?? (initial.priceTableId ? CUSTOM_TREATMENT_VALUE : ""));
       setCustomName(initial.priceTableItemId ? "" : initial.treatmentName);
+      setTreatmentSearch(initial.treatmentName);
       setPrice(formatMoneyDisplay(initial.price));
       setToothSelection(initial.toothRegion ? [initial.toothRegion] : []);
     } else {
       setPriceTableId("");
       setTreatmentId("");
       setCustomName("");
+      setTreatmentSearch("");
       setPrice("");
       setToothSelection([]);
     }
@@ -116,13 +120,10 @@ export function TreatmentFormModal({
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
           <h3 className={uiStyles.dialogTitle}>{initial ? "Editar tratamento" : "Adicionar tratamento"}</h3>
-          <button type="button" className={uiStyles.toastClose} onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 6 }}>
-          <div className={styles.formRow}>
+          <div className={styles.formRow} style={{ gridTemplateColumns: "140px 1fr 110px", alignItems: "flex-start" }}>
             <div className={styles.field}>
               <label className={styles.label}>Plano*</label>
               <select
@@ -143,7 +144,114 @@ export function TreatmentFormModal({
                 ))}
               </select>
             </div>
-            <div className={styles.field} style={{ width: 140 }}>
+
+            <div className={styles.field} style={{ position: "relative" }}>
+              <label className={styles.label}>Tratamento*</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={treatmentSearch}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setTreatmentSearch(v);
+                  setShowTreatmentSuggestions(true);
+                  // Clear selected id when typing so it's fresh
+                  if (v !== selectedTable?.items.find((i) => i.id === treatmentId)?.name) {
+                    setTreatmentId("");
+                    setPrice("");
+                  }
+                }}
+                onFocus={() => setShowTreatmentSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowTreatmentSuggestions(false), 150)}
+                disabled={!priceTableId}
+                placeholder="Digite para buscar…"
+              />
+              {showTreatmentSuggestions && priceTableId && (
+                <ul
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    zIndex: 5,
+                    margin: "4px 0 0",
+                    padding: 4,
+                    listStyle: "none",
+                    background: "var(--surface)",
+                    border: "1.5px solid var(--line)",
+                    borderRadius: "var(--radius-sm)",
+                    boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                    maxHeight: 220,
+                    overflowY: "auto",
+                  }}
+                >
+                  {selectedTable && sortFavoritesFirst(selectedTable.items)
+                    .filter((i) => treatmentOptionLabel(i).toLowerCase().includes(treatmentSearch.toLowerCase()))
+                    .map((i) => (
+                      <li key={i.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setTreatmentId(i.id);
+                            setTreatmentSearch(treatmentOptionLabel(i));
+                            setPrice(formatMoneyDisplay(i.price));
+                            setShowTreatmentSuggestions(false);
+                          }}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "8px 10px",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            borderRadius: 6,
+                            fontSize: 13.5,
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        >
+                          {treatmentOptionLabel(i)}
+                        </button>
+                      </li>
+                    ))}
+                  {treatmentSearch.trim().length > 0 && (
+                    <li key="custom">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setTreatmentId(CUSTOM_TREATMENT_VALUE);
+                          setCustomName(treatmentSearch.trim());
+                          setPrice("");
+                          setShowTreatmentSuggestions(false);
+                        }}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          borderRadius: 6,
+                          fontSize: 13.5,
+                          color: "var(--brand)",
+                          fontWeight: 600,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-tint)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      >
+                        + Tratamento avulso: "{treatmentSearch}"
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+
+            <div className={styles.field}>
               <label className={styles.label}>Valor*</label>
               <input
                 type="text"
@@ -155,43 +263,6 @@ export function TreatmentFormModal({
               />
             </div>
           </div>
-
-          {/* Sozinho na própria linha, de propósito — um select só mostra o
-              texto que couber na própria largura; ao lado de outros campos
-              (Plano/Valor) o nome do tratamento cortava. */}
-          <div className={styles.field}>
-            <label className={styles.label}>Tratamento*</label>
-            <select
-              className={styles.select}
-              value={treatmentId}
-              onChange={(e) => {
-                const v = e.target.value;
-                setTreatmentId(v);
-                if (v === CUSTOM_TREATMENT_VALUE) {
-                  setPrice("");
-                } else {
-                  const item = selectedTable?.items.find((i) => i.id === v);
-                  setPrice(item ? formatMoneyDisplay(item.price) : "");
-                }
-              }}
-              disabled={!priceTableId}
-            >
-              <option value="">Selecione…</option>
-              {selectedTable && sortFavoritesFirst(selectedTable.items).map((i) => (
-                <option key={i.id} value={i.id}>
-                  {treatmentOptionLabel(i)}
-                </option>
-              ))}
-              <option value={CUSTOM_TREATMENT_VALUE}>+ Tratamento avulso (digitar nome)</option>
-            </select>
-          </div>
-
-          {isCustomTreatment && (
-            <div className={styles.field}>
-              <label className={styles.label}>Nome do tratamento*</label>
-              <input type="text" className={styles.input} value={customName} onChange={(e) => setCustomName(e.target.value)} />
-            </div>
-          )}
 
           <ToothRegionSelect value={toothSelection} onChange={setToothSelection} />
         </div>

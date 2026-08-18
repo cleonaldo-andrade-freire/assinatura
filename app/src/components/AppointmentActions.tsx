@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RescheduleAppointmentModal } from "@/components/RescheduleAppointmentModal";
+import { SendAppointmentMessageModal } from "@/components/SendAppointmentMessageModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -15,6 +17,7 @@ export function AppointmentActions({
   urgent,
   scheduledAt,
   durationMinutes,
+  hasPhone,
   onChanged,
 }: {
   clinicId: string;
@@ -26,6 +29,8 @@ export function AppointmentActions({
   urgent: boolean;
   scheduledAt: string;
   durationMinutes: number;
+  /** Sem telefone não tem pra onde mandar WhatsApp — esconde confirmação e mensagem livre. */
+  hasPhone: boolean;
   /** Além do router.refresh() (que só afeta Server Components ao redor), o
    * modal de detalhe aberto fora da agenda busca os dados por fetch — sem
    * isso, status/urgência ficavam desatualizados ali depois de uma ação. */
@@ -34,7 +39,11 @@ export function AppointmentActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [resending, setResending] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
   async function handleResend() {
@@ -49,6 +58,26 @@ export function AppointmentActions({
       push("Mensagem de confirmação enviada por WhatsApp.", "success");
     } finally {
       setResending(false);
+    }
+  }
+
+  async function handleSendMessage(message: string) {
+    setSendingMessage(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}/send-message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.error === "send_failed" ? "Falha ao enviar — confira se o WhatsApp da clínica está conectado." : "Falha ao enviar a mensagem.");
+        return;
+      }
+      push("Mensagem enviada por WhatsApp.", "success");
+      setShowMessageModal(false);
+    } finally {
+      setSendingMessage(false);
     }
   }
 
@@ -75,8 +104,8 @@ export function AppointmentActions({
   }
 
   async function handleDelete() {
-    if (!window.confirm("Excluir este agendamento? Essa ação não pode ser desfeita.")) return;
-    setBusy(true);
+    setDeleteConfirmOpen(false);
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
@@ -89,7 +118,7 @@ export function AppointmentActions({
       router.refresh();
       onChanged?.();
     } finally {
-      setBusy(false);
+      setIsDeleting(false);
     }
   }
 
@@ -110,8 +139,9 @@ export function AppointmentActions({
 
   return (
     <>
-      {!isTerminal && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {!isTerminal && (
+          <>
           <button
             type="button"
             disabled={busy}
@@ -228,17 +258,38 @@ export function AppointmentActions({
               <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
-        </div>
-      )}
+          </>
+        )}
 
-      {/* Exclusão definitiva (hard delete) — temporário, só pra facilitar
-         limpeza de agendamentos de teste; diferente de "Cancelar", que só
-         muda o status. */}
-      <div style={{ display: "flex", marginTop: isTerminal ? 0 : 8 }}>
+        {hasPhone && (
+          <button
+            type="button"
+            disabled={sendingMessage}
+            onClick={() => setShowMessageModal(true)}
+            className={styles.iconActionBtn}
+            title="Enviar mensagem ao paciente"
+            aria-label="Enviar mensagem ao paciente"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 5.5h16a1 1 0 011 1V16a1 1 0 01-1 1H9l-4.5 4V17H4a1 1 0 01-1-1V6.5a1 1 0 011-1z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinejoin="round"
+              />
+              <path d="M8 10h8M8 13h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+
+        {/* Exclusão definitiva (hard delete) — temporário, só pra facilitar
+           limpeza de agendamentos de teste; diferente de "Cancelar", que só
+           muda o status. Fica na mesma linha dos outros ícones, sempre
+           visível independente do status. */}
         <button
           type="button"
-          disabled={busy}
-          onClick={handleDelete}
+          disabled={busy || isDeleting}
+          onClick={() => setDeleteConfirmOpen(true)}
           className={styles.iconActionBtn}
           title="Excluir agendamento"
           aria-label="Excluir agendamento"
@@ -263,6 +314,13 @@ export function AppointmentActions({
         durationMinutes={durationMinutes}
         saving={busy}
         onConfirm={handleReschedule}
+      />
+
+      <SendAppointmentMessageModal
+        open={showMessageModal}
+        onClose={() => setShowMessageModal(false)}
+        sending={sendingMessage}
+        onConfirm={handleSendMessage}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />

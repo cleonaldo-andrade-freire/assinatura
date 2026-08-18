@@ -7,7 +7,7 @@ import { PatientPhotoUpload } from "@/components/PatientPhotoUpload";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-export function PatientForm({ clinicId, patient }: { clinicId: string; patient?: Patient }) {
+export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicId: string; patient?: Patient, onSuccess?: () => void, isModal?: boolean }) {
   const router = useRouter();
   const [name, setName] = useState(patient?.name ?? "");
   const [cpf, setCpf] = useState(patient?.cpf ? formatCPF(patient.cpf) : "");
@@ -41,23 +41,26 @@ export function PatientForm({ clinicId, patient }: { clinicId: string; patient?:
         setError(data.message || data.error || "Falha ao salvar o paciente.");
         return;
       }
-      router.push("/dashboard/pacientes");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/dashboard/pacientes");
+      }
       router.refresh();
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <div className={styles.panel}>
-      <div className={styles.panelBody}>
-        {error && <div className="error-box">{error}</div>}
+  const formContent = (
+    <>
+      {error && <div className="error-box">{error}</div>}
 
-        {patient && (
-          <PatientPhotoUpload clinicId={clinicId} patientId={patient.id} hasPhoto={!!patient.photo_storage_key} />
-        )}
+      {patient && (
+        <PatientPhotoUpload clinicId={clinicId} patientId={patient.id} hasPhoto={!!patient.photo_storage_key} />
+      )}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
             <label htmlFor="patientName" className={styles.label}>
               Nome completo
@@ -124,6 +127,17 @@ export function PatientForm({ clinicId, patient }: { clinicId: string; patient?:
             </button>
           </div>
         </form>
+    </>
+  );
+
+  if (isModal) {
+    return formContent;
+  }
+
+  return (
+    <div className={styles.panel}>
+      <div className={styles.panelBody}>
+        {formContent}
       </div>
     </div>
   );

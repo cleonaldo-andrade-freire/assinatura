@@ -6,6 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, NeedsFollowUpBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
 import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
+import { AgendaDetailFromQuery } from "@/components/dashboard/AgendaDetailFromQuery";
 import { AgendaLegend } from "@/components/AgendaLegend";
 import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import { PatientAvatar } from "@/components/PatientAvatar";
@@ -39,7 +40,7 @@ function brDisplay(dateStr: string): string {
   return dateStr.split("-").reverse().slice(0, 2).join("/");
 }
 
-export default async function AgendaPage({ searchParams }: { searchParams: { date?: string; view?: string } }) {
+export default async function AgendaPage({ searchParams }: { searchParams: { date?: string; view?: string; detail?: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic) redirect("/login");
 
@@ -141,6 +142,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
       }
     >
       <AgendaRealtimeRefresh clinicId={clinic.id} />
+      <AgendaDetailFromQuery clinicId={clinic.id} />
 
       {/* ---- diária, só visível no celular ---- */}
       <div className={styles.agendaDayView}>
