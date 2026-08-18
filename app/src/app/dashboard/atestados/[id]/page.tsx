@@ -9,6 +9,7 @@ import { formatBRPhoneLocal } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatValidationCode } from "@/lib/validationCode";
 import type { Certificate } from "@/lib/database.types";
+import { isRealSignatureProvider, signatureProviderLabel } from "@/lib/signature/providerLabel";
 import styles from "@/styles/shell.module.css";
 
 function detailRow(label: string, value: React.ReactNode) {
@@ -114,6 +115,20 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
                 sozinha quando ela confirmar.
               </div>
             ) : null
+          ) : c.status === "assinado" && isRealSignatureProvider(c.signature_provider) ? (
+            <div
+              style={{
+                background: "#e3f3e6",
+                border: "1px solid #b8ddc0",
+                color: "#1e5e2f",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 14px",
+                fontSize: 13.5,
+                marginBottom: 16,
+              }}
+            >
+              ✅ Assinado digitalmente com {signatureProviderLabel(c.signature_provider)}.
+            </div>
           ) : (
             <div
               style={{

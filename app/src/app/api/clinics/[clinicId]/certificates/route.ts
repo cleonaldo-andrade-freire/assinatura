@@ -21,6 +21,7 @@ const bodySchema = z.object({
   reason: z.string().min(1),
   rest_days: z.number().int().min(0),
   starts_on: z.string().min(1),
+  signerCertificatePem: z.string().optional(),
 });
 
 /** Lista os atestados da clínica logada. RLS já garante que só vem o que é dela. */
@@ -93,6 +94,11 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "insert_failed", message: error?.message }, { status: 500 });
   }
 
-  const issued = await issueCertificate(certificate.id);
-  return NextResponse.json({ certificate: issued }, { status: 201 });
+  try {
+    const issued = await issueCertificate(certificate.id, input.signerCertificatePem);
+    return NextResponse.json({ certificate: issued }, { status: 201 });
+  } catch (err: any) {
+    console.error("Erro no issueCertificate:", err);
+    return NextResponse.json({ error: "issue_certificate_failed", message: err.message, stack: err.stack }, { status: 500 });
+  }
 }

@@ -17,7 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * app) — quem completa é `finalizeCertificateSignature`, chamado pelo poller
  * (`app/api/cron/check-signatures`).
  */
-export async function issueCertificate(certificateId: string): Promise<Certificate> {
+export async function issueCertificate(certificateId: string, signerCertificatePem?: string): Promise<Certificate> {
   const supabase = createSupabaseAdminClient();
 
   const { data: certificate } = await supabase
@@ -66,6 +66,7 @@ export async function issueCertificate(certificateId: string): Promise<Certifica
     signerDocument: `CRO ${certificate.dentist_cro}/${certificate.dentist_cro_uf}`,
     signerCpf: (clinic as Clinic).dentist_cpf ?? "",
     signerEmail: (clinic as Clinic).dentist_email ?? "",
+    signerCertificatePem
   });
 
   if (result.status === "falha") {
@@ -91,6 +92,19 @@ export async function issueCertificate(certificateId: string): Promise<Certifica
       .select("*")
       .single();
     return updated as Certificate;
+  }
+
+  if (result.status === "external_signing") {
+    // Retornamos o objeto com um status temporário ou adicionamos o hash em um campo transiente
+    // A API Next.js precisará repassar o `signatureSessionId` e `hashToSignBase64` pro frontend.
+    return {
+      ...certificate,
+      status: "aguardando_assinatura",
+      _externalSigning: {
+        hashToSignBase64: result.hashToSignBase64,
+        signatureSessionId: result.signatureSessionId
+      }
+    } as any;
   }
 
   return finishCertificateSignature(
@@ -245,4 +259,43 @@ async function finishCertificateSignature(
   }
 
   return finalCertificate;
+}
+
+export async function finishCertificateExternalSignature(certificateId: string, signatureSessionId: string, signatureBase64: string): Promise<Certificate> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: certificate } = await supabase
+    .from("certificates")
+    .select("*")
+    .eq("id", certificateId)
+    .single();
+  if (!certificate) throw new Error(`Atestado ${certificateId} não encontrado.`);
+
+  const { data: clinic } = await supabase.from("clinics").select("*").eq("id", certificate.clinic_id).single();
+  if (!clinic) throw new Error(`Clínica ${certificate.clinic_id} não encontrada.`);
+
+  const provider = getSignatureProvider();
+  if (!provider.completeExternalSignature) {
+    throw new Error("O provedor de assinatura configurado não suporta assinatura externa (local agent).");
+  }
+
+  const result = await provider.completeExternalSignature(signatureSessionId, signatureBase64);
+
+  if (result.status === "falha") {
+    throw new Error(result.errorMessage);
+  }
+
+  if (result.status !== "assinado") {
+    throw new Error("A finalização da assinatura não retornou o PDF assinado.");
+  }
+
+  return finishCertificateSignature(
+    supabase,
+    certificateId,
+    clinic as Clinic,
+    provider.name,
+    result.providerDocumentId,
+    result.signedPdfBytes,
+    result.signedAt
+  );
 }

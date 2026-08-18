@@ -134,5 +134,5 @@ export async function buildCertificatePdf(
     await drawValidationFooter(doc, page, font, bold, MARGIN, validationUrl, certificate.validation_code);
   }
 
-  return doc.save();
+  return doc.save({ useObjectStreams: false });
 }

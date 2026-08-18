@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- O suporte a Windows forms / OS Platform é necessário para CryptoAPI avançado se quisermos mostrar UI, mas net8.0-windows já habilita as extensões baseadas em CAPI/CNG de modo mais amplo -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WinExe (não Exe): roda como ícone de bandeja, sem janela de console visível -->
+    <OutputType>WinExe</OutputType>
+
+    <!-- Publish self-contained: a máquina da dentista não precisa ter o
+         runtime do .NET instalado, só copiar e rodar o Agent.exe. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
+    <!-- Caso precise usar PKCS#11 no futuro, adicionaria Pkcs11Interop aqui -->
+  </ItemGroup>
+
+</Project>

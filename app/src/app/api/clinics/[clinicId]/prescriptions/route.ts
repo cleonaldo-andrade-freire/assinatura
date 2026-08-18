@@ -28,6 +28,7 @@ const bodySchema = z.object({
   patient_id: z.string().uuid().optional(),
   items: z.array(itemSchema).min(1),
   notes: z.string().optional(),
+  signerCertificatePem: z.string().optional(),
 });
 
 /** Lista as prescrições da clínica logada. RLS já garante que só vem o que é dela. */
@@ -101,6 +102,6 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "insert_failed", message: error?.message }, { status: 500 });
   }
 
-  const issued = await issuePrescription(prescription.id);
+  const issued = await issuePrescription(prescription.id, input.signerCertificatePem);
   return NextResponse.json({ prescription: issued }, { status: 201 });
 }

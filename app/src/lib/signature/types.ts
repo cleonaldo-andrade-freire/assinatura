@@ -15,11 +15,13 @@ export interface SignRequest {
   signerDocument: string; // ex.: "CRO 12345/SE"
   signerCpf: string; // dentist_cpf, sem máscara — individualIdentificationCode na Certisign
   signerEmail: string; // dentist_email
+  signerCertificatePem?: string; // Necessário para assinatura local deferred
 }
 
 export type RequestSignatureResult =
   | { status: "assinado"; signedPdfBytes: Uint8Array; providerDocumentId: string; signedAt: string }
   | { status: "pendente"; providerDocumentId: string; documentKey: string | null; signUrl: string | null }
+  | { status: "external_signing"; hashToSignBase64: string; signatureSessionId: string; }
   | { status: "falha"; errorMessage: string };
 
 export type CheckSignatureResult =
@@ -31,4 +33,5 @@ export interface SignatureProvider {
   readonly name: string;
   requestSignature(request: SignRequest): Promise<RequestSignatureResult>;
   checkSignature(providerDocumentId: string, documentKey: string | null): Promise<CheckSignatureResult>;
+  completeExternalSignature?(signatureSessionId: string, signatureBase64: string): Promise<RequestSignatureResult>;
 }

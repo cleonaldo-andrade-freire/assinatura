@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
 import { formatBRDate } from "@/lib/date";
 import type { Certificate } from "@/lib/database.types";
+import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
 
 export default async function AtestadoPage({ searchParams }: { searchParams: { token?: string } }) {
   const token = searchParams.token;
@@ -40,7 +41,7 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
         </div>
       ) : (
         <>
-          {c.signature_provider !== "certisign" && (
+          {!isRealSignatureProvider(c.signature_provider) && (
             <div
               style={{
                 background: "#f7ecd9",

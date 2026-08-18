@@ -7,6 +7,7 @@ import { formatBRDate } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PrescriptionItemsEditor } from "@/components/PrescriptionItemsEditor";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
+import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
 import type { Prescription, PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -54,6 +55,10 @@ export function NewPrescriptionForm({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cpfError = patientCpf.trim() && !isValidCPF(patientCpf) ? "CPF inválido." : null;
+
+  const { signHash } = useAgent();
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
@@ -106,6 +111,16 @@ export function NewPrescriptionForm({
       );
       return;
     }
+
+    if (isLocalAgentMode) {
+      setShowAgentSelector(true);
+      return;
+    }
+
+    await emitPrescription(null);
+  }
+
+  async function emitPrescription(cert: AgentCertificate | null) {
     setSending(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/prescriptions`, {
@@ -120,6 +135,9 @@ export function NewPrescriptionForm({
             .filter((i) => i.drug_name.trim())
             .map((i) => ({ ...i, dosage: i.dosage.trim(), instructions: i.instructions.trim() })),
           notes: notes.trim() || undefined,
+          signerCertificatePem: cert
+            ? cert.certificateChainBase64.map((b64) => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join("\n") || b64}\n-----END CERTIFICATE-----`).join("\n")
+            : undefined,
         }),
       });
       const data = await res.json();
@@ -127,9 +145,32 @@ export function NewPrescriptionForm({
         setError(data.message || ERROR_MESSAGES[data.error] || "Falha ao emitir a prescrição.");
         return;
       }
-      goToCreated(data.prescription as Prescription);
+
+      let finalPrescription = data.prescription;
+
+      // Se o backend retornou _externalSigning, finaliza a assinatura local
+      if (finalPrescription._externalSigning && cert) {
+        const sigBase64 = await signHash(cert.thumbprint, finalPrescription._externalSigning.hashToSignBase64);
+        const finishRes = await fetch(`/api/clinics/${clinicId}/prescriptions/${finalPrescription.id}/sign-local/finish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            signatureSessionId: finalPrescription._externalSigning.signatureSessionId,
+            signatureBase64: sigBase64,
+          }),
+        });
+        const finishData = await finishRes.json();
+        if (!finishRes.ok) {
+          setError(finishData.message || finishData.error || "Falha ao finalizar assinatura.");
+          return;
+        }
+        finalPrescription = finishData.prescription;
+      }
+
+      goToCreated(finalPrescription as Prescription);
     } finally {
       setSending(false);
+      setShowAgentSelector(false);
     }
   }
 
@@ -257,6 +298,15 @@ export function NewPrescriptionForm({
           <div className={styles.formActions}>{submitButton}</div>
         </form>
       </div>
+
+      <AgentCertificateSelector
+        open={showAgentSelector}
+        onOpenChange={setShowAgentSelector}
+        onCertificateSelected={(cert) => {
+          setShowAgentSelector(false);
+          emitPrescription(cert);
+        }}
+      />
     </div>
   );
 }

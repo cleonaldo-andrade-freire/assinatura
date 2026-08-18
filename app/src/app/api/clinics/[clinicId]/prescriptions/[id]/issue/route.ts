@@ -21,6 +21,13 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const issued = await issuePrescription(params.id);
+  let body: any;
+  try {
+    body = await _req.json();
+  } catch (e) {
+    body = {};
+  }
+
+  const issued = await issuePrescription(params.id, body.signerCertificatePem);
   return NextResponse.json({ prescription: issued });
 }

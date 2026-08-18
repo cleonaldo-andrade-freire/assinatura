@@ -10,6 +10,7 @@ import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatValidationCode } from "@/lib/validationCode";
 import { PRESCRIPTION_CONTROL_LABEL } from "@/lib/prescriptionControl";
 import type { Prescription } from "@/lib/database.types";
+import { isRealSignatureProvider, signatureProviderLabel } from "@/lib/signature/providerLabel";
 import styles from "@/styles/shell.module.css";
 
 function detailRow(label: string, value: React.ReactNode) {
@@ -151,6 +152,20 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
                 sozinha quando ela confirmar.
               </div>
             ) : null
+          ) : p.status === "assinado" && isRealSignatureProvider(p.signature_provider) ? (
+            <div
+              style={{
+                background: "#e3f3e6",
+                border: "1px solid #b8ddc0",
+                color: "#1e5e2f",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 14px",
+                fontSize: 13.5,
+                marginBottom: 16,
+              }}
+            >
+              ✅ Assinado digitalmente com {signatureProviderLabel(p.signature_provider)}.
+            </div>
           ) : (
             <div
               style={{

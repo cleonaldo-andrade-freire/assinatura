@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * só troca o gerador de PDF e o bucket de storage. Com a Certisign, quem
  * completa o fluxo depois da dentista confirmar é `finalizePrescriptionSignature`.
  */
-export async function issuePrescription(prescriptionId: string): Promise<Prescription> {
+export async function issuePrescription(prescriptionId: string, signerCertificatePem?: string): Promise<Prescription> {
   const supabase = createSupabaseAdminClient();
 
   const { data: prescription } = await supabase
@@ -65,6 +65,7 @@ export async function issuePrescription(prescriptionId: string): Promise<Prescri
     signerDocument: `CRO ${prescription.dentist_cro}/${prescription.dentist_cro_uf}`,
     signerCpf: (clinic as Clinic).dentist_cpf ?? "",
     signerEmail: (clinic as Clinic).dentist_email ?? "",
+    signerCertificatePem,
   });
 
   if (result.status === "falha") {
@@ -90,6 +91,20 @@ export async function issuePrescription(prescriptionId: string): Promise<Prescri
       .select("*")
       .single();
     return updated as Prescription;
+  }
+
+  if (result.status === "external_signing") {
+    // Espelha issueCertificate (lib/certificates.ts) — a API repassa
+    // hashToSignBase64/signatureSessionId pro frontend assinar no agente
+    // local e depois fechar o fluxo em finishPrescriptionExternalSignature.
+    return {
+      ...prescription,
+      status: "aguardando_assinatura",
+      _externalSigning: {
+        hashToSignBase64: result.hashToSignBase64,
+        signatureSessionId: result.signatureSessionId,
+      },
+    } as any;
   }
 
   return finishPrescriptionSignature(
@@ -246,4 +261,44 @@ async function finishPrescriptionSignature(
   }
 
   return finalPrescription;
+}
+
+/** Espelha finishCertificateExternalSignature (lib/certificates.ts) — completa a assinatura via agente local. */
+export async function finishPrescriptionExternalSignature(
+  prescriptionId: string,
+  signatureSessionId: string,
+  signatureBase64: string
+): Promise<Prescription> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: prescription } = await supabase.from("prescriptions").select("*").eq("id", prescriptionId).single();
+  if (!prescription) throw new Error(`Prescrição ${prescriptionId} não encontrada.`);
+
+  const { data: clinic } = await supabase.from("clinics").select("*").eq("id", prescription.clinic_id).single();
+  if (!clinic) throw new Error(`Clínica ${prescription.clinic_id} não encontrada.`);
+
+  const provider = getSignatureProvider();
+  if (!provider.completeExternalSignature) {
+    throw new Error("O provedor de assinatura configurado não suporta assinatura externa (local agent).");
+  }
+
+  const result = await provider.completeExternalSignature(signatureSessionId, signatureBase64);
+
+  if (result.status === "falha") {
+    throw new Error(result.errorMessage);
+  }
+
+  if (result.status !== "assinado") {
+    throw new Error("A finalização da assinatura não retornou o PDF assinado.");
+  }
+
+  return finishPrescriptionSignature(
+    supabase,
+    prescriptionId,
+    clinic as Clinic,
+    provider.name,
+    result.providerDocumentId,
+    result.signedPdfBytes,
+    result.signedAt
+  );
 }

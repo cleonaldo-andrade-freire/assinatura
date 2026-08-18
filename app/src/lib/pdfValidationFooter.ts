@@ -1,4 +1,4 @@
-import { PDFDocument, PDFFont, PDFPage, rgb } from "pdf-lib";
+import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { generateQrCodePng } from "@/lib/qrCode";
 import { formatValidationCode } from "@/lib/validationCode";
 
@@ -51,6 +51,16 @@ export async function drawValidationFooter(
       font: bold,
       color: rgb(0.2, 0.2, 0.2),
     });
+
+    const isMock = process.env.SIGNATURE_PROVIDER === "mock";
+    if (isMock) {
+      const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
+      textY -= 14;
+      page.drawText(
+        "⚠️ Assinatura digital simulada — sem validade jurídica, aguardando a configuração do certificado digital.",
+        { x: textX, y: textY, size: 7.5, font: italic, color: rgb(0.8, 0.3, 0.3) }
+      );
+    }
   } catch (err) {
     console.error("Falha ao desenhar o QR code de validação no PDF:", err);
   }

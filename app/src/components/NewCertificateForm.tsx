@@ -6,6 +6,7 @@ import { formatBRPhoneLocal, formatCPF, isValidCPF, toE164BR } from "@/lib/valid
 import { formatBRDate } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
+import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
 import type { Certificate, CertificateTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -61,6 +62,11 @@ export function NewCertificateForm({
   const [error, setError] = useState<string | null>(null);
   const cidDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cpfError = patientCpf.trim() && !isValidCPF(patientCpf) ? "CPF inválido." : null;
+
+  const { isAgentRunning, signHash } = useAgent();
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  // Identifica se o frontend deve usar o agente local (baseado numa flag estática ou se o agente estiver rodando)
+  const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
   useEffect(() => {
     if (cidDebounceRef.current) clearTimeout(cidDebounceRef.current);
@@ -129,6 +135,16 @@ export function NewCertificateForm({
       setError(cpfError);
       return;
     }
+    
+    if (isLocalAgentMode) {
+      setShowAgentSelector(true);
+      return;
+    }
+
+    await emitCertificate(null);
+  }
+
+  async function emitCertificate(cert: AgentCertificate | null) {
     setSending(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/certificates`, {
@@ -144,16 +160,40 @@ export function NewCertificateForm({
           reason: reason.trim(),
           rest_days: restDays,
           starts_on: startsOn,
+          signerCertificatePem: cert 
+            ? cert.certificateChainBase64.map(b64 => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join('\n') || b64}\n-----END CERTIFICATE-----`).join('\n') 
+            : undefined
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || data.error || "Falha ao emitir o atestado.");
-        return;
+        throw new Error(data.message || data.error || "Falha ao emitir o atestado.");
       }
-      goToCreated(data.certificate as Certificate);
+
+      let finalCert = data.certificate;
+
+      // Se o backend retornou _externalSigning, finaliza a assinatura local
+      if (finalCert._externalSigning && cert) {
+        const sigBase64 = await signHash(cert.thumbprint, finalCert._externalSigning.hashToSignBase64);
+        const finishRes = await fetch(`/api/clinics/${clinicId}/certificates/${finalCert.id}/sign-local/finish`, {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify({
+             signatureSessionId: finalCert._externalSigning.signatureSessionId,
+             signatureBase64: sigBase64
+           })
+        });
+        const finishData = await finishRes.json();
+        if (!finishRes.ok) throw new Error(finishData.message || finishData.error || "Falha ao finalizar assinatura.");
+        finalCert = finishData.certificate;
+      }
+
+      goToCreated(finalCert as Certificate);
+    } catch (err: any) {
+      setError(err.message || "Erro desconhecido ao assinar.");
     } finally {
       setSending(false);
+      setShowAgentSelector(false);
     }
   }
 
@@ -372,6 +412,15 @@ export function NewCertificateForm({
           <div className={styles.formActions}>{submitButton}</div>
         </form>
       </div>
+      
+      <AgentCertificateSelector 
+        open={showAgentSelector} 
+        onOpenChange={setShowAgentSelector} 
+        onCertificateSelected={(cert) => {
+           setShowAgentSelector(false);
+           emitCertificate(cert);
+        }} 
+      />
     </div>
   );
 }

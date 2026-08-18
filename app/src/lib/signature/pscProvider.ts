@@ -66,7 +66,10 @@ export const pscProvider: SignatureProvider = {
         textY -= 14;
       });
 
-      const pdfWithStamp = await doc.save();
+      // useObjectStreams:false — addSignaturePlaceholder (@signpdf/placeholder-plain)
+      // só lê PDF com xref table clássica; com object streams (padrão do
+      // pdf-lib) ele quebra com "Expected xref at NaN".
+      const pdfWithStamp = await doc.save({ useObjectStreams: false });
 
       // Adiciona o Placeholder da Assinatura no PDF gerado
       let pdfBuffer: any = Buffer.from(pdfWithStamp);

@@ -1,0 +1,174 @@
+using Agent.Services;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
+
+namespace Agent;
+
+internal static class Program
+{
+    private const int Port = 52310;
+    private const string AutoStartRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string AutoStartValueName = "AssinaturaDigitalAgent";
+
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+
+        var app = BuildWebApplication(args);
+        var hostTask = app.RunAsync();
+
+        using var trayIcon = CreateTrayIcon();
+        Application.Run();
+
+        app.StopAsync().GetAwaiter().GetResult();
+        hostTask.GetAwaiter().GetResult();
+    }
+
+    private static WebApplication BuildWebApplication(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Escuta só no loopback — nunca exposto pra fora da máquina.
+        builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(Port));
+
+        builder.Services.AddSingleton<ICertificateProvider, WindowsStoreProvider>();
+
+        // Origens permitidas via env var (AGENT_ALLOWED_ORIGINS, separadas por
+        // vírgula) — antes ficava hardcoded no código (com um domínio de
+        // produção placeholder), exigindo recompilar o agente pra cada
+        // domínio novo. Agora dá pra apontar pra qualquer ambiente sem tocar
+        // no código: variável de ambiente ou (se ausente) as origens padrão
+        // de dev.
+        var allowedOrigins = (Environment.GetEnvironmentVariable("AGENT_ALLOWED_ORIGINS")
+                ?? "http://localhost:3000")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        const string corsPolicyName = "_agentAllowedOrigins";
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy(corsPolicyName, policy =>
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials()
+                    .WithExposedHeaders("Access-Control-Allow-Private-Network"));
+        });
+
+        var webApp = builder.Build();
+
+        webApp.UseCors(corsPolicyName);
+
+        // Middleware para tratar preflight request de Private Network Access do Chrome
+        webApp.Use(async (context, next) =>
+        {
+            if (context.Request.Method == "OPTIONS" && context.Request.Headers.ContainsKey("Access-Control-Request-Private-Network"))
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
+            }
+            await next();
+        });
+
+        webApp.MapGet("/v1/status", () => Results.Json(new
+        {
+            agentVersion = "1.1.0",
+            protocolVersion = 1,
+            os = "windows",
+            providers = new[] { "windows-store" }
+        }));
+
+        webApp.MapGet("/v1/certificates", (ICertificateProvider provider) =>
+        {
+            try
+            {
+                return Results.Json(provider.GetCertificates());
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        });
+
+        webApp.MapPost("/v1/sign", (SignRequest req, ICertificateProvider provider) =>
+        {
+            try
+            {
+                var sigBase64 = provider.SignHash(req.thumbprint, req.hashBase64, req.hashAlgorithm, req.signaturePadding);
+                return Results.Json(new
+                {
+                    signatureBase64 = sigBase64,
+                    signedAt = DateTime.UtcNow.ToString("O")
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        });
+
+        return webApp;
+    }
+
+    private static NotifyIcon CreateTrayIcon()
+    {
+        var menu = new ContextMenuStrip();
+        menu.Items.Add(new ToolStripMenuItem($"Rodando em localhost:{Port}") { Enabled = false });
+        menu.Items.Add(new ToolStripSeparator());
+
+        var autoStartItem = new ToolStripMenuItem("Iniciar com o Windows")
+        {
+            CheckOnClick = true,
+            Checked = IsAutoStartEnabled(),
+        };
+        autoStartItem.Click += (_, _) => SetAutoStart(autoStartItem.Checked);
+        menu.Items.Add(autoStartItem);
+
+        menu.Items.Add(new ToolStripSeparator());
+        var exitItem = new ToolStripMenuItem("Sair");
+        exitItem.Click += (_, _) => Application.Exit();
+        menu.Items.Add(exitItem);
+
+        return new NotifyIcon
+        {
+            Icon = SystemIcons.Shield,
+            Text = "Agente de Assinatura Digital",
+            Visible = true,
+            ContextMenuStrip = menu,
+        };
+    }
+
+    private static bool IsAutoStartEnabled()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(AutoStartRegistryKey, writable: false);
+        return key?.GetValue(AutoStartValueName) is string existing
+            && existing.Equals(GetExecutablePath(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void SetAutoStart(bool enabled)
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(AutoStartRegistryKey, writable: true)
+            ?? Registry.CurrentUser.CreateSubKey(AutoStartRegistryKey);
+        if (enabled)
+        {
+            key.SetValue(AutoStartValueName, GetExecutablePath());
+        }
+        else
+        {
+            key.DeleteValue(AutoStartValueName, throwOnMissingValue: false);
+        }
+    }
+
+    private static string GetExecutablePath() => Environment.ProcessPath ?? Application.ExecutablePath;
+}
+
+public class SignRequest
+{
+    public string thumbprint { get; set; } = string.Empty;
+    public string hashBase64 { get; set; } = string.Empty;
+    public string hashAlgorithm { get; set; } = "SHA256";
+    public string signaturePadding { get; set; } = "PKCS1";
+    public string requestId { get; set; } = string.Empty;
+}

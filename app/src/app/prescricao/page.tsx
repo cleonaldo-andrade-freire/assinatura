@@ -4,6 +4,7 @@ import { isValidToken } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatBRDate } from "@/lib/date";
 import type { Prescription } from "@/lib/database.types";
+import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
 
 export default async function PrescricaoPage({ searchParams }: { searchParams: { token?: string } }) {
   const token = searchParams.token;
@@ -49,7 +50,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
         </div>
       ) : (
         <>
-          {p.signature_provider !== "certisign" && (
+          {!isRealSignatureProvider(p.signature_provider) && (
             <div
               style={{
                 background: "#f7ecd9",
