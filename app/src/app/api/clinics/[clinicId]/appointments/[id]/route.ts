@@ -170,3 +170,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
 
   return NextResponse.json({ appointment: updated });
 }
+
+/** Exclusão definitiva — temporário, só pra facilitar limpeza de agendamentos de teste (ver AppointmentActions.tsx). */
+export async function DELETE(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
+  const clinic = await getCurrentClinic();
+  if (!clinic || clinic.id !== params.clinicId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("appointments").delete().eq("id", params.id).eq("clinic_id", clinic.id);
+  if (error) {
+    return NextResponse.json({ error: "delete_failed", message: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}

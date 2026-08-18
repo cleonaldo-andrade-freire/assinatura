@@ -74,6 +74,25 @@ export function AppointmentActions({
     }
   }
 
+  async function handleDelete() {
+    if (!window.confirm("Excluir este agendamento? Essa ação não pode ser desfeita.")) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/appointments/${appointmentId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || data?.error || "Falha ao excluir o agendamento.");
+        return;
+      }
+      push("Agendamento excluído.", "success");
+      router.push("/dashboard/agenda");
+      router.refresh();
+      onChanged?.();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleReschedule(newTime: string, newDuration: number) {
     const ok = await patch({ scheduled_at: newTime, duration_minutes: newDuration }, "Agendamento remarcado.");
     if (ok) setRescheduling(false);
@@ -211,6 +230,31 @@ export function AppointmentActions({
           </button>
         </div>
       )}
+
+      {/* Exclusão definitiva (hard delete) — temporário, só pra facilitar
+         limpeza de agendamentos de teste; diferente de "Cancelar", que só
+         muda o status. */}
+      <div style={{ display: "flex", marginTop: isTerminal ? 0 : 8 }}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleDelete}
+          className={styles.iconActionBtn}
+          title="Excluir agendamento"
+          aria-label="Excluir agendamento"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
 
       <RescheduleAppointmentModal
         open={rescheduling}
