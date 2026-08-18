@@ -245,7 +245,7 @@ export function ExpenseFormModal({
                   ))}
                 </select>
               </div>
-              {editing && (
+              {(editing || !recurring) && (
                 <div className={shellStyles.field} style={{ maxWidth: 200 }}>
                   <label htmlFor="expDueDate" className={shellStyles.label}>
                     Data de vencimento*
@@ -272,7 +272,7 @@ export function ExpenseFormModal({
                   Despesa recorrente (todo mês)
                 </label>
 
-                {recurring ? (
+                {recurring && (
                   <div className={shellStyles.field} style={{ marginBottom: 8, maxWidth: 160 }}>
                     <label htmlFor="expDay" className={shellStyles.label}>
                       Dia do mês*
@@ -285,20 +285,6 @@ export function ExpenseFormModal({
                       className={shellStyles.input}
                       value={dayOfMonth}
                       onChange={(e) => setDayOfMonth(e.target.value)}
-                      required
-                    />
-                  </div>
-                ) : (
-                  <div className={shellStyles.field} style={{ marginBottom: 8, maxWidth: 200 }}>
-                    <label htmlFor="expDueDate" className={shellStyles.label}>
-                      Data de vencimento*
-                    </label>
-                    <input
-                      id="expDueDate"
-                      type="date"
-                      className={shellStyles.input}
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
                       required
                     />
                   </div>
