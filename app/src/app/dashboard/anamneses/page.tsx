@@ -302,8 +302,6 @@ export default async function AnamnesesPage({
                         )}
                       </td>
                       <StopPropagationTd>
-                        <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
-                        {" · "}
                         {signatureId ? (
                           <a href={`/api/pdf/${signatureId}`} target="_blank" rel="noreferrer">
                             Baixar PDF

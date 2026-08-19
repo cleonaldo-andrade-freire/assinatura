@@ -9,6 +9,10 @@
   padding: 20px;
   z-index: 200;
   animation: overlayIn 0.15s ease-out;
+  /* Sem isso, um touchmove que começa no backdrop (fora do diálogo) pode
+     encadear pro scroll da página por trás no iOS Safari, mesmo com o
+     diálogo cobrindo a tela. */
+  overscroll-behavior: contain;
 }
 
 @keyframes overlayIn {
@@ -28,6 +32,16 @@
   max-width: 400px;
   padding: 24px;
   animation: dialogIn 0.15s ease-out;
+  /* Sem limite de altura, um formulário mais alto que a viewport (comum no
+     celular) não tinha pra onde rolar dentro do próprio diálogo — o toque
+     "vazava" pro scroll da página por trás. max-height só entra em ação
+     quando o conteúdo realmente excede isso, então diálogos curtos (a
+     maioria) não mudam nada visualmente. .dialogWide/.dialogTall/etc já
+     tratavam isso à parte (max-height própria) e continuam sobrepondo esses
+     valores normalmente. */
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Variante mais larga pra diálogos com formulário (ex.: criar agendamento
@@ -39,6 +53,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 /* Ainda mais larga — pro orçamento, cujo conteúdo (linhas de tratamento +

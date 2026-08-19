@@ -79,16 +79,34 @@ export function NewAppointmentForm({
   const [showErrors, setShowErrors] = useState(false);
 
   // Filtra horários que já passaram — o servidor também recusa (é a garantia
-  // de verdade), isso aqui é só pra não oferecer uma opção que vai falhar.
-  const slots = buildDaySlotTimes(date).filter((s) => new Date(s).getTime() > Date.now());
+  // de verdade), isso aqui é só pra não oferecer uma opção nova que vai
+  // falhar. Mas se o horário atual pertence mesmo à data escolhida (ex.:
+  // pré-preenchido ao clicar num slot vago da agenda, só que mais cedo hoje)
+  // e só não está na lista por já ter passado, ele continua entrando como
+  // opção — senão o <select> mostra em branco mesmo com o valor certo por
+  // baixo, e a mensagem de erro do servidor ("já passou") fica mais clara
+  // que um campo que parece nunca ter sido preenchido. Se a data mudou de
+  // verdade, `time` não pertence mais aos slots dessa data e o efeito
+  // abaixo limpa a seleção normalmente.
+  const allSlotsForDate = buildDaySlotTimes(date);
+  const futureSlots = allSlotsForDate.filter((s) => new Date(s).getTime() > Date.now());
+  const slots = time && allSlotsForDate.includes(time) && !futureSlots.includes(time) ? [time, ...futureSlots].sort() : futureSlots;
   const phoneDigits = patientPhone.replace(/\D/g, "");
   const phoneError = showErrors && phoneDigits.length < 10 ? "Celular inválido." : null;
 
+  const isFirstDateRender = useRef(true);
   useEffect(() => {
-    // Se a data mudou e o horário selecionado não existe mais na grade do
-    // novo dia (não deveria acontecer, a grade é sempre a mesma janela de
-    // horário — só por segurança), limpa a seleção em vez de mandar um
-    // horário que não corresponde à data escolhida.
+    // Só entra em ação numa troca de data DEPOIS do mount — como o efeito
+    // roda uma vez ao montar mesmo sem a data ter "mudado" de verdade, sem
+    // essa guarda ele apagava o horário pré-preenchido (initialTime, vindo
+    // do clique num slot vago da agenda) sempre que esse horário já tivesse
+    // passado em relação a agora — o que é o caso da maioria dos horários
+    // de hoje à noite. Numa troca de data real (usuário mexeu no seletor),
+    // aí sim limpa se o horário escolhido não existir mais na grade do novo dia.
+    if (isFirstDateRender.current) {
+      isFirstDateRender.current = false;
+      return;
+    }
     if (time && !slots.includes(time)) setTime("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);

@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PatientForm } from "@/components/PatientForm";
 import { Pagination } from "@/components/ui/Pagination";
+import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PatientTabs } from "@/components/PatientTabs";
 import { PATIENT_TABS, STAFF_ALLOWED_TAB_KEYS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
@@ -311,12 +312,11 @@ export default async function EditPatientPage({
               <tr>
                 <th>Data</th>
                 <th>Status</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {anamneses.map((a) => (
-                <tr key={a.id}>
+                <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
                   <td>{formatBRDate(a.created_at)}</td>
                   <td>
                     {signedAnamnesisIds.has(a.id) ? (
@@ -325,10 +325,7 @@ export default async function EditPatientPage({
                       <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                     )}
                   </td>
-                  <td>
-                    <Link href={`/dashboard/anamneses/${a.id}`}>Ver detalhes</Link>
-                  </td>
-                </tr>
+                </ClickableRow>
               ))}
             </tbody>
           </table>
@@ -508,12 +505,11 @@ export default async function EditPatientPage({
                 <th>Data</th>
                 <th>Dias de afastamento</th>
                 <th>Status</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {certificates.map((c) => (
-                <tr key={c.id}>
+                <ClickableRow key={c.id} href={`/dashboard/atestados/${c.id}`}>
                   <td>{formatBRDate(c.created_at)}</td>
                   <td>{c.rest_days}</td>
                   <td>
@@ -521,10 +517,7 @@ export default async function EditPatientPage({
                       {DOCUMENT_STATUS_LABEL[c.status]}
                     </span>
                   </td>
-                  <td>
-                    <Link href={`/dashboard/atestados/${c.id}`}>Ver detalhes</Link>
-                  </td>
-                </tr>
+                </ClickableRow>
               ))}
             </tbody>
           </table>
@@ -569,12 +562,11 @@ export default async function EditPatientPage({
                 <th>Data</th>
                 <th>Itens</th>
                 <th>Status</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {prescriptions.map((p) => (
-                <tr key={p.id}>
+                <ClickableRow key={p.id} href={`/dashboard/prescricoes/${p.id}`}>
                   <td>{formatBRDate(p.created_at)}</td>
                   <td>{p.items.length}</td>
                   <td>
@@ -582,10 +574,7 @@ export default async function EditPatientPage({
                       {DOCUMENT_STATUS_LABEL[p.status]}
                     </span>
                   </td>
-                  <td>
-                    <Link href={`/dashboard/prescricoes/${p.id}`}>Ver detalhes</Link>
-                  </td>
-                </tr>
+                </ClickableRow>
               ))}
             </tbody>
           </table>

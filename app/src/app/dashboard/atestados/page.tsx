@@ -5,7 +5,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
-import { StopPropagationLink } from "@/components/ui/StopPropagation";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
@@ -138,7 +137,6 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                   <th>Data</th>
                   <th>Dias de afastamento</th>
                   <th>Status</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -164,9 +162,6 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                       <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
                         {DOCUMENT_STATUS_LABEL[c.status]}
                       </span>
-                    </td>
-                    <td>
-                      <StopPropagationLink href={`/dashboard/atestados/${c.id}`}>Ver detalhes</StopPropagationLink>
                     </td>
                   </ClickableRow>
                 ))}
