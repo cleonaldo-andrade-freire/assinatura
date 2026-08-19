@@ -63,43 +63,63 @@ internal static class Program
         // exigindo recompilar o agente pra cada domínio novo. O instalador
         // (installer/install.ps1) escreve o appsettings.json com o domínio
         // real na hora de instalar em cada máquina.
-        var allowedOrigins = (builder.Configuration["AGENT_ALLOWED_ORIGINS"]
-                ?? "http://localhost:3000")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        const string corsPolicyName = "_agentAllowedOrigins";
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy(corsPolicyName, policy =>
-                policy.WithOrigins(allowedOrigins)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials()
-                    .WithExposedHeaders("Access-Control-Allow-Private-Network"));
-        });
+        var allowedOrigins = new HashSet<string>(
+            (builder.Configuration["AGENT_ALLOWED_ORIGINS"] ?? "http://localhost:3000")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            StringComparer.OrdinalIgnoreCase);
 
         var webApp = builder.Build();
 
-        // Middleware pra tratar o preflight de Private Network Access do Chrome —
-        // TEM que rodar ANTES do UseCors: o middleware de CORS embutido do
-        // ASP.NET Core responde e encerra o pipeline direto pra um preflight
-        // OPTIONS (nunca chama o "next"), então um middleware registrado
-        // depois dele nunca chega a executar pra essa requisição. Sem essa
-        // ordem, o header "Access-Control-Allow-Private-Network" nunca ia
-        // parar na resposta, e o Chrome bloqueava toda chamada da página
-        // (https://) pro agente (http://127.0.0.1) com "Permission was
+        // CORS + Private Network Access tratados aqui, à mão, em vez de
+        // AddCors/UseCors — o middleware embutido do ASP.NET Core não
+        // conhece "Access-Control-Request-Private-Network" (não é do
+        // protocolo CORS clássico, é uma extensão do Chrome) e, pior,
+        // responde e encerra o pipeline sozinho pra qualquer preflight
+        // OPTIONS que bata na política, então nenhum middleware registrado
+        // depois dele (nem antes, dependendo da ordem) tem garantia de opinar
+        // na resposta final. Fazendo tudo numa única função, sem depender de
+        // onde o pipeline embutido decide parar, elimina essa incerteza.
+        // Sem o header "Access-Control-Allow-Private-Network: true" no
+        // preflight, o Chrome bloqueia QUALQUER chamada da página
+        // (https://...) pro agente (http://127.0.0.1) com "Permission was
         // denied for this request to access the loopback address space" —
-        // mesmo com o agente rodando certinho.
+        // mesmo com o agente instalado e rodando certinho.
         webApp.Use(async (context, next) =>
         {
-            if (context.Request.Method == "OPTIONS" && context.Request.Headers.ContainsKey("Access-Control-Request-Private-Network"))
+            var origin = context.Request.Headers.Origin.ToString();
+            var originAllowed = !string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin);
+
+            if (originAllowed)
             {
-                context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
+                context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                context.Response.Headers.Append("Vary", "Origin");
+                context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
             }
+
+            if (context.Request.Method == "OPTIONS")
+            {
+                if (originAllowed)
+                {
+                    var requestedHeaders = context.Request.Headers["Access-Control-Request-Headers"].ToString();
+                    context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                    context.Response.Headers.Append(
+                        "Access-Control-Allow-Headers",
+                        string.IsNullOrEmpty(requestedHeaders) ? "Content-Type" : requestedHeaders);
+                    if (context.Request.Headers.ContainsKey("Access-Control-Request-Private-Network"))
+                    {
+                        context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
+                    }
+                }
+                // Preflight sempre termina aqui, sem chamar "next" — nunca deve
+                // cair numa rota de verdade, e responder 204 é o esperado tanto
+                // pra origem permitida quanto pra qualquer outra (só sem os
+                // headers de CORS, o que já barra a leitura da resposta).
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
             await next();
         });
-
-        webApp.UseCors(corsPolicyName);
 
         webApp.MapGet("/v1/status", () => Results.Json(new
         {
