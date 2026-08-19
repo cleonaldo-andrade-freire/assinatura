@@ -473,6 +473,7 @@ export default async function EditPatientPage({
       paidTotalPages={paidDebitsTotalPages}
       paidCount={paidDebitsCount ?? 0}
       totalReceived={totalReceived}
+      role={role}
     />
   );
 

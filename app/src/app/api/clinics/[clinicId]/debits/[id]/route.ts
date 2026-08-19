@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-/** Exclui um débito — bloqueado se já estiver num recibo emitido (não dá pra invalidar um recibo já entregue ao paciente). */
+/** Exclui um débito — bloqueado se já estiver num recibo emitido (não dá pra invalidar um recibo já entregue ao paciente). Staff não pode excluir, só receber pagamento. */
 export async function DELETE(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic || clinic.id !== params.clinicId) {
+  const auth = await getClinicAndRole();
+  if (!auth || auth.clinic.id !== params.clinicId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (auth.role !== "owner") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const { clinic } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: debit } = await supabase

@@ -30,6 +30,7 @@ export function DebitsPanel({
   paidTotalPages,
   paidCount,
   totalReceived,
+  role = "owner",
 }: {
   clinicId: string;
   patientId: string;
@@ -43,6 +44,8 @@ export function DebitsPanel({
   paidTotalPages: number;
   paidCount: number;
   totalReceived: number;
+  /** Atendente só pode receber pagamento/emitir recibo — excluir e cancelar recebimento ficam só com owner. */
+  role?: "owner" | "staff";
 }) {
   const router = useRouter();
 
@@ -207,14 +210,16 @@ export function DebitsPanel({
                     />
                     <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{d.description}</div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(d.id)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)", flexShrink: 0 }}
-                    >
-                      Excluir
-                    </button>
+                    {role === "owner" && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(d.id)}
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ color: "var(--danger)", flexShrink: 0 }}
+                      >
+                        Excluir
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -259,7 +264,7 @@ export function DebitsPanel({
                       </div>
                       <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(d.amount)}</div>
                       <span className={`${styles.statusDot} ${styles.statusOk}`}>{isReceipted ? "Recibo emitido" : "Pago"}</span>
-                      {canCancelPayment && (
+                      {role === "owner" && canCancelPayment && (
                         <button
                           type="button"
                           disabled={cancelingPaymentId === d.id}
@@ -270,7 +275,7 @@ export function DebitsPanel({
                           {cancelingPaymentId === d.id ? "Cancelando…" : "Cancelar recebimento"}
                         </button>
                       )}
-                      {!isReceipted && (
+                      {role === "owner" && !isReceipted && (
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(d.id)}
