@@ -31,7 +31,7 @@ function initials(name: string): string {
 export default async function AnamnesesPage({
   searchParams,
 }: {
-  searchParams: { q?: string; page?: string; status?: string };
+  searchParams: { q?: string; page?: string; status?: string; new?: string };
 }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
@@ -125,7 +125,12 @@ export default async function AnamnesesPage({
           <Link href="/dashboard/templates" className={`${styles.btn} ${styles.btnGhost}`}>
             Modelos de anamnese
           </Link>
-          <NewAnamnesisTrigger clinicId={clinic.id} templates={(templatesData as QuestionTemplate[]) ?? []} className={`${styles.btn} ${styles.btnPrimary}`}>
+          <NewAnamnesisTrigger
+            clinicId={clinic.id}
+            templates={(templatesData as QuestionTemplate[]) ?? []}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            autoOpen={searchParams.new === "1"}
+          >
             + Nova anamnese
           </NewAnamnesisTrigger>
         </div>

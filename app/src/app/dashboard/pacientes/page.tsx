@@ -14,7 +14,7 @@ import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
 
-export default async function PatientsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
+export default async function PatientsPage({ searchParams }: { searchParams: { q?: string; page?: string; new?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
@@ -49,7 +49,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
       userName={userName}
       userAvatarUrl={userAvatarUrl}
       actions={
-        <NewPatientTrigger clinicId={clinic.id} className={`${styles.btn} ${styles.btnPrimary}`}>
+        <NewPatientTrigger clinicId={clinic.id} className={`${styles.btn} ${styles.btnPrimary}`} autoOpen={searchParams.new === "1"}>
           + Novo paciente
         </NewPatientTrigger>
       }

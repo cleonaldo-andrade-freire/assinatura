@@ -1,0 +1,231 @@
+/**
+ * Chrome do shell mobile v2 — exclusivo do papel owner, atrás da flag
+ * NEXT_PUBLIC_MOBILE_V2 (ver src/lib/mobileV2.ts). Arquivo inteiramente novo:
+ * nenhuma regra daqui edita seletor de shell.module.css ou globals.css.
+ * Consome só os tokens --m-* de tokens.mobile.css.
+ *
+ * Tudo aqui vive atrás de @media (max-width: 767px) — mesmo breakpoint do
+ * shell legado (não redefinido, só reaproveitado como valor), porque o
+ * chrome mobile v2 só é montado no DOM quando o React já detectou viewport
+ * mobile (ver ClinicShell.tsx), então a media query é reforço de defesa,
+ * não o mecanismo principal de exibição.
+ */
+
+@media (max-width: 767px) {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--m-header-height);
+    padding: 0 8px;
+    padding-top: var(--m-safe-top);
+    background: var(--m-surface);
+    border-bottom: 1px solid var(--m-line);
+  }
+
+  .headerBack,
+  .headerSpacer {
+    width: var(--m-tap-min);
+    height: var(--m-tap-min);
+    flex: none;
+  }
+
+  .headerBack {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--m-radius-sm);
+    color: var(--m-ink);
+    cursor: pointer;
+  }
+
+  .headerBack:active {
+    background: var(--m-surface-sunken);
+  }
+
+  .headerTitle {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--m-text-h3);
+    font-weight: 700;
+    color: var(--m-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .headerActions {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ===== Tab bar ===== */
+
+  .tabBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: stretch;
+    height: calc(var(--m-tab-bar-height) + var(--m-safe-bottom));
+    padding-bottom: var(--m-safe-bottom);
+    padding-left: var(--m-safe-left);
+    padding-right: var(--m-safe-right);
+    background: var(--m-surface);
+    border-top: 1px solid var(--m-line);
+    box-shadow: var(--m-shadow-md);
+  }
+
+  .tabLink {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: var(--m-tap-min);
+    color: var(--m-ink-faint);
+    text-decoration: none;
+    font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .tabLink:active {
+    opacity: 0.6;
+  }
+
+  .tabLinkActive {
+    color: var(--m-brand-deep);
+  }
+
+  .tabLabel {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tabPlusWrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tabPlus {
+    width: 48px;
+    height: 48px;
+    margin-top: -14px;
+    border-radius: 999px;
+    background: var(--m-brand);
+    color: #fff;
+    border: 3px solid var(--m-surface);
+    box-shadow: var(--m-shadow-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .tabPlus:active {
+    background: var(--m-brand-pressed);
+    transform: scale(0.96);
+  }
+
+  /* ===== Sheet (genérico — [+] e futuros usos) ===== */
+
+  .sheetOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(30, 43, 39, 0.4);
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .sheet {
+    width: 100%;
+    max-height: 85dvh;
+    overflow-y: auto;
+    background: var(--m-surface);
+    border-radius: var(--m-radius-sheet);
+    box-shadow: var(--m-shadow-lg);
+    padding: 8px 20px calc(20px + var(--m-safe-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sheetGrabber {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--m-line);
+    margin: 8px auto 16px;
+  }
+
+  .sheetTitle {
+    margin: 0 0 12px;
+    font-size: var(--m-text-h3);
+    font-weight: 700;
+    color: var(--m-ink);
+  }
+
+  /* ===== Sheet de ações rápidas ([+]) ===== */
+
+  .actionList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .actionItem {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 52px;
+    padding: 8px 8px;
+    border-radius: var(--m-radius-sm);
+    color: var(--m-ink);
+    text-decoration: none;
+    font-size: var(--m-text-body);
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .actionItem:active {
+    background: var(--m-surface-sunken);
+  }
+
+  .actionIcon {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--m-radius-sm);
+    background: var(--m-brand-tint);
+    color: var(--m-brand-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== Ajuste do conteúdo existente (shell.module.css) quando o chrome
+     mobile v2 está ativo — nova classe aplicada JUNTO de styles.content,
+     nunca redefine a classe original. Compensa a altura da tab bar nova em
+     vez da altura da nav antiga. ===== */
+  .contentMobileV2 {
+    padding-bottom: calc(var(--m-tab-bar-height) + var(--m-safe-bottom) + 20px) !important;
+  }
+}

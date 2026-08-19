@@ -25,7 +25,7 @@ function initials(name: string): string {
     .join("");
 }
 
-export default async function PrescriptionsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
+export default async function PrescriptionsPage({ searchParams }: { searchParams: { q?: string; page?: string; new?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
@@ -84,6 +84,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
             templates={templates}
             dentistConfigured={dentistConfigured}
             className={`${styles.btn} ${styles.btnPrimary}`}
+            autoOpen={searchParams.new === "1"}
           >
             + Nova prescrição
           </NewPrescriptionTrigger>

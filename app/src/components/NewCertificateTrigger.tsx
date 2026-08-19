@@ -15,6 +15,9 @@ export function NewCertificateTrigger({
   patientPhone,
   className,
   children,
+  /** Abre o modal já no mount — usado pelo sheet do [+] do shell mobile v2
+   * (?new=1 na URL). Default false preserva o comportamento atual. */
+  autoOpen = false,
 }: {
   clinicId: string;
   templates: CertificateTemplate[];
@@ -25,8 +28,9 @@ export function NewCertificateTrigger({
   patientPhone?: string | null;
   className?: string;
   children: React.ReactNode;
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
 
   return (
     <>

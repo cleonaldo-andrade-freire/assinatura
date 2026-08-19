@@ -2,7 +2,28 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import styles from "@/styles/shell.module.css";
+
+// Ternário sobre a leitura literal de process.env (não sobre
+// isMobileV2Enabled() — precisa ser a expressão literal pro webpack
+// DefinePlugin conseguir substituir por um booleano constante em build
+// time): com a flag ausente/diferente de "1", isso vira `if (false)` depois
+// do define, e o Terser elimina o `dynamic()`, o import() e o componente
+// inteiro do grafo de módulos — zero bytes a mais em qualquer rota, exatamente
+// o critério de regressão do prompt §2.1.5 ("nenhuma rota desktop pode
+// crescer em JS"). Com a flag "1", o import dinâmico normal entra em cena
+// (chunk separado, sem SSR, baixado só por quem realmente monta o
+// componente — ver isMobileViewport abaixo).
+const MobileShellChrome =
+  process.env.NEXT_PUBLIC_MOBILE_V2 === "1"
+    ? dynamic(() => import("@/components/mobile/MobileShellChrome").then((m) => m.MobileShellChrome), { ssr: false })
+    : null;
+
+// Mesmo breakpoint das @media legadas de shell.module.css (368/460 e
+// 494/555) — não as edita, só usa o mesmo valor pra decidir, em JS, qual
+// chrome montar. Ver docs/mobile-audit.md §0.
+const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
 
 function DashboardIcon() {
   return (
@@ -241,6 +262,28 @@ export function ClinicShell({
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  // Shell mobile v2 (prompt de reformulação mobile) — exclusivo do owner,
+  // atrás da flag. `mobileV2Active` já é conhecido no servidor (env var +
+  // prop `role`), então não causa mismatch de hidratação. `isMobileViewport`
+  // só existe no cliente — default false bate com o que o servidor mandou
+  // (igual ao padrão já usado abaixo pra `collapsed`), e é corrigido depois
+  // do mount via matchMedia (nunca por user-agent — ver docs/mobile-audit.md
+  // e prompt §2.1.3.2, "detecção de mobile no servidor" é o vetor de risco
+  // que isso evita).
+  const mobileV2Active = process.env.NEXT_PUBLIC_MOBILE_V2 === "1" && role === "owner";
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (!mobileV2Active) return;
+    const mq = window.matchMedia(MOBILE_VIEWPORT_QUERY);
+    const update = () => setIsMobileViewport(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [mobileV2Active]);
+
+  const showMobileV2Chrome = mobileV2Active && isMobileViewport;
+
   // Filtra itens do menu pelo papel do usuário
   const visibleNavItems = role === "staff"
     ? NAV_ITEMS.filter((item) => STAFF_ALLOWED_HREFS.has(item.href))
@@ -291,6 +334,7 @@ export function ClinicShell({
 
   return (
     <div className={styles.shell}>
+      {!showMobileV2Chrome && (
       <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ""}`}>
         <div className={styles.brand}>
           <div className={styles.brandMark}>
@@ -370,16 +414,25 @@ export function ClinicShell({
           </button>
         </div>
       </aside>
+      )}
 
       <div className={styles.main}>
-        <div className={styles.pageHeader}>
-          <div>
-            <h1 className={styles.pageTitle}>{title}</h1>
-            {subtitle && <p className={styles.pageSubtitle}>{subtitle}</p>}
-          </div>
-          {actions}
-        </div>
-        <div className={styles.content}>{children}</div>
+        {showMobileV2Chrome && MobileShellChrome ? (
+          <MobileShellChrome title={title} actions={actions}>
+            {children}
+          </MobileShellChrome>
+        ) : (
+          <>
+            <div className={styles.pageHeader}>
+              <div>
+                <h1 className={styles.pageTitle}>{title}</h1>
+                {subtitle && <p className={styles.pageSubtitle}>{subtitle}</p>}
+              </div>
+              {actions}
+            </div>
+            <div className={styles.content}>{children}</div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import "./globals.css";
+// Tokens do shell mobile v2 (--m-*) — só custom properties novas, não
+// redefine nada de globals.css. Ver docs/mobile-audit.md.
+import "@/styles/tokens.mobile.css";
 
 const fraunces = Fraunces({
   subsets: ["latin"],

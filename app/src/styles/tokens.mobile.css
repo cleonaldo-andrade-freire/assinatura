@@ -1,0 +1,96 @@
+/**
+ * Tokens do shell mobile v2 — prefixo próprio (--m-*), nunca redefine nada
+ * de globals.css. Toda cor aqui é a paleta existente (ver globals.css:1-59)
+ * ou uma tint/shade/estado derivado dela — nenhum matiz novo. Import só a
+ * partir de componentes em src/components/mobile/ e das novas @media de
+ * shell.module.css (ver docs/mobile-audit.md, seção 1).
+ *
+ * Import scoped: este arquivo não é importado por globals.css nem por
+ * nenhum ponto de entrada global — só pelos componentes do shell mobile v2,
+ * atrás da flag NEXT_PUBLIC_MOBILE_V2 (src/lib/mobileV2.ts).
+ */
+:root {
+  /* === Superfície e texto — 1:1 com globals.css === */
+  --m-bg: #f7f4ef;
+  --m-surface: #ffffff;
+  --m-surface-sunken: #f1ede4;
+  --m-ink: #1e2b27;
+  --m-ink-soft: #5b6864;
+  --m-ink-faint: #8b978e;
+  --m-line: #e4ded2;
+  --m-line-soft: #ece7dc;
+
+  /* === Marca === */
+  --m-brand: #2c6659;
+  --m-brand-deep: #1d473d;
+  --m-brand-deeper: #16362f;
+  --m-brand-tint: #e7f0ec;
+  --m-brand-bright: #4f9c86;
+
+  /* === Estados derivados da marca (pressed/hover/disabled) ===
+     Sem matiz novo: pressed é --brand-deep já existente; disabled é
+     --ink-faint sobre --line, hover é a mesma --brand-tint usada em
+     desktop pra fundo de item ativo. */
+  --m-brand-pressed: var(--m-brand-deep);
+  --m-brand-hover: var(--m-brand-tint);
+  --m-disabled-bg: var(--m-line);
+  --m-disabled-ink: var(--m-ink-faint);
+
+  /* === Semânticas (status, exatamente como usadas hoje) === */
+  --m-sign: #1f3f6e;
+  --m-sign-tint: #e8eef7;
+  --m-sign-line: #c3d2e6;
+  --m-warn: #a15a16;
+  --m-warn-tint: #f7ecd9;
+  --m-danger: #b23b3b;
+  --m-danger-tint: #fbeaea;
+  --m-urgent: #6d3f96;
+  --m-urgent-tint: #f1e9f8;
+  --m-urgent-line: #d9c3ea;
+  --m-muted-fill: #6b7570;
+  --m-attending: #a86f00;
+  --m-attending-tint: #fdf1d6;
+  --m-attending-solid: #f6c343;
+
+  /* === Alerta de medicamento controlado (semântica nova pedida no prompt,
+     seção 2) — reaproveita --danger, não inventa vermelho novo. A prescrição
+     controlada já é tratada como "atenção redobrada", então usar --danger em
+     vez de --warn é intencional: já existe --warn-tint pra "rascunho
+     pendente" (ver DOCUMENT_STATUS_CLASS), reservar --danger evita colisão
+     visual entre "isso é só um rascunho" e "isso é controlado". === */
+  --m-controlled: var(--m-danger);
+  --m-controlled-tint: var(--m-danger-tint);
+
+  /* === Elevação — escala neutra derivada de --shadow/--shadow-sm de
+     globals.css, sem cor nova === */
+  --m-shadow-sm: 0 1px 2px rgba(30, 43, 39, 0.06);
+  --m-shadow-md: 0 1px 2px rgba(30, 43, 39, 0.04), 0 8px 24px rgba(30, 43, 39, 0.06);
+  --m-shadow-lg: 0 4px 8px rgba(30, 43, 39, 0.08), 0 16px 40px rgba(30, 43, 39, 0.12);
+
+  /* === Raio, igual ao desktop === */
+  --m-radius: 12px;
+  --m-radius-sm: 8px;
+  --m-radius-lg: 20px;
+  --m-radius-sheet: 20px 20px 0 0;
+
+  /* === Escala tipográfica própria mobile (seção 6 do prompt) ===
+     corpo de input >= 16px pra não dar zoom no iOS ao focar. */
+  --m-text-display: 28px;
+  --m-text-h2: 22px;
+  --m-text-h3: 17px;
+  --m-text-body: 16px;
+  --m-text-small: 15px;
+  --m-text-label: 13px;
+
+  /* === Alvo de toque === */
+  --m-tap-min: 44px;
+  --m-tap-gap-min: 8px;
+
+  /* === Chrome de app === */
+  --m-tab-bar-height: 56px;
+  --m-header-height: 52px;
+  --m-safe-top: env(safe-area-inset-top, 0px);
+  --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --m-safe-left: env(safe-area-inset-left, 0px);
+  --m-safe-right: env(safe-area-inset-right, 0px);
+}
