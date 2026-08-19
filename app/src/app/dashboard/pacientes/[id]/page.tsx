@@ -476,7 +476,7 @@ export default async function EditPatientPage({
     />
   );
 
-  const imagensPanel = <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
+  const imagensPanel = role !== "owner" ? null : <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
 
   const atestadosPanel = role !== "owner" ? null : (
     <>

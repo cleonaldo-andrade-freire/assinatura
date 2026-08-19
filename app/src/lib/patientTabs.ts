@@ -24,4 +24,4 @@ export type PatientTabKey = (typeof PATIENT_TABS)[number]["key"];
 // critério do menu lateral (ClinicShell): dados clínicos/documentos ficam
 // só com o owner, o operacional (agenda, tratamentos, débitos, imagens)
 // continua liberado.
-export const STAFF_ALLOWED_TAB_KEYS = new Set<PatientTabKey>(["agendamentos", "tratamentos", "debitos", "imagens"]);
+export const STAFF_ALLOWED_TAB_KEYS = new Set<PatientTabKey>(["agendamentos", "tratamentos", "debitos"]);
