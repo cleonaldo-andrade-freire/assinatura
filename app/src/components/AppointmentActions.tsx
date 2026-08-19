@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { RescheduleAppointmentModal } from "@/components/RescheduleAppointmentModal";
 import { SendAppointmentMessageModal } from "@/components/SendAppointmentMessageModal";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { AppointmentStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -114,8 +114,13 @@ export function AppointmentActions({
         return;
       }
       push("Agendamento excluído.", "success");
-      router.push("/dashboard/agenda");
+      // refresh() ANTES do back() — a agenda por trás do modal (rota
+      // interceptada) já estava renderizada com os dados antigos; refresh()
+      // invalida o cache de todos os segmentos, então precisa rodar antes
+      // do back() reexibir a página de baixo, senão o back() reaproveita a
+      // versão em cache (com o agendamento excluído ainda aparecendo).
       router.refresh();
+      router.back();
       onChanged?.();
     } finally {
       setIsDeleting(false);
@@ -321,6 +326,18 @@ export function AppointmentActions({
         onClose={() => setShowMessageModal(false)}
         sending={sendingMessage}
         onConfirm={handleSendMessage}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Excluir agendamento"
+        message="Essa ação não pode ser desfeita."
+        confirmLabel="Sim, excluir"
+        cancelLabel="Cancelar"
+        danger
+        loading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />

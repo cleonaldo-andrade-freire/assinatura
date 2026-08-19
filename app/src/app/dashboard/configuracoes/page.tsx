@@ -115,6 +115,23 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
 
       <ClinicProfileForm clinicId={clinic.id} clinic={clinic} />
 
+      {/* Equipe — somente owner */}
+      {role === "owner" && (
+        <div className={styles.panel}>
+          <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p className={styles.panelHeaderTitle}>Equipe</p>
+            <Link href="/dashboard/configuracoes/equipe" className={`${styles.btn} ${styles.btnGhost}`} style={{ fontSize: 13 }}>
+              Gerenciar membros
+            </Link>
+          </div>
+          <div className={styles.panelBody}>
+            <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: 0 }}>
+              Convide atendentes e colaboradores para acessar o sistema com permissões diferenciadas.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <p className={styles.panelHeaderTitle}>WhatsApp</p>
@@ -296,22 +313,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             />
           </div>
         </div>
-      {/* Equipe — somente owner */}
-      {role === "owner" && (
-        <div className={styles.panel}>
-          <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <p className={styles.panelHeaderTitle}>Equipe</p>
-            <Link href="/dashboard/configuracoes/equipe" className={`${styles.btn} ${styles.btnGhost}`} style={{ fontSize: 13 }}>
-              Gerenciar membros
-            </Link>
-          </div>
-          <div className={styles.panelBody}>
-            <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: 0 }}>
-              Convide atendentes e colaboradores para acessar o sistema com permissões diferenciadas.
-            </p>
-          </div>
-        </div>
-      )}
 
       </div>
     </ClinicShell>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { RevokeDocumentButton } from "@/components/RevokeDocumentButton";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { PrescriptionStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -145,13 +145,14 @@ export function PrescriptionActions({
         {deleting ? "Excluindo…" : "Excluir"}
       </button>
 
-      <ConfirmModal
+      <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Excluir esta prescrição?"
-        description="Remove o registro e o PDF definitivamente — essa ação não pode ser desfeita."
-        confirmText="Sim, excluir"
-        cancelText="Cancelar"
-        danger={true}
+        title="Excluir prescrição"
+        message="Remove o registro e o PDF definitivamente — essa ação não pode ser desfeita."
+        confirmLabel="Sim, excluir"
+        cancelLabel="Cancelar"
+        danger
+        loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteConfirmOpen(false)}
       />

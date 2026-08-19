@@ -1,3 +1,5 @@
+"use client";
+
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
 import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";

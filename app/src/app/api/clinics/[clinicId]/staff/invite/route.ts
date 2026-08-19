@@ -24,7 +24,12 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (!parsed.success) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
 
   const { email, role } = parsed.data;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // NEXT_PUBLIC_APP_URL — mesma variável usada no resto do app (validação de
+  // atestado, link de anamnese, etc.); "NEXT_PUBLIC_SITE_URL" nunca existiu
+  // no .env/Vercel, então isso sempre caía no fallback localhost, mesmo em
+  // produção. .replace(/\/$/, "") tira uma eventual barra final pra nunca
+  // gerar URL com "//" (bate errado na allowlist de Redirect URLs do Supabase).
+  const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
   const adminClient = createSupabaseAdminClient();
   const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {
