@@ -51,7 +51,7 @@ export default async function AnamnesesPage({
     { count: signedCount },
     { data: signatures },
     { data: activeConversations },
-    { data: patientsWithCpf },
+    { data: patientsData },
     usedThisMonth,
     { data: templatesData },
   ] = await Promise.all([
@@ -64,7 +64,7 @@ export default async function AnamnesesPage({
       .eq("clinic_id", clinic.id)
       .in("status", ["active", "abandoned"])
       .order("created_at", { ascending: false }),
-    supabase.from("patients").select("id, cpf").eq("clinic_id", clinic.id).not("cpf", "is", null),
+    supabase.from("patients").select("id, cpf, phone").eq("clinic_id", clinic.id),
     countMonthlyAnamneses(supabase, clinic.id),
     supabase.from("question_templates").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
   ]);
@@ -73,18 +73,22 @@ export default async function AnamnesesPage({
   const signedIds = Array.from(signatureByAnamnesis.keys());
   const conversations = (activeConversations as Conversation[]) ?? [];
 
-  // anamneses é anterior à tabela `patients` — não tem FK, só o CPF digitado
-  // na conversa do WhatsApp. Resolve pra foto por CPF (só dígitos, pra não
-  // depender de como cada lado formatou a máscara).
+  // anamneses é anterior à tabela `patients` — não tem FK. Resolve pra foto
+  // por telefone (sempre presente no motor de conversa via WhatsApp, mesmo
+  // quando o CPF não foi coletado) e por CPF como reforço (só dígitos, pra
+  // não depender de como cada lado formatou a máscara) — mesmo critério de
+  // telefone já usado na aba Anamneses da ficha do paciente.
+  const patientIdByPhone = new Map<string, string>();
   const patientIdByCpf = new Map<string, string>();
-  for (const p of patientsWithCpf ?? []) {
+  for (const p of patientsData ?? []) {
+    if (p.phone) patientIdByPhone.set(p.phone, p.id);
     const digits = onlyDigits(p.cpf);
     if (digits) patientIdByCpf.set(digits, p.id);
   }
 
   let query = supabase
     .from("anamneses")
-    .select("id, token, patient_name, patient_cpf, created_at", { count: "exact" })
+    .select("id, token, patient_name, patient_cpf, patient_phone, created_at", { count: "exact" })
     .eq("clinic_id", clinic.id);
   if (q) query = query.ilike("patient_name", `%${q}%`);
   if (status === "signed") {
@@ -270,7 +274,11 @@ export default async function AnamnesesPage({
                         <span className={styles.rowMain}>
                           <PatientAvatar
                             clinicId={clinic.id}
-                            patientId={patientIdByCpf.get(onlyDigits(a.patient_cpf)) ?? null}
+                            patientId={
+                              (a.patient_phone && patientIdByPhone.get(a.patient_phone)) ||
+                              patientIdByCpf.get(onlyDigits(a.patient_cpf)) ||
+                              null
+                            }
                             name={a.patient_name}
                             size={28}
                             radius="7px"
