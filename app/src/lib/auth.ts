@@ -15,6 +15,8 @@ export async function getClinicAndRole(): Promise<{
   clinic: Clinic;
   role: "owner" | "staff";
   userEmail: string;
+  userName: string | null;
+  userAvatarUrl: string | null;
 } | null> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -25,7 +27,7 @@ export async function getClinicAndRole(): Promise<{
   // RLS garante que isso só retorna o perfil do próprio usuário logado.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("clinic_id, role")
+    .select("clinic_id, role, name, avatar_url")
     .eq("id", user.id)
     .single();
   if (!profile) return null;
@@ -41,5 +43,7 @@ export async function getClinicAndRole(): Promise<{
     clinic: clinic as Clinic,
     role: (profile.role as "owner" | "staff") ?? "owner",
     userEmail: user.email ?? "",
+    userName: profile.name ?? null,
+    userAvatarUrl: profile.avatar_url ?? null,
   };
 }

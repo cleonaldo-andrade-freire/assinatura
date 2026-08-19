@@ -43,7 +43,7 @@ function brDisplay(dateStr: string): string {
 export default async function AgendaPage({ searchParams }: { searchParams: { date?: string; view?: string; detail?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const today = brDateOnly();
   const date = searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : today;
@@ -120,6 +120,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
       subtitle="Agendamentos da clínica"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {/* alternância semana/mês não faz sentido no celular (só existe visão diária lá) */}

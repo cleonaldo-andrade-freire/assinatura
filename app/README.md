@@ -10,6 +10,7 @@ Painel multi-clínica + API para consultório odontológico, tudo integrado pelo
 4. Em **Storage**, crie os buckets:
    - `signed-pdfs` — **privado** (PDFs de anamnese assinada)
    - `clinic-logos` — **público** (logo de cada clínica, usado na página de assinatura e no PDF)
+   - `profile-avatars` — **público** (foto de perfil de cada usuário — owner ou staff — mostrada na sidebar)
    - `certificate-pdfs` — **privado** (PDFs de atestado odontológico)
    - `prescription-pdfs` — **privado** (PDFs de prescrição odontológica)
    - `patient-photos` — **privado** (foto de cada paciente cadastrado)

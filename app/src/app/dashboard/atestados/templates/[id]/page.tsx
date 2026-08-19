@@ -9,7 +9,7 @@ export default async function EditCertificateTemplatePage({ params }: { params: 
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
@@ -27,6 +27,8 @@ export default async function EditCertificateTemplatePage({ params }: { params: 
       title={(data as CertificateTemplate).name}
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       <CertificateTemplateForm clinicId={clinic.id} template={data as CertificateTemplate} />
     </ClinicShell>

@@ -6,7 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PatientForm } from "@/components/PatientForm";
 import { Pagination } from "@/components/ui/Pagination";
 import { PatientTabs } from "@/components/PatientTabs";
-import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
+import { PATIENT_TABS, STAFF_ALLOWED_TAB_KEYS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
@@ -69,7 +69,7 @@ export default async function EditPatientPage({
 }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
@@ -91,7 +91,9 @@ export default async function EditPatientPage({
   const prescriptionTemplates = (prescriptionTemplatesData as PrescriptionTemplate[]) ?? [];
   const questionTemplates = (questionTemplatesData as QuestionTemplate[]) ?? [];
 
-  const activeTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "agendamentos";
+  const requestedTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "agendamentos";
+  const activeTab: PatientTabKey =
+    role === "staff" && !STAFF_ALLOWED_TAB_KEYS.has(requestedTab) ? "agendamentos" : requestedTab;
   // Preserva a aba atual nos links de paginação — sem isso, paginar dentro
   // de "Atestados" te devolvia na recarga com a aba "Anamneses" em foco.
   function pageHref(base: string, extra: Record<string, string | number>) {
@@ -99,31 +101,44 @@ export default async function EditPatientPage({
     return `${base}?${p.toString()}`;
   }
 
+  // Documentos clínicos (atestados/prescrições/orçamentos/anamneses) só
+  // consultam o banco pra owner — pra staff, nem os dados chegam a existir
+  // no RSC payload enviado ao navegador (esconder só a aba não bastava).
   const certificatesPage = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const certFrom = (certificatesPage - 1) * DOCS_PAGE_SIZE;
   const certTo = certFrom + DOCS_PAGE_SIZE - 1;
-  const { data: certificatesData, count: certificatesCount } = await supabase
-    .from("certificates")
-    .select("*", { count: "exact" })
-    .eq("clinic_id", clinic.id)
-    .eq("patient_id", patient.id)
-    .order("created_at", { ascending: false })
-    .range(certFrom, certTo);
-  const certificates = (certificatesData as Certificate[]) ?? [];
-  const certificatesTotalPages = Math.max(1, Math.ceil((certificatesCount ?? 0) / DOCS_PAGE_SIZE));
+  let certificates: Certificate[] = [];
+  let certificatesCount = 0;
+  if (role === "owner") {
+    const { data: certificatesData, count } = await supabase
+      .from("certificates")
+      .select("*", { count: "exact" })
+      .eq("clinic_id", clinic.id)
+      .eq("patient_id", patient.id)
+      .order("created_at", { ascending: false })
+      .range(certFrom, certTo);
+    certificates = (certificatesData as Certificate[]) ?? [];
+    certificatesCount = count ?? 0;
+  }
+  const certificatesTotalPages = Math.max(1, Math.ceil(certificatesCount / DOCS_PAGE_SIZE));
 
   const prescriptionsPage = Math.max(1, parseInt(searchParams.rxPage ?? "1", 10) || 1);
   const rxFrom = (prescriptionsPage - 1) * DOCS_PAGE_SIZE;
   const rxTo = rxFrom + DOCS_PAGE_SIZE - 1;
-  const { data: prescriptionsData, count: prescriptionsCount } = await supabase
-    .from("prescriptions")
-    .select("*", { count: "exact" })
-    .eq("clinic_id", clinic.id)
-    .eq("patient_id", patient.id)
-    .order("created_at", { ascending: false })
-    .range(rxFrom, rxTo);
-  const prescriptions = (prescriptionsData as Prescription[]) ?? [];
-  const prescriptionsTotalPages = Math.max(1, Math.ceil((prescriptionsCount ?? 0) / DOCS_PAGE_SIZE));
+  let prescriptions: Prescription[] = [];
+  let prescriptionsCount = 0;
+  if (role === "owner") {
+    const { data: prescriptionsData, count } = await supabase
+      .from("prescriptions")
+      .select("*", { count: "exact" })
+      .eq("clinic_id", clinic.id)
+      .eq("patient_id", patient.id)
+      .order("created_at", { ascending: false })
+      .range(rxFrom, rxTo);
+    prescriptions = (prescriptionsData as Prescription[]) ?? [];
+    prescriptionsCount = count ?? 0;
+  }
+  const prescriptionsTotalPages = Math.max(1, Math.ceil(prescriptionsCount / DOCS_PAGE_SIZE));
 
   const appointmentsPage = Math.max(1, parseInt(searchParams.apPage ?? "1", 10) || 1);
   const apFrom = (appointmentsPage - 1) * DOCS_PAGE_SIZE;
@@ -141,15 +156,20 @@ export default async function EditPatientPage({
   const budgetsPage = Math.max(1, parseInt(searchParams.bgPage ?? "1", 10) || 1);
   const bgFrom = (budgetsPage - 1) * DOCS_PAGE_SIZE;
   const bgTo = bgFrom + DOCS_PAGE_SIZE - 1;
-  const { data: budgetsData, count: budgetsCount } = await supabase
-    .from("budgets")
-    .select("*", { count: "exact" })
-    .eq("clinic_id", clinic.id)
-    .eq("patient_id", patient.id)
-    .order("created_at", { ascending: false })
-    .range(bgFrom, bgTo);
-  const budgets = (budgetsData as Budget[]) ?? [];
-  const budgetsTotalPages = Math.max(1, Math.ceil((budgetsCount ?? 0) / DOCS_PAGE_SIZE));
+  let budgets: Budget[] = [];
+  let budgetsCount = 0;
+  if (role === "owner") {
+    const { data: budgetsData, count } = await supabase
+      .from("budgets")
+      .select("*", { count: "exact" })
+      .eq("clinic_id", clinic.id)
+      .eq("patient_id", patient.id)
+      .order("created_at", { ascending: false })
+      .range(bgFrom, bgTo);
+    budgets = (budgetsData as Budget[]) ?? [];
+    budgetsCount = count ?? 0;
+  }
+  const budgetsTotalPages = Math.max(1, Math.ceil(budgetsCount / DOCS_PAGE_SIZE));
 
   // Valor por orçamento (soma dos itens selecionados menos desconto) — busca
   // os itens dos orçamentos desta página numa query só, em vez de N+1.
@@ -243,7 +263,7 @@ export default async function EditPatientPage({
   let anamneses: Anamnesis[] = [];
   let anamnesesCount = 0;
   let signedAnamnesisIds = new Set<string>();
-  if (patient.phone) {
+  if (role === "owner" && patient.phone) {
     const { data: anamnesesData, count } = await supabase
       .from("anamneses")
       .select("*", { count: "exact" })
@@ -267,7 +287,7 @@ export default async function EditPatientPage({
   }
   const anamnesesTotalPages = Math.max(1, Math.ceil(anamnesesCount / DOCS_PAGE_SIZE));
 
-  const anamnesesPanel = !patient.phone ? (
+  const anamnesesPanel = role !== "owner" ? null : !patient.phone ? (
     <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra ver as anamneses vinculadas.</div>
   ) : (
     <>
@@ -366,7 +386,7 @@ export default async function EditPatientPage({
       </>
     );
 
-  const orcamentosPanel = !patient.phone ? (
+  const orcamentosPanel = role !== "owner" ? null : !patient.phone ? (
     <div className={styles.emptyState}>Cadastre o WhatsApp do paciente pra criar um orçamento.</div>
   ) : (
     <>
@@ -458,7 +478,7 @@ export default async function EditPatientPage({
 
   const imagensPanel = <PatientImagesPanel clinicId={clinic.id} patientId={patient.id} />;
 
-  const atestadosPanel = (
+  const atestadosPanel = role !== "owner" ? null : (
     <>
       <div style={{ marginBottom: 14 }}>
         <NewCertificateTrigger
@@ -519,7 +539,7 @@ export default async function EditPatientPage({
     </>
   );
 
-  const prescricoesPanel = (
+  const prescricoesPanel = role !== "owner" ? null : (
     <>
       <div style={{ marginBottom: 14 }}>
         <NewPrescriptionTrigger
@@ -587,11 +607,14 @@ export default async function EditPatientPage({
       title={patient.name}
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       <PatientForm clinicId={clinic.id} patient={patient} />
 
       <PatientTabs
         initialTab={activeTab}
+        role={role}
         panels={{
           anamneses: anamnesesPanel,
           agendamentos: agendamentosPanel,

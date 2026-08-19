@@ -17,7 +17,7 @@ const PAGE_SIZE = 10;
 export default async function PatientsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -46,6 +46,8 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
       subtitle="Cadastro de pacientes da clínica"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <NewPatientTrigger clinicId={clinic.id} className={`${styles.btn} ${styles.btnPrimary}`}>
           + Novo paciente

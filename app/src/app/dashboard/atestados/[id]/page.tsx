@@ -25,7 +25,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: certificate } = await supabase
@@ -52,6 +52,8 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
       subtitle={`Atestado emitido em ${formatBRDate(c.created_at)}`}
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <Link href="/dashboard/atestados" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

@@ -219,6 +219,10 @@ interface ClinicShellProps {
   role?: "owner" | "staff";
   /** E-mail do usuário logado — mostrado no rodapé da sidebar, junto do papel. */
   userEmail?: string;
+  /** Nome de exibição do usuário logado (opcional — cadastrado em "Meu perfil"). */
+  userName?: string | null;
+  /** Foto de perfil do usuário logado (opcional — cadastrada em "Meu perfil"). */
+  userAvatarUrl?: string | null;
 }
 
 export function ClinicShell({
@@ -230,6 +234,8 @@ export function ClinicShell({
   children,
   role = "owner",
   userEmail,
+  userName,
+  userAvatarUrl,
 }: ClinicShellProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -330,13 +336,24 @@ export function ClinicShell({
 
         <div className={styles.sidebarFooter}>
           {userEmail && (
-            <div className={styles.userInfo} title={`${userEmail} · ${ROLE_LABELS[role]}`}>
-              <div className={styles.userAvatar}>{initials(userEmail.split("@")[0].replace(/[._]/g, " "))}</div>
+            <a
+              href="/dashboard/perfil"
+              className={styles.userInfo}
+              title={`${userName || userEmail} · ${ROLE_LABELS[role]} — editar meu perfil`}
+            >
+              <div className={styles.userAvatar}>
+                {userAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={userAvatarUrl} alt="" className={styles.userAvatarImg} />
+                ) : (
+                  initials(userName || userEmail.split("@")[0].replace(/[._]/g, " "))
+                )}
+              </div>
               <div className={styles.userDetails}>
-                <span className={styles.userEmail}>{userEmail}</span>
+                <span className={styles.userEmail}>{userName || userEmail}</span>
                 <span className={styles.userRole}>{ROLE_LABELS[role]}</span>
               </div>
-            </div>
+            </a>
           )}
           <button
             type="button"

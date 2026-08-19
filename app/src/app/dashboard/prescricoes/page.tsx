@@ -29,7 +29,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -72,6 +72,8 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
       subtitle="Prescrições odontológicas emitidas pela clínica"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/prescricoes/templates" className={`${styles.btn} ${styles.btnGhost}`}>

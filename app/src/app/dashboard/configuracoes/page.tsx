@@ -37,7 +37,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   let invoiceUrl: string | null = null;
   let payments: AsaasPayment[] = [];
@@ -83,6 +83,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
       subtitle="Dados do responsável técnico, WhatsApp, identidade visual e assinatura da clínica"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       {searchParams.success && (
         <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderLeft: "4px solid var(--brand)", borderRadius: 8, marginBottom: 24 }}>

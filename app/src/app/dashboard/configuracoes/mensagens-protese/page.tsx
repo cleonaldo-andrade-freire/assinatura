@@ -11,7 +11,7 @@ export default async function ProsthesisMessageTemplatesPage() {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.from("prosthesis_stage_templates").select("stage, body").eq("clinic_id", clinic.id);
@@ -29,6 +29,8 @@ export default async function ProsthesisMessageTemplatesPage() {
       subtitle="Textos enviados por WhatsApp quando o serviço muda de estágio"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <Link href="/dashboard/configuracoes" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

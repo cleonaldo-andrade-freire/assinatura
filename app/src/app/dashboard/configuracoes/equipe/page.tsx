@@ -30,6 +30,8 @@ export default async function EquipePage() {
       subtitle="Gerencie os membros que têm acesso ao sistema"
       role={auth.role}
       userEmail={auth.userEmail}
+      userName={auth.userName}
+      userAvatarUrl={auth.userAvatarUrl}
     >
       <TeamPanel
         clinicId={auth.clinic.id}

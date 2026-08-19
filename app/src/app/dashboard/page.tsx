@@ -27,7 +27,7 @@ export default async function DashboardPage({
 }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const professionalName = clinic.dentist_name || clinic.name;
@@ -193,6 +193,8 @@ export default async function DashboardPage({
       subtitle="Cancelamentos e retornos que precisam de um contato"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       {role === "owner" && (
         <DashboardKPIs

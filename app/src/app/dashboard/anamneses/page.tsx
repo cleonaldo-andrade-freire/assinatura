@@ -36,7 +36,7 @@ export default async function AnamnesesPage({
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const status = searchParams.status === "signed" || searchParams.status === "pending" ? searchParams.status : "";
@@ -114,6 +114,8 @@ export default async function AnamnesesPage({
       subtitle="Todas as anamneses recebidas pela clínica"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/templates" className={`${styles.btn} ${styles.btnGhost}`}>

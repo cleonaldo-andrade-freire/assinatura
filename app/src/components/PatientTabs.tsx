@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { PATIENT_TABS, type PatientTabKey } from "@/lib/patientTabs";
+import { PATIENT_TABS, STAFF_ALLOWED_TAB_KEYS, type PatientTabKey } from "@/lib/patientTabs";
 import styles from "@/styles/shell.module.css";
 
 /** Troca de aba client-side (sem recarregar a página) — os quatro painéis já
@@ -18,13 +18,16 @@ import styles from "@/styles/shell.module.css";
 export function PatientTabs({
   initialTab,
   panels,
+  role = "owner",
 }: {
   initialTab: PatientTabKey;
-  panels: Record<PatientTabKey, ReactNode>;
+  panels: Partial<Record<PatientTabKey, ReactNode>>;
+  role?: "owner" | "staff";
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [active, setActive] = useState<PatientTabKey>(initialTab);
+  const visibleTabs = role === "staff" ? PATIENT_TABS.filter((t) => STAFF_ALLOWED_TAB_KEYS.has(t.key)) : PATIENT_TABS;
 
   function selectTab(key: PatientTabKey) {
     setActive(key);
@@ -34,7 +37,7 @@ export function PatientTabs({
   return (
     <div className={styles.panel}>
       <div className={styles.tabBar}>
-        {PATIENT_TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t.key}
             type="button"

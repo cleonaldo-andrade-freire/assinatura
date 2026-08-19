@@ -12,7 +12,7 @@ export default async function PriceTablesPage() {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: tables } = await supabase
@@ -39,6 +39,8 @@ export default async function PriceTablesPage() {
       subtitle="Preços por plano (particular, convênios) usados ao montar um orçamento"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <Link href="/dashboard/configuracoes" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Configurações

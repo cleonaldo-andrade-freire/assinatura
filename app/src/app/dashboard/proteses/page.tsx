@@ -9,7 +9,7 @@ import type { ProsthesisOrder } from "@/lib/database.types";
 export default async function ProsthesisPage() {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
@@ -27,6 +27,8 @@ export default async function ProsthesisPage() {
       subtitle="Acompanhamento do serviço de prótese, do pedido à instalação"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={<NewProsthesisOrderModal clinicId={clinic.id} />}
     >
       <ProsthesisBoard clinicId={clinic.id} orders={orders} />

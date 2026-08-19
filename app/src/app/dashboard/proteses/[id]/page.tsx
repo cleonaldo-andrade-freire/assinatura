@@ -11,7 +11,7 @@ import styles from "@/styles/shell.module.css";
 export default async function ProsthesisOrderDetailPage({ params }: { params: { id: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: order } = await supabase
@@ -38,6 +38,8 @@ export default async function ProsthesisOrderDetailPage({ params }: { params: { 
       subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <Link href="/dashboard/proteses" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

@@ -7,7 +7,7 @@ export default async function NewCertificateTemplatePage() {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   return (
     <ClinicShell
@@ -16,6 +16,8 @@ export default async function NewCertificateTemplatePage() {
       title="Novo modelo de atestado"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       <CertificateTemplateForm clinicId={clinic.id} />
     </ClinicShell>

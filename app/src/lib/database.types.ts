@@ -46,6 +46,8 @@ export interface Profile {
   clinic_id: string;
   email: string;
   role: UserRole;
+  name: string | null;
+  avatar_url: string | null;
   created_at: string;
 }
 

@@ -9,7 +9,7 @@ import styles from "@/styles/shell.module.css";
 export default async function NewAppointmentPage({ searchParams }: { searchParams: { date?: string; time?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const date = searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : brDateOnly();
 
@@ -20,6 +20,8 @@ export default async function NewAppointmentPage({ searchParams }: { searchParam
       title="Novo agendamento"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <Link href="/dashboard/agenda" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

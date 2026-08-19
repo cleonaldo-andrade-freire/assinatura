@@ -25,7 +25,7 @@ export default async function DespesasPage({
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
   const today = brDateOnly();
@@ -135,6 +135,8 @@ export default async function DespesasPage({
       subtitle="Contas fixas e variáveis da clínica, avulsas ou recorrentes"
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <a href={exportHref} className={`${styles.btn} ${styles.btnGhost}`}>

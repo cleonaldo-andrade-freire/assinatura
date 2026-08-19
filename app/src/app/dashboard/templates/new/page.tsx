@@ -7,7 +7,7 @@ export default async function NewTemplatePage() {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
-  const { clinic, role, userEmail } = auth;
+  const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   return (
     <ClinicShell
@@ -17,6 +17,8 @@ export default async function NewTemplatePage() {
       subtitle='Ex.: "Adulto", "Criança", "Simples" — o paciente responde uma pergunta de cada vez pelo WhatsApp'
       role={role}
       userEmail={userEmail}
+      userName={userName}
+      userAvatarUrl={userAvatarUrl}
     >
       <TemplateEditor clinicId={clinic.id} />
     </ClinicShell>
