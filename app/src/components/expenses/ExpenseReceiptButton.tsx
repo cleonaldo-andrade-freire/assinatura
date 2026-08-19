@@ -3,22 +3,8 @@
 import { useState } from "react";
 import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
 import type { Expense } from "@/lib/database.types";
+import { ReceiptIcon } from "@/components/expenses/icons";
 import ex from "./expenses.module.css";
-
-function ReceiptIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M9 8h6M9 12h6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 /** Anexa/visualiza o comprovante de pagamento de UMA despesa já paga — abre o mesmo modal de escolher/arrastar arquivo usado na criação, upload dispara assim que o arquivo é escolhido. */
 export function ExpenseReceiptButton({

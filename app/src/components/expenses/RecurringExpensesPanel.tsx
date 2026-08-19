@@ -8,6 +8,7 @@ import { ExpenseFormModal } from "@/components/expenses/ExpenseFormModal";
 import { formatMoneyDisplay } from "@/lib/money";
 import { EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
 import type { RecurringExpense } from "@/lib/database.types";
+import { TrashIcon } from "@/components/expenses/icons";
 import styles from "@/styles/shell.module.css";
 import ex from "./expenses.module.css";
 
@@ -103,8 +104,8 @@ export function RecurringExpensesPanel({
           </thead>
           <tbody>
             {recurring.map((r) => (
-              <tr key={r.id} style={{ opacity: r.active ? 1 : 0.55 }}>
-                <td>
+              <tr key={r.id} className="clickableRow" onClick={() => setEditingRecurring(r)} style={{ opacity: r.active ? 1 : 0.55 }}>
+                <td onClick={(e) => e.stopPropagation()}>
                   <ToggleSwitch
                     checked={r.active}
                     disabled={togglingId === r.id}
@@ -117,20 +118,17 @@ export function RecurringExpensesPanel({
                 <td className={styles.rowTitle}>{r.description}</td>
                 <td data-label="Valor">{formatMoneyDisplay(r.amount)}</td>
                 <td data-label="Dia">{r.day_of_month}</td>
-                <td>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button type="button" onClick={() => setEditingRecurring(r)} className={`${styles.btn} ${styles.btnGhost}`}>
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(r.id)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)" }}
-                    >
-                      Excluir
-                    </button>
-                  </div>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(r.id)}
+                    className={`${ex.iconBtn} ${ex.iconBtnDanger}`}
+                    style={{ marginLeft: "auto" }}
+                    title="Excluir despesa recorrente"
+                    aria-label="Excluir despesa recorrente"
+                  >
+                    <TrashIcon />
+                  </button>
                 </td>
               </tr>
             ))}

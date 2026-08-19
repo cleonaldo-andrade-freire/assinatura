@@ -13,39 +13,12 @@ import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDateTime, addMonthsToDateStr } from "@/lib/date";
 import { formatDateBR } from "@/lib/pdfTextLayout";
 import type { Expense } from "@/lib/database.types";
+import { TrashIcon, UndoIcon } from "@/components/expenses/icons";
 import styles from "@/styles/shell.module.css";
 import ex from "./expenses.module.css";
 
 function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
-}
-
-function TrashIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 7h16M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7m2 0v12.5A1.5 1.5 0 0115.5 21h-7A1.5 1.5 0 017 19.5V7h10z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function UndoIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 10h9a5 5 0 010 10h-2M4 10l4-4M4 10l4 4"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 export function ExpensesPanel({
@@ -127,6 +100,7 @@ export function ExpensesPanel({
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmCancelPaymentId, setConfirmCancelPaymentId] = useState<string | null>(null);
   const [cancelingPaymentId, setCancelingPaymentId] = useState<string | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toasts, push, dismiss } = useToasts();
@@ -210,6 +184,7 @@ export function ExpensesPanel({
       const updated = data.expense as Expense;
       setPaidExpenses((prev) => prev.filter((e) => e.id !== id));
       setPendingExpenses((prev) => [updated, ...prev]);
+      setConfirmCancelPaymentId(null);
       push("Pagamento cancelado.", "success");
       router.refresh();
     } finally {
@@ -360,7 +335,7 @@ export function ExpensesPanel({
                       disabled={cancelingPaymentId === e.id}
                       onClick={(ev) => {
                         ev.stopPropagation();
-                        handleCancelPayment(e.id);
+                        setConfirmCancelPaymentId(e.id);
                       }}
                       className={ex.iconBtn}
                       title="Cancelar pagamento"
@@ -420,6 +395,18 @@ export function ExpensesPanel({
         loading={deletingId !== null}
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmCancelPaymentId !== null}
+        title="Cancelar pagamento"
+        message={'Isso desfaz o registro de pagamento e a despesa volta para "Pendente". O comprovante anexado, se houver, é mantido.'}
+        confirmLabel="Cancelar pagamento"
+        cancelLabel="Voltar"
+        danger
+        loading={cancelingPaymentId !== null}
+        onConfirm={() => confirmCancelPaymentId && handleCancelPayment(confirmCancelPaymentId)}
+        onCancel={() => setConfirmCancelPaymentId(null)}
       />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
