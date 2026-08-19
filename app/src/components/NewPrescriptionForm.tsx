@@ -85,8 +85,11 @@ export function NewPrescriptionForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!patientName.trim()) return;
     setError(null);
+    if (!patientName.trim()) {
+      setError("Preencha o nome do paciente.");
+      return;
+    }
     if (items.some((i) => i.control_type === "controlado_especial")) {
       setError(
         "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."

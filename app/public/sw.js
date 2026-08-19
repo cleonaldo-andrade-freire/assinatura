@@ -48,7 +48,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, res.clone()));
+          // clone() tem que rodar aqui, síncrono, antes de devolver `res` —
+          // depois que o navegador começa a consumir o corpo da resposta
+          // devolvida (o que pode acontecer antes do `.then()` de
+          // caches.open() abaixo rodar, já que ele é assíncrono), clonar dá
+          // erro "Response body is already used".
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, resClone));
           return res;
         })
         .catch(async () => {

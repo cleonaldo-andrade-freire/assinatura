@@ -115,9 +115,12 @@ export function NewCertificateForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!patientName.trim()) return;
     setError(null);
-    
+    if (!patientName.trim()) {
+      setError("Preencha o nome do paciente.");
+      return;
+    }
+
     if (isLocalAgentMode) {
       setShowAgentSelector(true);
       return;
