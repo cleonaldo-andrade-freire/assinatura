@@ -10,6 +10,7 @@ import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatValidationCode } from "@/lib/validationCode";
 import type { Certificate } from "@/lib/database.types";
 import { isRealSignatureProvider, signatureProviderLabel } from "@/lib/signature/providerLabel";
+import { PrintShareButton } from "@/components/mobile/PrintShareButton";
 import styles from "@/styles/shell.module.css";
 
 function detailRow(label: string, value: React.ReactNode) {
@@ -90,7 +91,23 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           <p className={styles.panelHeaderTitle}>Assinatura</p>
         </div>
         <div className={styles.panelBody}>
-          {c.signature_provider === "certisign" ? (
+          {c.status === "pendente_assinatura" ? (
+            <div
+              style={{
+                background: "#f1ede4",
+                border: "1px solid #d8d0bd",
+                color: "#5b6864",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 14px",
+                fontSize: 13.5,
+                marginBottom: 16,
+              }}
+            >
+              🖨️ Emitido pelo celular sem assinatura digital ICP-Brasil — precisa da assinatura e do carimbo manuais
+              da profissional. Pode ser assinado digitalmente agora mesmo, aqui do computador, sobre este mesmo
+              registro (botão "Assinar digitalmente agora" abaixo).
+            </div>
+          ) : c.signature_provider === "certisign" ? (
             c.status === "assinado" ? (
               <div
                 style={{
@@ -182,17 +199,25 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           {c.sha256 && detailRow("Hash SHA-256 do PDF", <code>{c.sha256}</code>)}
           {c.validation_code && detailRow("Código de validação pública", formatValidationCode(c.validation_code))}
           {c.sent_whatsapp_at && detailRow("Reenviado por WhatsApp em", formatBRDateTime(c.sent_whatsapp_at, "medium"))}
+          {c.unsigned_pdf_at && detailRow("Via não assinada gerada em", formatBRDateTime(c.unsigned_pdf_at, "medium"))}
 
           <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {c.status === "assinado" && (
-              <a
-                href={`/api/certificates/download/${c.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-              >
-                Baixar PDF
-              </a>
+            {(c.status === "assinado" || c.status === "pendente_assinatura") && (
+              <>
+                <PrintShareButton
+                  downloadUrl={`/api/certificates/download/${c.id}`}
+                  fileName={`atestado-${c.patient_name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${c.id.slice(0, 8)}.pdf`}
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                />
+                <a
+                  href={`/api/certificates/download/${c.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                >
+                  Baixar PDF
+                </a>
+              </>
             )}
             <CertificateActions
               clinicId={clinic.id}

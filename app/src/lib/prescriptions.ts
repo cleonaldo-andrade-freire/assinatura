@@ -15,8 +15,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * `issueCertificate` (`lib/certificates.ts`) — mesmo fluxo, mesmo provider,
  * só troca o gerador de PDF e o bucket de storage. Com a Certisign, quem
  * completa o fluxo depois da dentista confirmar é `finalizePrescriptionSignature`.
+ *
+ * `unsigned: true` — ver o comentário equivalente em `issueCertificate`
+ * (`lib/certificates.ts`), mesmo comportamento aqui: pula o provider, marca
+ * `pendente_assinatura`. Bloqueio de `controlado_especial` continua
+ * aplicado antes de chegar aqui (`api/clinics/[clinicId]/prescriptions`),
+ * então essa via nunca recebe um item desse tipo.
  */
-export async function issuePrescription(prescriptionId: string, signerCertificatePem?: string): Promise<Prescription> {
+export async function issuePrescription(
+  prescriptionId: string,
+  signerCertificatePem?: string,
+  unsigned?: boolean
+): Promise<Prescription> {
   const supabase = createSupabaseAdminClient();
 
   const { data: prescription } = await supabase
@@ -33,10 +43,39 @@ export async function issuePrescription(prescriptionId: string, signerCertificat
     .single();
   if (!clinic) throw new Error(`Clínica ${prescription.clinic_id} não encontrada.`);
 
-  // Reaproveita o código se já existe (retry após falha) — só gera um novo na
+  // Reaproveita o código se já existe (retry após falha, ou promovendo um
+  // documento pendente_assinatura pra assinado) — só gera um novo na
   // primeira tentativa, pra não invalidar um QR/código já impresso em algum
   // PDF anterior deste mesmo documento.
   const validationCode = prescription.validation_code ?? (await ensureUniqueValidationCode(supabase));
+
+  const logo = await loadClinicLogoForPdf((clinic as Clinic).logo_url);
+  const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/validar/${validationCode}`;
+
+  if (unsigned) {
+    const pdfBytes = await buildPrescriptionPdf(
+      { ...(prescription as Prescription), validation_code: validationCode },
+      (clinic as Clinic).name,
+      logo,
+      validationUrl,
+      { unsigned: true }
+    );
+    const sha256 = crypto.createHash("sha256").update(Buffer.from(pdfBytes)).digest("hex");
+    const pdfStorageKey = await savePrescriptionPdf(clinic.id, prescriptionId, pdfBytes);
+    const { data: updated } = await supabase
+      .from("prescriptions")
+      .update({
+        status: "pendente_assinatura",
+        validation_code: validationCode,
+        unsigned_pdf_at: new Date().toISOString(),
+        pdf_storage_key: pdfStorageKey,
+        sha256,
+      })
+      .eq("id", prescriptionId)
+      .select("*")
+      .single();
+    return updated as Prescription;
+  }
 
   await supabase
     .from("prescriptions")
@@ -47,8 +86,6 @@ export async function issuePrescription(prescriptionId: string, signerCertificat
     })
     .eq("id", prescriptionId);
 
-  const logo = await loadClinicLogoForPdf((clinic as Clinic).logo_url);
-  const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/validar/${validationCode}`;
   const pdfBytes = await buildPrescriptionPdf(
     { ...(prescription as Prescription), validation_code: validationCode },
     (clinic as Clinic).name,

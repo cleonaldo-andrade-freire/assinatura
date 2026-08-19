@@ -129,7 +129,26 @@ export function NewPrescriptionForm({
     await emitPrescription(null);
   }
 
-  async function emitPrescription(cert: AgentCertificate | null) {
+  // Via não assinada digitalmente (shell mobile v2, prompt §8) — só
+  // oferecida no mobile v2. O bloqueio de controlado_especial acima já
+  // impede chegar aqui com esse tipo de item, então não precisa repetir
+  // a checagem.
+  async function handleSubmitUnsigned() {
+    setError(null);
+    if (!patientName.trim()) {
+      setError("Preencha o nome do paciente.");
+      return;
+    }
+    if (items.some((i) => i.control_type === "controlado_especial")) {
+      setError(
+        "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."
+      );
+      return;
+    }
+    await emitPrescription(null, true);
+  }
+
+  async function emitPrescription(cert: AgentCertificate | null, unsigned?: boolean) {
     setSending(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/prescriptions`, {
@@ -142,6 +161,7 @@ export function NewPrescriptionForm({
             .filter((i) => i.drug_name.trim())
             .map((i) => ({ ...i, dosage: i.dosage.trim(), instructions: i.instructions.trim() })),
           notes: notes.trim() || undefined,
+          unsigned: unsigned || undefined,
           signerCertificatePem: cert
             ? cert.certificateChainBase64.map((b64) => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join("\n") || b64}\n-----END CERTIFICATE-----`).join("\n")
             : undefined,
@@ -189,9 +209,22 @@ export function NewPrescriptionForm({
   );
 
   const submitButton = (
-    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-      {sending ? "Emitindo…" : "Emitir prescrição"}
-    </button>
+    <>
+      <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
+        {sending ? "Emitindo…" : "Emitir prescrição"}
+      </button>
+      {mobileV2 && (
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnGhost}`}
+          disabled={sending}
+          onClick={handleSubmitUnsigned}
+          title="Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador."
+        >
+          {sending ? "Emitindo…" : "Emitir sem assinatura digital"}
+        </button>
+      )}
+    </>
   );
 
   const fieldGroups = (

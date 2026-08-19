@@ -1,6 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, reasonToWords, wrapReasonWords, wrapText } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
+import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
 import type { Prescription } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -25,7 +26,8 @@ export async function buildPrescriptionPdf(
   prescription: Prescription,
   clinicName: string,
   logo: LogoImage | null,
-  validationUrl: string
+  validationUrl: string,
+  options?: { unsigned?: boolean }
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -147,13 +149,21 @@ export async function buildPrescriptionPdf(
   }
 
   y -= 10;
-  const declText =
-    "Documento emitido eletronicamente pelo sistema da clínica. A área reservada abaixo é preenchida " +
-    "pelo provedor de assinatura digital do dentista responsável.";
+  const declText = options?.unsigned
+    ? "Este documento não possui assinatura digital ICP-Brasil. Para ter validade, precisa da assinatura e do " +
+      "carimbo manuais do(a) profissional responsável, como qualquer receituário em papel. Uma versão assinada " +
+      "digitalmente pode ser gerada depois, pelo computador, sobre este mesmo registro."
+    : "Documento emitido eletronicamente pelo sistema da clínica. A área reservada abaixo é preenchida " +
+      "pelo provedor de assinatura digital do dentista responsável.";
   drawWrapped(wrapText(declText, italic, 9, contentWidth), italic, 9, 12, rgb(0.4, 0.4, 0.4));
 
   if (prescription.validation_code) {
     await drawValidationFooter(doc, page, font, bold, MARGIN, validationUrl, prescription.validation_code);
+  }
+
+  if (options?.unsigned) {
+    const lastPage = doc.getPages().at(-1)!;
+    drawUnsignedSignatureBox(lastPage, font, bold, MARGIN, prescription.dentist_name, `CRO ${prescription.dentist_cro}/${prescription.dentist_cro_uf}`);
   }
 
   return doc.save();

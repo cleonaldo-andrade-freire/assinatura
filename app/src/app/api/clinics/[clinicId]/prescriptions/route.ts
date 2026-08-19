@@ -29,6 +29,9 @@ const bodySchema = z.object({
   items: z.array(itemSchema).min(1),
   notes: z.string().optional(),
   signerCertificatePem: z.string().optional(),
+  // Via não assinada digitalmente (shell mobile v2, prompt §8) — default
+  // false preserva o fluxo de assinatura normal pra quem não manda esse campo.
+  unsigned: z.boolean().default(false),
 });
 
 /** Lista as prescrições da clínica logada. RLS já garante que só vem o que é dela. */
@@ -102,6 +105,6 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "insert_failed", message: error?.message }, { status: 500 });
   }
 
-  const issued = await issuePrescription(prescription.id, input.signerCertificatePem);
+  const issued = await issuePrescription(prescription.id, input.signerCertificatePem, input.unsigned);
   return NextResponse.json({ prescription: issued }, { status: 201 });
 }

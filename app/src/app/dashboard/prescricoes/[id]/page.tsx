@@ -11,6 +11,7 @@ import { formatValidationCode } from "@/lib/validationCode";
 import { PRESCRIPTION_CONTROL_LABEL } from "@/lib/prescriptionControl";
 import type { Prescription } from "@/lib/database.types";
 import { isRealSignatureProvider, signatureProviderLabel } from "@/lib/signature/providerLabel";
+import { PrintShareButton } from "@/components/mobile/PrintShareButton";
 import styles from "@/styles/shell.module.css";
 
 function detailRow(label: string, value: React.ReactNode) {
@@ -127,7 +128,23 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
           <p className={styles.panelHeaderTitle}>Assinatura</p>
         </div>
         <div className={styles.panelBody}>
-          {p.signature_provider === "certisign" ? (
+          {p.status === "pendente_assinatura" ? (
+            <div
+              style={{
+                background: "#f1ede4",
+                border: "1px solid #d8d0bd",
+                color: "#5b6864",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 14px",
+                fontSize: 13.5,
+                marginBottom: 16,
+              }}
+            >
+              🖨️ Emitida pelo celular sem assinatura digital ICP-Brasil — precisa da assinatura e do carimbo manuais
+              da profissional. Pode ser assinada digitalmente agora mesmo, aqui do computador, sobre este mesmo
+              registro (botão "Assinar digitalmente agora" abaixo).
+            </div>
+          ) : p.signature_provider === "certisign" ? (
             p.status === "assinado" ? (
               <div
                 style={{
@@ -219,17 +236,25 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
           {p.sha256 && detailRow("Hash SHA-256 do PDF", <code>{p.sha256}</code>)}
           {p.validation_code && detailRow("Código de validação pública", formatValidationCode(p.validation_code))}
           {p.sent_whatsapp_at && detailRow("Reenviado por WhatsApp em", formatBRDateTime(p.sent_whatsapp_at, "medium"))}
+          {p.unsigned_pdf_at && detailRow("Via não assinada gerada em", formatBRDateTime(p.unsigned_pdf_at, "medium"))}
 
           <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {p.status === "assinado" && (
-              <a
-                href={`/api/prescriptions/download/${p.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-              >
-                Baixar PDF
-              </a>
+            {(p.status === "assinado" || p.status === "pendente_assinatura") && (
+              <>
+                <PrintShareButton
+                  downloadUrl={`/api/prescriptions/download/${p.id}`}
+                  fileName={`prescricao-${p.patient_name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${p.id.slice(0, 8)}.pdf`}
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                />
+                <a
+                  href={`/api/prescriptions/download/${p.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                >
+                  Baixar PDF
+                </a>
+              </>
             )}
             <PrescriptionActions
               clinicId={clinic.id}

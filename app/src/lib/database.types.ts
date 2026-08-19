@@ -82,7 +82,7 @@ export interface Signature {
   created_at: string;
 }
 
-export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha";
+export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";
 
 export interface Certificate {
   id: string;
@@ -116,6 +116,9 @@ export interface Certificate {
   revoked_reason: string | null;
   created_by: string | null;
   created_at: string;
+  /** Preenchido quando o documento foi emitido pela via não assinada
+   * digitalmente (mobile, sem ICP-Brasil) — ver migration 050. */
+  unsigned_pdf_at: string | null;
 }
 
 export interface Patient {
@@ -144,7 +147,7 @@ export interface CertificateTemplate {
   created_at: string;
 }
 
-export type PrescriptionStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha";
+export type PrescriptionStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";
 
 /**
  * Autodeclarado pelo dentista, não classificado pelo sistema — não temos uma
@@ -205,6 +208,9 @@ export interface Prescription {
   revoked_reason: string | null;
   created_by: string | null;
   created_at: string;
+  /** Preenchido quando o documento foi emitido pela via não assinada
+   * digitalmente (mobile, sem ICP-Brasil) — ver migration 050. */
+  unsigned_pdf_at: string | null;
 }
 
 export interface PrescriptionTemplate {

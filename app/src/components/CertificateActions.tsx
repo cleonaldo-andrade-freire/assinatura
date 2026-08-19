@@ -122,6 +122,17 @@ export function CertificateActions({
           {retrying ? "Tentando…" : "Tentar novamente"}
         </button>
       )}
+      {status === "pendente_assinatura" && (
+        <button
+          type="button"
+          onClick={handleRetry}
+          disabled={retrying}
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          title="Assina digitalmente este mesmo registro agora, pelo computador — não cria um documento novo."
+        >
+          {retrying ? "Assinando…" : "Assinar digitalmente agora"}
+        </button>
+      )}
       {status === "assinado" && hasPhone && (
         <button
           type="button"

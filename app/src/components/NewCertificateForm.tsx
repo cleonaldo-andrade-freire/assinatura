@@ -157,7 +157,20 @@ export function NewCertificateForm({
     await emitCertificate(null);
   }
 
-  async function emitCertificate(cert: AgentCertificate | null) {
+  // Via não assinada digitalmente (shell mobile v2, prompt §8) — só
+  // oferecida no mobile v2 (mesma dentista pode continuar usando a
+  // assinatura normal no desktop). Não passa por AgentCertificateSelector
+  // nem por nenhum provedor: o registro nasce em pendente_assinatura.
+  async function handleSubmitUnsigned() {
+    setError(null);
+    if (!patientName.trim()) {
+      setError("Preencha o nome do paciente.");
+      return;
+    }
+    await emitCertificate(null, true);
+  }
+
+  async function emitCertificate(cert: AgentCertificate | null, unsigned?: boolean) {
     setSending(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/certificates`, {
@@ -171,8 +184,9 @@ export function NewCertificateForm({
           reason: reason.trim(),
           rest_days: restDays,
           starts_on: startsOn,
-          signerCertificatePem: cert 
-            ? cert.certificateChainBase64.map(b64 => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join('\n') || b64}\n-----END CERTIFICATE-----`).join('\n') 
+          unsigned: unsigned || undefined,
+          signerCertificatePem: cert
+            ? cert.certificateChainBase64.map(b64 => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join('\n') || b64}\n-----END CERTIFICATE-----`).join('\n')
             : undefined
         }),
       });
@@ -216,9 +230,22 @@ export function NewCertificateForm({
   );
 
   const submitButton = (
-    <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-      {sending ? "Emitindo…" : "Emitir atestado"}
-    </button>
+    <>
+      <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
+        {sending ? "Emitindo…" : "Emitir atestado"}
+      </button>
+      {mobileV2 && (
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnGhost}`}
+          disabled={sending}
+          onClick={handleSubmitUnsigned}
+          title="Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador."
+        >
+          {sending ? "Emitindo…" : "Emitir sem assinatura digital"}
+        </button>
+      )}
+    </>
   );
 
   const fieldGroups = (

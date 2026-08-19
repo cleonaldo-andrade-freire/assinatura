@@ -16,8 +16,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Certisign, o provider volta `pendente` (a dentista precisa confirmar no
  * app) — quem completa é `finalizeCertificateSignature`, chamado pelo poller
  * (`app/api/cron/check-signatures`).
+ *
+ * `unsigned: true` (shell mobile v2, prompt §8) pula o provider inteiro: o
+ * PDF nasce marcado como via não assinada digitalmente, o registro fica em
+ * `pendente_assinatura`, e pode virar `assinado` de verdade depois — quem
+ * chamar `issueCertificate` de novo sobre este mesmo id (ex.: botão "Tentar
+ * novamente"/"Assinar agora" no desktop, `[id]/issue`) segue o fluxo normal
+ * abaixo, sem `unsigned`, e substitui o PDF/hash pela versão assinada.
  */
-export async function issueCertificate(certificateId: string, signerCertificatePem?: string): Promise<Certificate> {
+export async function issueCertificate(
+  certificateId: string,
+  signerCertificatePem?: string,
+  unsigned?: boolean
+): Promise<Certificate> {
   const supabase = createSupabaseAdminClient();
 
   const { data: certificate } = await supabase
@@ -34,10 +45,39 @@ export async function issueCertificate(certificateId: string, signerCertificateP
     .single();
   if (!clinic) throw new Error(`Clínica ${certificate.clinic_id} não encontrada.`);
 
-  // Reaproveita o código se já existe (retry após falha) — só gera um novo na
+  // Reaproveita o código se já existe (retry após falha, ou promovendo um
+  // documento pendente_assinatura pra assinado) — só gera um novo na
   // primeira tentativa, pra não invalidar um QR/código já impresso em algum
   // PDF anterior deste mesmo documento.
   const validationCode = certificate.validation_code ?? (await ensureUniqueValidationCode(supabase));
+
+  const logo = await loadClinicLogoForPdf((clinic as Clinic).logo_url);
+  const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/validar/${validationCode}`;
+
+  if (unsigned) {
+    const pdfBytes = await buildCertificatePdf(
+      { ...(certificate as Certificate), validation_code: validationCode },
+      (clinic as Clinic).name,
+      logo,
+      validationUrl,
+      { unsigned: true }
+    );
+    const sha256 = crypto.createHash("sha256").update(Buffer.from(pdfBytes)).digest("hex");
+    const pdfStorageKey = await saveCertificatePdf(clinic.id, certificateId, pdfBytes);
+    const { data: updated } = await supabase
+      .from("certificates")
+      .update({
+        status: "pendente_assinatura",
+        validation_code: validationCode,
+        unsigned_pdf_at: new Date().toISOString(),
+        pdf_storage_key: pdfStorageKey,
+        sha256,
+      })
+      .eq("id", certificateId)
+      .select("*")
+      .single();
+    return updated as Certificate;
+  }
 
   await supabase
     .from("certificates")
@@ -48,8 +88,6 @@ export async function issueCertificate(certificateId: string, signerCertificateP
     })
     .eq("id", certificateId);
 
-  const logo = await loadClinicLogoForPdf((clinic as Clinic).logo_url);
-  const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/validar/${validationCode}`;
   const pdfBytes = await buildCertificatePdf(
     { ...(certificate as Certificate), validation_code: validationCode },
     (clinic as Clinic).name,

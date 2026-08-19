@@ -1,6 +1,7 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, reasonToWords, wrapReasonWords, wrapText } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
+import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
 import type { Certificate } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -26,7 +27,8 @@ export async function buildCertificatePdf(
   certificate: Certificate,
   clinicName: string,
   logo: LogoImage | null,
-  validationUrl: string
+  validationUrl: string,
+  options?: { unsigned?: boolean }
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -121,9 +123,12 @@ export async function buildCertificatePdf(
   }
 
   y -= 10;
-  const declText =
-    "Documento emitido eletronicamente pelo sistema da clínica. A área reservada abaixo é preenchida " +
-    "pelo provedor de assinatura digital do dentista responsável.";
+  const declText = options?.unsigned
+    ? "Este documento não possui assinatura digital ICP-Brasil. Para ter validade, precisa da assinatura e do " +
+      "carimbo manuais do(a) profissional responsável, como qualquer atestado em papel. Uma versão assinada " +
+      "digitalmente pode ser gerada depois, pelo computador, sobre este mesmo registro."
+    : "Documento emitido eletronicamente pelo sistema da clínica. A área reservada abaixo é preenchida " +
+      "pelo provedor de assinatura digital do dentista responsável.";
   for (const line of wrapText(declText, italic, 9, contentWidth)) {
     ensureSpace(12);
     page.drawText(line, { x: MARGIN, y, size: 9, font: italic, color: rgb(0.4, 0.4, 0.4) });
@@ -132,6 +137,11 @@ export async function buildCertificatePdf(
 
   if (certificate.validation_code) {
     await drawValidationFooter(doc, page, font, bold, MARGIN, validationUrl, certificate.validation_code);
+  }
+
+  if (options?.unsigned) {
+    const lastPage = doc.getPages().at(-1)!;
+    drawUnsignedSignatureBox(lastPage, font, bold, MARGIN, certificate.dentist_name, `CRO ${certificate.dentist_cro}/${certificate.dentist_cro_uf}`);
   }
 
   return doc.save({ useObjectStreams: false });
