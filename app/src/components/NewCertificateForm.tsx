@@ -328,6 +328,17 @@ export function NewCertificateForm({
     </>
   );
 
+  const agentSelector = (
+    <AgentCertificateSelector
+      open={showAgentSelector}
+      onOpenChange={setShowAgentSelector}
+      onCertificateSelected={(cert) => {
+        setShowAgentSelector(false);
+        emitCertificate(cert);
+      }}
+    />
+  );
+
   if (bare) {
     return (
       <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -338,6 +349,7 @@ export function NewCertificateForm({
           </div>
           <div style={{ flexShrink: 0, paddingTop: 14, marginTop: 10, borderTop: "1px solid var(--line-soft)" }}>{submitButton}</div>
         </form>
+        {agentSelector}
       </div>
     );
   }
@@ -351,15 +363,7 @@ export function NewCertificateForm({
           <div className={styles.formActions}>{submitButton}</div>
         </form>
       </div>
-      
-      <AgentCertificateSelector 
-        open={showAgentSelector} 
-        onOpenChange={setShowAgentSelector} 
-        onCertificateSelected={(cert) => {
-           setShowAgentSelector(false);
-           emitCertificate(cert);
-        }} 
-      />
+      {agentSelector}
     </div>
   );
 }
