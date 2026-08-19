@@ -182,9 +182,13 @@ const STAFF_ALLOWED_HREFS = new Set([
   "/dashboard",
   "/dashboard/agenda",
   "/dashboard/pacientes",
-  "/dashboard/anamneses",
   "/dashboard/proteses",
 ]);
+
+const ROLE_LABELS: Record<"owner" | "staff", string> = {
+  owner: "Proprietário(a)",
+  staff: "Atendente",
+};
 
 // No celular a barra fixa só tem espaço confortável pra 3 destinos + "Mais"
 // — Agenda e Pacientes são as telas mais checadas na correria da recepção,
@@ -213,9 +217,20 @@ interface ClinicShellProps {
    * Default: "owner" (sem restrições) para manter compatibilidade com
    * chamadas existentes que ainda não passam esse prop. */
   role?: "owner" | "staff";
+  /** E-mail do usuário logado — mostrado no rodapé da sidebar, junto do papel. */
+  userEmail?: string;
 }
 
-export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, actions, children, role = "owner" }: ClinicShellProps) {
+export function ClinicShell({
+  clinicName,
+  clinicLogoUrl,
+  title,
+  subtitle,
+  actions,
+  children,
+  role = "owner",
+  userEmail,
+}: ClinicShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -314,6 +329,15 @@ export function ClinicShell({ clinicName, clinicLogoUrl, title, subtitle, action
         )}
 
         <div className={styles.sidebarFooter}>
+          {userEmail && (
+            <div className={styles.userInfo} title={`${userEmail} · ${ROLE_LABELS[role]}`}>
+              <div className={styles.userAvatar}>{initials(userEmail.split("@")[0].replace(/[._]/g, " "))}</div>
+              <div className={styles.userDetails}>
+                <span className={styles.userEmail}>{userEmail}</span>
+                <span className={styles.userRole}>{ROLE_LABELS[role]}</span>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             title={collapsed ? "Expandir menu" : "Recolher menu"}

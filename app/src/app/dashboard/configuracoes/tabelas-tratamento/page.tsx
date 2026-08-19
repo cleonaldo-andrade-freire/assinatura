@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -9,8 +9,10 @@ import type { PriceTable } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 export default async function PriceTablesPage() {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: tables } = await supabase
@@ -35,6 +37,8 @@ export default async function PriceTablesPage() {
       clinicLogoUrl={clinic.logo_url}
       title="Tabelas de tratamento"
       subtitle="Preços por plano (particular, convênios) usados ao montar um orçamento"
+      role={role}
+      userEmail={userEmail}
       actions={
         <Link href="/dashboard/configuracoes" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Configurações

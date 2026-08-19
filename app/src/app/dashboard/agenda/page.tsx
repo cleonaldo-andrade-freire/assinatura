@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { AppointmentStatusBadge, NeedsFollowUpBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
@@ -41,8 +41,9 @@ function brDisplay(dateStr: string): string {
 }
 
 export default async function AgendaPage({ searchParams }: { searchParams: { date?: string; view?: string; detail?: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  const { clinic, role, userEmail } = auth;
 
   const today = brDateOnly();
   const date = searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : today;
@@ -117,6 +118,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
       clinicLogoUrl={clinic.logo_url}
       title="Agenda"
       subtitle="Agendamentos da clínica"
+      role={role}
+      userEmail={userEmail}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {/* alternância semana/mês não faz sentido no celular (só existe visão diária lá) */}

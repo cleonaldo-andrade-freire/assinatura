@@ -180,6 +180,59 @@
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 16px;
+}
+
+.userAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.userDetails {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.userEmail {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+}
+
+.sidebarCollapsed .userDetails {
+  display: none;
+}
+
+.sidebarCollapsed .userInfo {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .logoutLink {
   display: flex;
   align-items: center;
@@ -370,6 +423,9 @@
     margin-top: 0;
     padding-top: 0;
     border-top: none;
+  }
+  .userInfo {
+    display: none;
   }
   .logoutLink {
     width: auto;

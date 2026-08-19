@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ExpensesPanel } from "@/components/expenses/ExpensesPanel";
@@ -22,8 +22,10 @@ export default async function DespesasPage({
     month?: string;
   };
 }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const today = brDateOnly();
@@ -131,6 +133,8 @@ export default async function DespesasPage({
       clinicLogoUrl={clinic.logo_url}
       title="Despesas"
       subtitle="Contas fixas e variáveis da clínica, avulsas ou recorrentes"
+      role={role}
+      userEmail={userEmail}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <a href={exportHref} className={`${styles.btn} ${styles.btnGhost}`}>

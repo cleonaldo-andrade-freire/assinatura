@@ -14,6 +14,7 @@ export async function getCurrentClinic(): Promise<Clinic | null> {
 export async function getClinicAndRole(): Promise<{
   clinic: Clinic;
   role: "owner" | "staff";
+  userEmail: string;
 } | null> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -39,5 +40,6 @@ export async function getClinicAndRole(): Promise<{
   return {
     clinic: clinic as Clinic,
     role: (profile.role as "owner" | "staff") ?? "owner",
+    userEmail: user.email ?? "",
   };
 }

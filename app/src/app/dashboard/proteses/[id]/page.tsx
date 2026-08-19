@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ProsthesisOrderDetailBody } from "@/components/dashboard/ProsthesisOrderDetailBody";
@@ -9,8 +9,9 @@ import type { ProsthesisOrder, ProsthesisOrderEvent } from "@/lib/database.types
 import styles from "@/styles/shell.module.css";
 
 export default async function ProsthesisOrderDetailPage({ params }: { params: { id: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: order } = await supabase
@@ -35,6 +36,8 @@ export default async function ProsthesisOrderDetailPage({ params }: { params: { 
       clinicLogoUrl={clinic.logo_url}
       title={o.description}
       subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}
+      role={role}
+      userEmail={userEmail}
       actions={
         <Link href="/dashboard/proteses" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Voltar

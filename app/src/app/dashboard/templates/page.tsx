@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -9,8 +9,10 @@ import type { QuestionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 export default async function TemplatesPage() {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
@@ -26,6 +28,8 @@ export default async function TemplatesPage() {
       clinicLogoUrl={clinic.logo_url}
       title="Modelos de anamnese"
       subtitle="Cada modelo é uma lista de perguntas — escolha qual usar ao iniciar uma anamnese nova"
+      role={role}
+      userEmail={userEmail}
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/anamneses" className={`${styles.btn} ${styles.btnGhost}`}>

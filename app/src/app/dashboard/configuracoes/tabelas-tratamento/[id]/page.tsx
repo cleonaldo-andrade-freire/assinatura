@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PriceTableSettings } from "@/components/priceTables/PriceTableSettings";
@@ -9,8 +9,10 @@ import type { PriceTable, PriceTableItem } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 export default async function PriceTableDetailPage({ params }: { params: { id: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: table } = await supabase
@@ -36,6 +38,8 @@ export default async function PriceTableDetailPage({ params }: { params: { id: s
       clinicLogoUrl={clinic.logo_url}
       title={priceTable.name}
       subtitle={priceTable.is_default ? "Tabela padrão" : undefined}
+      role={role}
+      userEmail={userEmail}
       actions={
         <Link href="/dashboard/configuracoes/tabelas-tratamento" className={`${styles.btn} ${styles.btnGhost}`}>
           ← Tabelas de tratamento

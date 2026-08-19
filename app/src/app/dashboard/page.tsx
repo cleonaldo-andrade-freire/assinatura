@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { CancelledAppointmentsPanel } from "@/components/dashboard/CancelledAppointmentsPanel";
@@ -25,8 +25,9 @@ export default async function DashboardPage({
 }: {
   searchParams: { cancelPage?: string; returnPage?: string };
 }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const professionalName = clinic.dentist_name || clinic.name;
@@ -190,15 +191,19 @@ export default async function DashboardPage({
       clinicLogoUrl={clinic.logo_url}
       title="Dashboard"
       subtitle="Cancelamentos e retornos que precisam de um contato"
+      role={role}
+      userEmail={userEmail}
     >
-      <DashboardKPIs
-        monthlyRevenue={monthlyRevenue}
-        monthlyExpense={monthlyExpense}
-        monthlyBalance={monthlyBalance}
-        dailyRevenue={dailyRevenue}
-        dailyExpense={dailyExpense}
-        dailyBalance={dailyBalance}
-      />
+      {role === "owner" && (
+        <DashboardKPIs
+          monthlyRevenue={monthlyRevenue}
+          monthlyExpense={monthlyExpense}
+          monthlyBalance={monthlyBalance}
+          dailyRevenue={dailyRevenue}
+          dailyExpense={dailyExpense}
+          dailyBalance={dailyBalance}
+        />
+      )}
 
       <DailyAgendaPanel
         clinicId={clinic.id}

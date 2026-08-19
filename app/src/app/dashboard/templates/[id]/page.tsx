@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { TemplateEditor } from "@/components/TemplateEditor";
 import type { QuestionTemplate } from "@/lib/database.types";
 
 export default async function EditTemplatePage({ params }: { params: { id: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
@@ -21,7 +23,13 @@ export default async function EditTemplatePage({ params }: { params: { id: strin
   const template = data as QuestionTemplate;
 
   return (
-    <ClinicShell clinicName={clinic.name} clinicLogoUrl={clinic.logo_url} title="Editar modelo">
+    <ClinicShell
+      clinicName={clinic.name}
+      clinicLogoUrl={clinic.logo_url}
+      title="Editar modelo"
+      role={role}
+      userEmail={userEmail}
+    >
       <TemplateEditor
         clinicId={clinic.id}
         templateId={template.id}

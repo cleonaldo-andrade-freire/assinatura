@@ -36,7 +36,8 @@ const SUBSCRIPTION_STATUS_CLASS: Record<string, string> = {
 export default async function SettingsPage({ searchParams }: { searchParams: { success?: string, error?: string } }) {
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
-  const { clinic, role } = auth;
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   let invoiceUrl: string | null = null;
   let payments: AsaasPayment[] = [];
@@ -81,6 +82,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
       title="Configurações"
       subtitle="Dados do responsável técnico, WhatsApp, identidade visual e assinatura da clínica"
       role={role}
+      userEmail={userEmail}
     >
       {searchParams.success && (
         <div style={{ padding: 12, backgroundColor: "var(--surface-sunken)", borderLeft: "4px solid var(--brand)", borderRadius: 8, marginBottom: 24 }}>

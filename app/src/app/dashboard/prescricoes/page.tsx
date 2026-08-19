@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
@@ -26,8 +26,10 @@ function initials(name: string): string {
 }
 
 export default async function PrescriptionsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -68,6 +70,8 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
       clinicLogoUrl={clinic.logo_url}
       title="Prescrições"
       subtitle="Prescrições odontológicas emitidas pela clínica"
+      role={role}
+      userEmail={userEmail}
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/prescricoes/templates" className={`${styles.btn} ${styles.btnGhost}`}>

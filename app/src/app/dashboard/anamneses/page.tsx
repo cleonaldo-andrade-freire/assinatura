@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -33,8 +33,10 @@ export default async function AnamnesesPage({
 }: {
   searchParams: { q?: string; page?: string; status?: string };
 }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/dashboard");
+  const { clinic, role, userEmail } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const status = searchParams.status === "signed" || searchParams.status === "pending" ? searchParams.status : "";
@@ -110,6 +112,8 @@ export default async function AnamnesesPage({
       clinicLogoUrl={clinic.logo_url}
       title="Anamneses"
       subtitle="Todas as anamneses recebidas pela clínica"
+      role={role}
+      userEmail={userEmail}
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/templates" className={`${styles.btn} ${styles.btnGhost}`}>

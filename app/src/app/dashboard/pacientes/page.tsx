@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentClinic } from "@/lib/auth";
+import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
@@ -15,8 +15,9 @@ import styles from "@/styles/shell.module.css";
 const PAGE_SIZE = 10;
 
 export default async function PatientsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
-  const clinic = await getCurrentClinic();
-  if (!clinic) redirect("/login");
+  const auth = await getClinicAndRole();
+  if (!auth) redirect("/login");
+  const { clinic, role, userEmail } = auth;
 
   const q = searchParams.q?.trim() ?? "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -43,6 +44,8 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
       clinicLogoUrl={clinic.logo_url}
       title="Pacientes"
       subtitle="Cadastro de pacientes da clínica"
+      role={role}
+      userEmail={userEmail}
       actions={
         <NewPatientTrigger clinicId={clinic.id} className={`${styles.btn} ${styles.btnPrimary}`}>
           + Novo paciente
