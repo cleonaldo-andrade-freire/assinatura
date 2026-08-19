@@ -3,7 +3,22 @@
 import { useState } from "react";
 import { ReceiptPickerModal } from "@/components/expenses/ReceiptPickerModal";
 import type { Expense } from "@/lib/database.types";
-import styles from "@/styles/shell.module.css";
+import ex from "./expenses.module.css";
+
+function ReceiptIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9 8h6M9 12h6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /** Anexa/visualiza o comprovante de pagamento de UMA despesa já paga — abre o mesmo modal de escolher/arrastar arquivo usado na criação, upload dispara assim que o arquivo é escolhido. */
 export function ExpenseReceiptButton({
@@ -43,10 +58,11 @@ export function ExpenseReceiptButton({
         href={`/api/clinics/${clinicId}/expenses/${expense.id}/receipt`}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${styles.btn} ${styles.btnGhost}`}
-        style={{ flexShrink: 0 }}
+        className={`${ex.iconBtn} ${ex.iconBtnActive}`}
+        title="Ver comprovante"
+        aria-label="Ver comprovante"
       >
-        Ver comprovante
+        <ReceiptIcon />
       </a>
     );
   }
@@ -57,10 +73,11 @@ export function ExpenseReceiptButton({
         type="button"
         disabled={uploading}
         onClick={() => setPicking(true)}
-        className={`${styles.btn} ${styles.btnGhost}`}
-        style={{ flexShrink: 0 }}
+        className={ex.iconBtn}
+        title={uploading ? "Enviando…" : "Anexar comprovante"}
+        aria-label={uploading ? "Enviando comprovante" : "Anexar comprovante"}
       >
-        {uploading ? "Enviando…" : "+ Comprovante"}
+        <ReceiptIcon />
       </button>
       <ReceiptPickerModal open={picking} onClose={() => setPicking(false)} onPicked={handlePicked} />
     </>

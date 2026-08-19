@@ -121,31 +121,23 @@ export function NewPrescriptionForm({
       return;
     }
 
+    // Nesta versão o celular nunca assina digitalmente (prompt §2, §8) —
+    // não importa o provedor configurado. local_agent em especial *nunca*
+    // funcionaria no celular (é um aplicativo Windows do computador da
+    // dentista) — abrir o AgentCertificateSelector aqui ficaria esperando
+    // um agente que não existe no telefone. Sai em pendente_assinatura,
+    // assinável de verdade depois no computador.
+    if (mobileV2) {
+      await emitPrescription(null, true);
+      return;
+    }
+
     if (isLocalAgentMode) {
       setShowAgentSelector(true);
       return;
     }
 
     await emitPrescription(null);
-  }
-
-  // Via não assinada digitalmente (shell mobile v2, prompt §8) — só
-  // oferecida no mobile v2. O bloqueio de controlado_especial acima já
-  // impede chegar aqui com esse tipo de item, então não precisa repetir
-  // a checagem.
-  async function handleSubmitUnsigned() {
-    setError(null);
-    if (!patientName.trim()) {
-      setError("Preencha o nome do paciente.");
-      return;
-    }
-    if (items.some((i) => i.control_type === "controlado_especial")) {
-      setError(
-        "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."
-      );
-      return;
-    }
-    await emitPrescription(null, true);
   }
 
   async function emitPrescription(cert: AgentCertificate | null, unsigned?: boolean) {
@@ -210,19 +202,19 @@ export function NewPrescriptionForm({
 
   const submitButton = (
     <>
-      <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-        {sending ? "Emitindo…" : "Emitir prescrição"}
+      <button
+        className={`${styles.btn} ${styles.btnPrimary}`}
+        type="submit"
+        disabled={sending}
+        title={mobileV2 ? "Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador." : undefined}
+      >
+        {sending ? "Emitindo…" : mobileV2 ? "Emitir prescrição (sem assinatura digital)" : "Emitir prescrição"}
       </button>
       {mobileV2 && (
-        <button
-          type="button"
-          className={`${styles.btn} ${styles.btnGhost}`}
-          disabled={sending}
-          onClick={handleSubmitUnsigned}
-          title="Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador."
-        >
-          {sending ? "Emitindo…" : "Emitir sem assinatura digital"}
-        </button>
+        <p className={styles.hint} style={{ marginTop: 8 }}>
+          O celular não assina digitalmente. Esta prescrição sai pronta pra imprimir, com espaço pra assinatura e
+          carimbo — a versão assinada digitalmente pode ser gerada depois, no computador, sobre o mesmo registro.
+        </p>
       )}
     </>
   );

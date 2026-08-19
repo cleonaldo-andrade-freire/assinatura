@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import styles from "@/styles/shell.module.css";
 import { formatMoneyDisplay } from "@/lib/money";
+import { useMobileV2Active } from "@/lib/useMobileV2Active";
 
 interface DashboardKPIsProps {
   monthlyRevenue: number;
@@ -11,10 +12,6 @@ interface DashboardKPIsProps {
   dailyRevenue: number;
   dailyExpense: number;
   dailyBalance: number;
-}
-
-function formatMoney(value: number): string {
-  return `R$ ${formatMoneyDisplay(value)}`;
 }
 
 function EyeIcon() {
@@ -45,7 +42,15 @@ export function DashboardKPIs({
   dailyExpense,
   dailyBalance,
 }: DashboardKPIsProps) {
+  const mobileV2 = useMobileV2Active();
   const [visible, setVisible] = useState(true);
+
+  // No mobile v2 os cards já são pequenos (2 colunas) — o prefixo "R$" repetido
+  // 6 vezes só disputa espaço com o número, que é a informação que importa.
+  // Contexto (clínica odontológica brasileira) deixa a moeda óbvia sem ele.
+  function formatMoney(value: number): string {
+    return mobileV2 ? formatMoneyDisplay(value) : `R$ ${formatMoneyDisplay(value)}`;
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem(DASHBOARD_KPIS_VISIBLE_KEY);

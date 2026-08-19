@@ -14,6 +14,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 0;
+  /* env() resolve pra 0 em quem não tem notch/status bar sobreposta (ex.:
+     desktop), então isso não muda nada fora do celular. */
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
 }
 
 .brand {

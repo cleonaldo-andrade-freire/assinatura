@@ -149,25 +149,24 @@ export function NewCertificateForm({
       return;
     }
 
+    // Nesta versão o celular nunca assina digitalmente (prompt §2, §8) —
+    // não importa o provedor configurado (mock/certisign/psc/local_agent).
+    // local_agent em especial *nunca* funcionaria no celular: é um
+    // aplicativo Windows rodando no computador da dentista, então tentar
+    // abrir o AgentCertificateSelector aqui ficaria esperando um agente que
+    // não existe no telefone. O registro sai em pendente_assinatura e pode
+    // ser assinado de verdade depois, no computador.
+    if (mobileV2) {
+      await emitCertificate(null, true);
+      return;
+    }
+
     if (isLocalAgentMode) {
       setShowAgentSelector(true);
       return;
     }
 
     await emitCertificate(null);
-  }
-
-  // Via não assinada digitalmente (shell mobile v2, prompt §8) — só
-  // oferecida no mobile v2 (mesma dentista pode continuar usando a
-  // assinatura normal no desktop). Não passa por AgentCertificateSelector
-  // nem por nenhum provedor: o registro nasce em pendente_assinatura.
-  async function handleSubmitUnsigned() {
-    setError(null);
-    if (!patientName.trim()) {
-      setError("Preencha o nome do paciente.");
-      return;
-    }
-    await emitCertificate(null, true);
   }
 
   async function emitCertificate(cert: AgentCertificate | null, unsigned?: boolean) {
@@ -231,19 +230,19 @@ export function NewCertificateForm({
 
   const submitButton = (
     <>
-      <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
-        {sending ? "Emitindo…" : "Emitir atestado"}
+      <button
+        className={`${styles.btn} ${styles.btnPrimary}`}
+        type="submit"
+        disabled={sending}
+        title={mobileV2 ? "Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador." : undefined}
+      >
+        {sending ? "Emitindo…" : mobileV2 ? "Emitir atestado (sem assinatura digital)" : "Emitir atestado"}
       </button>
       {mobileV2 && (
-        <button
-          type="button"
-          className={`${styles.btn} ${styles.btnGhost}`}
-          disabled={sending}
-          onClick={handleSubmitUnsigned}
-          title="Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador."
-        >
-          {sending ? "Emitindo…" : "Emitir sem assinatura digital"}
-        </button>
+        <p className={styles.hint} style={{ marginTop: 8 }}>
+          O celular não assina digitalmente. Este atestado sai pronto pra imprimir, com espaço pra assinatura e
+          carimbo — a versão assinada digitalmente pode ser gerada depois, no computador, sobre o mesmo registro.
+        </p>
       )}
     </>
   );

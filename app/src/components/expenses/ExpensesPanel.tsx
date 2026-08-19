@@ -20,6 +20,34 @@ function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
 }
 
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7m2 0v12.5A1.5 1.5 0 0115.5 21h-7A1.5 1.5 0 017 19.5V7h10z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 10h9a5 5 0 010 10h-2M4 10l4-4M4 10l4 4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function ExpensesPanel({
   clinicId,
   categoryOptions,
@@ -241,11 +269,12 @@ export function ExpensesPanel({
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: selectedPending.size > 0 ? 56 : 0 }}>
                 {pendingExpenses.map((e) => (
-                  <div key={e.id} className={ex.row}>
+                  <div key={e.id} className={`${ex.row} ${ex.rowClickable}`} onClick={() => setEditingExpense(e)}>
                     <input
                       type="checkbox"
                       checked={selectedPending.has(e.id)}
                       onChange={() => togglePending(e.id)}
+                      onClick={(ev) => ev.stopPropagation()}
                       style={{ width: 18, height: 18, accentColor: "var(--brand)", flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -265,19 +294,15 @@ export function ExpensesPanel({
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
                     <button
                       type="button"
-                      onClick={() => setEditingExpense(e)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ flexShrink: 0 }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setConfirmDeleteId(e.id);
+                      }}
+                      className={`${ex.iconBtn} ${ex.iconBtnDanger}`}
+                      title="Excluir despesa"
+                      aria-label="Excluir despesa"
                     >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(e.id)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)", flexShrink: 0 }}
-                    >
-                      Excluir
+                      <TrashIcon />
                     </button>
                   </div>
                 ))}
@@ -310,7 +335,7 @@ export function ExpensesPanel({
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {paidExpenses.map((e) => (
-                  <div key={e.id} className={ex.row}>
+                  <div key={e.id} className={`${ex.row} ${ex.rowClickable}`} onClick={() => setEditingExpense(e)}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{e.description}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
@@ -322,36 +347,38 @@ export function ExpensesPanel({
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoney(e.amount)}</div>
                     <span className={`${styles.statusDot} ${styles.statusOk}`}>Pago</span>
-                    <ExpenseReceiptButton
-                      clinicId={clinicId}
-                      expense={e}
-                      onUploaded={(updated) => setPaidExpenses((prev) => prev.map((it) => (it.id === updated.id ? updated : it)))}
-                      onError={(message) => push(message)}
-                    />
+                    <span onClick={(ev) => ev.stopPropagation()} style={{ flexShrink: 0 }}>
+                      <ExpenseReceiptButton
+                        clinicId={clinicId}
+                        expense={e}
+                        onUploaded={(updated) => setPaidExpenses((prev) => prev.map((it) => (it.id === updated.id ? updated : it)))}
+                        onError={(message) => push(message)}
+                      />
+                    </span>
                     <button
                       type="button"
                       disabled={cancelingPaymentId === e.id}
-                      onClick={() => handleCancelPayment(e.id)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ flexShrink: 0 }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        handleCancelPayment(e.id);
+                      }}
+                      className={ex.iconBtn}
+                      title="Cancelar pagamento"
+                      aria-label="Cancelar pagamento"
                     >
-                      {cancelingPaymentId === e.id ? "Cancelando…" : "Cancelar pagamento"}
+                      <UndoIcon />
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEditingExpense(e)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ flexShrink: 0 }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setConfirmDeleteId(e.id);
+                      }}
+                      className={`${ex.iconBtn} ${ex.iconBtnDanger}`}
+                      title="Excluir despesa"
+                      aria-label="Excluir despesa"
                     >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(e.id)}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)", flexShrink: 0 }}
-                    >
-                      Excluir
+                      <TrashIcon />
                     </button>
                   </div>
                 ))}

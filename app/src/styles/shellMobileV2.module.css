@@ -19,7 +19,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    height: var(--m-header-height);
+    /* height fixo + padding-top somado encolhia a área de conteúdo em vez
+       de empurrar o header pra baixo (com box-sizing: border-box, os --m-safe-top
+       de padding "comiam" dentro dos --m-header-height, deixando quase nada
+       de altura real pro título — por isso ficava colado no topo). Altura
+       total precisa ser base + faixa segura, igual já estava certo em
+       .tabBar logo abaixo. */
+    height: calc(var(--m-header-height) + var(--m-safe-top));
     padding: 0 8px;
     padding-top: var(--m-safe-top);
     background: var(--m-surface);

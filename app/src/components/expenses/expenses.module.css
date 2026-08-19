@@ -68,6 +68,61 @@
   border-radius: var(--radius-sm);
 }
 
+/* Linha clicável (abre edição) — mesmo padrão de ClickableRow nas listas em
+   tabela, só que aqui a linha é uma div (não dá pra reaproveitar o
+   componente, que renderiza <tr>). */
+.rowClickable {
+  cursor: pointer;
+}
+
+.rowClickable:hover {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line) inset;
+}
+
+/* Botão de ação em ícone — Editar sumiu (a linha inteira já abre a edição),
+   Excluir/Cancelar pagamento/Comprovante viram ícone pra caber mais numa
+   linha só e cortar menos informação. */
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iconBtnDanger {
+  color: var(--danger);
+  border-color: var(--danger-tint);
+}
+
+.iconBtnDanger:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-tint);
+}
+
+.iconBtnActive {
+  color: var(--brand-deep);
+  border-color: var(--brand-bright);
+  background: var(--brand-tint);
+}
+
 .categoryTag {
   display: inline-block;
   padding: 2px 8px;

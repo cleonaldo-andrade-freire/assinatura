@@ -7,6 +7,7 @@ import type { QuestionTemplate } from "@/lib/database.types";
 import { useDraftAutosave } from "@/lib/useDraftAutosave";
 import { useMobileV2Active } from "@/lib/useMobileV2Active";
 import { DraftBanner } from "@/components/mobile/DraftBanner";
+import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import styles from "@/styles/shell.module.css";
 
 export function NewAnamnesisForm({
@@ -52,6 +53,17 @@ export function NewAnamnesisForm({
     setPatientPhone(draft.patientPhone);
     setTemplateId(draft.templateId);
     dismissDraftPrompt();
+  }
+
+  // Preenche nome + telefone junto — diferente de NewCertificateForm/
+  // NewPrescriptionForm (que só precisam do nome pra pré-preencher, o
+  // paciente é resolvido por patient_id no backend), aqui não existe
+  // patient_id: a rota de anamnese sempre trabalhou só com nome+telefone
+  // (histórico anterior a `patients` ter virado tabela própria), então
+  // selecionar uma sugestão precisa completar o telefone aqui mesmo.
+  function pickPatientSuggestion(s: PatientSuggestion) {
+    setPatientName(s.name);
+    if (s.phone) setPatientPhone(formatBRPhoneLocal(s.phone));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -156,19 +168,13 @@ export function NewAnamnesisForm({
 
   const fieldGroups = (
     <>
-      <div className={styles.field}>
-        <label htmlFor="patientName" className={styles.label}>
-          Nome do paciente
-        </label>
-        <input
-          id="patientName"
-          type="text"
-          className={styles.input}
-          value={patientName}
-          onChange={(e) => setPatientName(e.target.value)}
-          required
-        />
-      </div>
+      <PatientSearchField
+        clinicId={clinicId}
+        name={patientName}
+        onChangeName={setPatientName}
+        onSelect={pickPatientSuggestion}
+        hint="Busca no cadastro de pacientes da clínica — selecionar preenche o WhatsApp também."
+      />
 
       <div className={styles.field}>
         <label htmlFor="patientPhone" className={styles.label}>
