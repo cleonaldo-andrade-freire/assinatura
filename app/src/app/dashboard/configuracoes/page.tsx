@@ -17,7 +17,7 @@ import styles from "@/styles/shell.module.css";
 // Gerado por agent/pack.ps1 e publicado como release no GitHub — reenviar
 // (nova release) sempre que o agente ou a URL de produção embutida mudarem.
 const AGENT_INSTALLER_URL =
-  "https://github.com/cleonaldo-andrade-freire/assinatura/releases/download/agent-installer-v1.1.0/AssinaturaDigitalAgent.zip";
+  "https://github.com/cleonaldo-andrade-freire/assinatura/releases/download/agent-installer-v1.1.1/AssinaturaDigitalAgent.zip";
 
 const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
   trialing: "Em período de teste",

@@ -80,9 +80,16 @@ internal static class Program
 
         var webApp = builder.Build();
 
-        webApp.UseCors(corsPolicyName);
-
-        // Middleware para tratar preflight request de Private Network Access do Chrome
+        // Middleware pra tratar o preflight de Private Network Access do Chrome —
+        // TEM que rodar ANTES do UseCors: o middleware de CORS embutido do
+        // ASP.NET Core responde e encerra o pipeline direto pra um preflight
+        // OPTIONS (nunca chama o "next"), então um middleware registrado
+        // depois dele nunca chega a executar pra essa requisição. Sem essa
+        // ordem, o header "Access-Control-Allow-Private-Network" nunca ia
+        // parar na resposta, e o Chrome bloqueava toda chamada da página
+        // (https://) pro agente (http://127.0.0.1) com "Permission was
+        // denied for this request to access the loopback address space" —
+        // mesmo com o agente rodando certinho.
         webApp.Use(async (context, next) =>
         {
             if (context.Request.Method == "OPTIONS" && context.Request.Headers.ContainsKey("Access-Control-Request-Private-Network"))
@@ -91,6 +98,8 @@ internal static class Program
             }
             await next();
         });
+
+        webApp.UseCors(corsPolicyName);
 
         webApp.MapGet("/v1/status", () => Results.Json(new
         {
