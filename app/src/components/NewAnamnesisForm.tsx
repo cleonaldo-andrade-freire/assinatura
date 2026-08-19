@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
 import type { QuestionTemplate } from "@/lib/database.types";
+import { useDraftAutosave } from "@/lib/useDraftAutosave";
+import { useMobileV2Active } from "@/lib/useMobileV2Active";
+import { DraftBanner } from "@/components/mobile/DraftBanner";
 import styles from "@/styles/shell.module.css";
 
 export function NewAnamnesisForm({
@@ -32,6 +35,24 @@ export function NewAnamnesisForm({
   const [billingBlocked, setBillingBlocked] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Rascunho automático (prompt mobile §7.7) — ver NewCertificateForm.tsx
+  // pra explicação completa; mesmo padrão aqui.
+  const mobileV2 = useMobileV2Active();
+  const draftKey = mobileV2 ? `mobiledraft:anamnesis:${clinicId}:new` : null;
+  const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
+    draftKey,
+    { patientName, patientPhone, templateId },
+    { isEmpty: (v) => !v.patientName.trim() && !v.patientPhone.trim() }
+  );
+
+  function restoreDraft() {
+    if (!draft) return;
+    setPatientName(draft.patientName);
+    setPatientPhone(draft.patientPhone);
+    setTemplateId(draft.templateId);
+    dismissDraftPrompt();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +84,7 @@ export function NewAnamnesisForm({
         }
         return;
       }
+      clearDraft();
       if (onSuccess) {
         onSuccess();
       } else {
@@ -93,6 +115,7 @@ export function NewAnamnesisForm({
 
   const alerts = (
     <>
+      {mobileV2 && hasDraft && <DraftBanner onRestore={restoreDraft} onDiscard={clearDraft} />}
       {error && (
         <div
           style={{

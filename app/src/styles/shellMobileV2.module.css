@@ -228,4 +228,50 @@
   .contentMobileV2 {
     padding-bottom: calc(var(--m-tab-bar-height) + var(--m-safe-bottom) + 20px) !important;
   }
+
+  /* ===== Banner de rascunho (useDraftAutosave, prompt §7.7) ===== */
+
+  .draftBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--m-brand-tint);
+    border: 1px solid var(--m-brand-bright);
+    border-radius: var(--m-radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: var(--m-text-small);
+    color: var(--m-brand-deep);
+  }
+
+  .draftBannerActions {
+    display: flex;
+    gap: 8px;
+    flex: none;
+  }
+
+  .draftBannerGhost,
+  .draftBannerPrimary {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: var(--m-radius-sm);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-jakarta), -apple-system, "Segoe UI", sans-serif;
+    cursor: pointer;
+  }
+
+  .draftBannerGhost {
+    background: transparent;
+    border: 1px solid var(--m-brand-bright);
+    color: var(--m-brand-deep);
+  }
+
+  .draftBannerPrimary {
+    background: var(--m-brand);
+    border: none;
+    color: #fff;
+  }
 }

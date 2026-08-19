@@ -8,6 +8,9 @@ import { resolveReasonSegments } from "@/lib/documentReason";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
 import type { Certificate, CertificateTemplate } from "@/lib/database.types";
+import { useDraftAutosave } from "@/lib/useDraftAutosave";
+import { useMobileV2Active } from "@/lib/useMobileV2Active";
+import { DraftBanner } from "@/components/mobile/DraftBanner";
 import styles from "@/styles/shell.module.css";
 
 interface CidSuggestion {
@@ -65,6 +68,30 @@ export function NewCertificateForm({
   // Identifica se o frontend deve usar o agente local (baseado numa flag estática ou se o agente estiver rodando)
   const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
+  // Rascunho automático (prompt mobile §7.7) — só ativo na versão mobile v2
+  // (ver useMobileV2Active), pra não mudar nada do comportamento do modal no
+  // desktop. Chave por clínica+tipo+paciente, como pedido no prompt.
+  const mobileV2 = useMobileV2Active();
+  const draftKey = mobileV2 ? `mobiledraft:certificate:${clinicId}:${initialPatientId ?? "new"}` : null;
+  const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
+    draftKey,
+    { patientId, patientName, cid, hideCid, reason, restDays, startsOn, templateId },
+    { isEmpty: (v) => !v.patientName.trim() && !v.reason.trim() && !v.cid.trim() }
+  );
+
+  function restoreDraft() {
+    if (!draft) return;
+    setPatientId(draft.patientId);
+    setPatientName(draft.patientName);
+    setCid(draft.cid);
+    setHideCid(draft.hideCid);
+    setReason(draft.reason);
+    setRestDays(draft.restDays);
+    setStartsOn(draft.startsOn);
+    setTemplateId(draft.templateId);
+    dismissDraftPrompt();
+  }
+
   useEffect(() => {
     if (cidDebounceRef.current) clearTimeout(cidDebounceRef.current);
     if (cid.trim().length < 2) {
@@ -104,6 +131,7 @@ export function NewCertificateForm({
   }
 
   function goToCreated(certificate: Certificate) {
+    clearDraft();
     if (onSuccess) {
       onSuccess(certificate);
       router.refresh();
@@ -180,7 +208,12 @@ export function NewCertificateForm({
     }
   }
 
-  const alerts = <>{error && <div className="error-box">{error}</div>}</>;
+  const alerts = (
+    <>
+      {mobileV2 && hasDraft && <DraftBanner onRestore={restoreDraft} onDiscard={clearDraft} />}
+      {error && <div className="error-box">{error}</div>}
+    </>
+  );
 
   const submitButton = (
     <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>

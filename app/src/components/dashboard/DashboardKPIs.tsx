@@ -83,7 +83,7 @@ export function DashboardKPIs({
       </button>
 
       {visible && (
-        <div className={styles.statGrid} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+        <div className={`${styles.statGrid} ${styles.statGridDashboard}`}>
           <div className={styles.statCard}>
             <div className={styles.statValue}>{formatMoney(dailyRevenue)}</div>
             <div className={styles.statLabel}>Receitas do dia</div>

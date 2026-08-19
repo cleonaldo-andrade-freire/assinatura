@@ -491,6 +491,15 @@
   font-weight: 500;
 }
 
+/* Variante dos 6 KPIs do Hoje (DashboardKPIs) — precisa de 3 colunas no
+   desktop em vez das 4 padrão de .statGrid. Antes era um style inline no
+   componente, que blindava contra a media query de 720px logo abaixo (um
+   style inline sempre vence uma classe, então o grid mobile nunca ficava
+   em 2 colunas ali). Como classe, a cascata volta a funcionar normal. */
+.statGridDashboard {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 720px) {
   .statGrid {
     grid-template-columns: repeat(2, 1fr);

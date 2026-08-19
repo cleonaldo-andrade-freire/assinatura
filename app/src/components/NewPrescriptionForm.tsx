@@ -9,6 +9,9 @@ import { PrescriptionItemsEditor } from "@/components/PrescriptionItemsEditor";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
 import type { Prescription, PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
+import { useDraftAutosave } from "@/lib/useDraftAutosave";
+import { useMobileV2Active } from "@/lib/useMobileV2Active";
+import { DraftBanner } from "@/components/mobile/DraftBanner";
 import styles from "@/styles/shell.module.css";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -55,6 +58,26 @@ export function NewPrescriptionForm({
   const [showAgentSelector, setShowAgentSelector] = useState(false);
   const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
+  // Rascunho automático (prompt mobile §7.7) — ver NewCertificateForm.tsx
+  // pra explicação completa; mesmo padrão aqui.
+  const mobileV2 = useMobileV2Active();
+  const draftKey = mobileV2 ? `mobiledraft:prescription:${clinicId}:${initialPatientId ?? "new"}` : null;
+  const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
+    draftKey,
+    { patientId, patientName, items, notes, templateId },
+    { isEmpty: (v) => !v.patientName.trim() && v.items.length === 0 && !v.notes.trim() }
+  );
+
+  function restoreDraft() {
+    if (!draft) return;
+    setPatientId(draft.patientId);
+    setPatientName(draft.patientName);
+    setItems(draft.items);
+    setNotes(draft.notes);
+    setTemplateId(draft.templateId);
+    dismissDraftPrompt();
+  }
+
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
     setPatientName(s.name);
@@ -74,6 +97,7 @@ export function NewPrescriptionForm({
   }
 
   function goToCreated(prescription: Prescription) {
+    clearDraft();
     if (onSuccess) {
       onSuccess(prescription);
       router.refresh();
@@ -157,7 +181,12 @@ export function NewPrescriptionForm({
     }
   }
 
-  const alerts = <>{error && <div className="error-box">{error}</div>}</>;
+  const alerts = (
+    <>
+      {mobileV2 && hasDraft && <DraftBanner onRestore={restoreDraft} onDiscard={clearDraft} />}
+      {error && <div className="error-box">{error}</div>}
+    </>
+  );
 
   const submitButton = (
     <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={sending}>
