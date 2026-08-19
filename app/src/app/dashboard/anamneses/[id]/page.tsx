@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
+import { AnamnesisActions } from "@/components/AnamnesisActions";
 import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Anamnesis, Signature } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -106,6 +107,9 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
               </div>
             </>
           )}
+          <div style={{ marginTop: 16 }}>
+            <AnamnesisActions clinicId={clinic.id} anamnesisId={typedAnamnesis.id} />
+          </div>
         </div>
       </div>
     </ClinicShell>
