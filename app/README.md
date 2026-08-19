@@ -1,6 +1,35 @@
 # Consultório sem papel — app
 
-Painel multi-clínica + API para consultório odontológico, tudo integrado pelo WhatsApp: anamnese com assinatura eletrônica, agenda com confirmação/lembrete automático (redução de falta), atestados e prescrições com assinatura digital (ICP-Brasil via Certisign), orçamentos, tratamentos e evoluções clínicas, débitos/recibos financeiros do paciente, despesas da clínica e pedidos de prótese — nasceu como "anamnese via WhatsApp" mas cresceu pra cobrir a rotina inteira de um consultório de dentista. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (Vercel).
+Painel multi-clínica + API para consultório odontológico, tudo integrado pelo WhatsApp: anamnese com assinatura eletrônica, agenda com confirmação/lembrete automático (redução de falta), atestados e prescrições com assinatura digital (ICP-Brasil via Certisign/PSC/agente local), orçamentos, tratamentos e evoluções clínicas, débitos/recibos financeiros do paciente, despesas da clínica e pedidos de prótese — nasceu como "anamnese via WhatsApp" mas cresceu pra cobrir a rotina inteira de um consultório de dentista. Banco de dados, autenticação e armazenamento de PDF rodam no Supabase (via `supabase-js`, sem ORM). Veja `../guia-deploy-saas.md` na raiz do repositório para o passo a passo de deploy em produção (Vercel).
+
+## Funcionalidades
+
+| Área | O que faz | Rota | Quem acessa |
+|---|---|---|---|
+| Dashboard | Visão geral: KPIs do dia/mês, agenda de hoje, cancelamentos e retornos pendentes de contato, tratamentos/débitos em aberto | `/dashboard` | owner + staff (KPIs financeiros só pra owner) |
+| Agenda | Semana/mês/dia, criação e detalhe de agendamento (modal), confirmação/lembrete automático por WhatsApp | `/dashboard/agenda` | owner + staff |
+| Pacientes | Cadastro, busca, ficha com abas (agendamentos, orçamentos, tratamentos, débitos, imagens, anamneses, atestados, prescrições — ver restrição por papel abaixo) | `/dashboard/pacientes` | owner + staff (abas restritas pra staff) |
+| Anamneses | Modelos de perguntas, conversa conduzida pelo WhatsApp, assinatura eletrônica do paciente com trilha de auditoria | `/dashboard/anamneses`, `/dashboard/templates` | só owner |
+| Atestados | Emissão com assinatura digital ICP-Brasil, modelos de texto reaproveitáveis, revogação | `/dashboard/atestados` | só owner |
+| Prescrições | Emissão com assinatura digital ICP-Brasil, controle de medicamento controlado, modelos, revogação | `/dashboard/prescricoes` | só owner |
+| Orçamentos/Tratamentos | Orçamento por paciente, tabelas de preço por convênio, acompanhamento de tratamento em aberto/finalizado, evoluções clínicas com fotos | dentro da ficha do paciente, `/dashboard/configuracoes/tabelas-tratamento` | só owner |
+| Financeiro do paciente | Débitos (a receber/recebido), recibos em PDF | dentro da ficha do paciente (aba Débitos) | owner + staff |
+| Despesas | Contas fixas/variáveis da clínica, recorrentes, categorias, exportação CSV | `/dashboard/despesas` | só owner |
+| Próteses | Quadro kanban por estágio (pedido → instalação), notificação de mudança de estágio por WhatsApp | `/dashboard/proteses` | owner + staff |
+| Configurações | Perfil da clínica/dentista responsável, logo, WhatsApp, plano/assinatura, download do agente local de assinatura | `/dashboard/configuracoes` | só owner |
+| Equipe | Convidar/remover membros da equipe, definir papel (owner/staff) | `/dashboard/configuracoes/equipe` | só owner |
+| Meu perfil | Nome e foto de exibição do próprio usuário logado (mostrados na sidebar) | `/dashboard/perfil` | owner + staff, cada um só o próprio |
+
+Excluir (`Excluir` nos atestados/prescrições/anamneses/agendamentos) é **destrutivo** — some da tela e do PDF do Storage, sem volta. É diferente de "Revogar" (mantém o registro e o PDF, só marca como inválido) ou "Cancelar" (agendamento muda de status, continua no histórico).
+
+## Perfis de acesso (owner / staff)
+
+Cada usuário da clínica tem um papel em `profiles.role`: **owner** (dentista/dona da clínica — acesso total) ou **staff** (atendente — acesso operacional, sem dados clínicos/financeiros sensíveis). `lib/auth.ts` → `getClinicAndRole()` é a fonte única de verdade, usada por toda página do dashboard.
+
+- **Convite**: owner convida em `/dashboard/configuracoes/equipe` (e-mail + papel) → `POST /api/clinics/[clinicId]/staff/invite` chama `supabase.auth.admin.inviteUserByEmail`, guardando `clinic_id`/`role` em `raw_user_meta_data` do convite. O e-mail leva a `/aceitar-convite`, onde a pessoa define a própria senha. O registro em `profiles` **não** é criado pelo app — a trigger `handle_staff_invite_confirmed()` (`supabase/048_staff_invite_trigger.sql`) cria automaticamente assim que o convite é confirmado (`auth.users.confirmed_at` passa de null pra preenchido).
+- **Remover acesso**: "Revogar" em `/dashboard/configuracoes/equipe` (`DELETE /api/clinics/[clinicId]/staff/[userId]`) apaga só o registro em `profiles` — a conta em `auth.users` continua existindo (órfã, sem clínica), não é possível remover a si mesmo.
+- **O que staff vê**: menu lateral (`ClinicShell.tsx` → `STAFF_ALLOWED_HREFS`) só mostra Dashboard, Agenda, Pacientes e Próteses. Dentro da ficha do paciente (`lib/patientTabs.ts` → `STAFF_ALLOWED_TAB_KEYS`), só Agendamentos, Tratamentos e Débitos. Todo o resto (Anamneses, Atestados, Prescrições, Despesas, Configurações e suas subpáginas, Orçamentos, Imagens) é bloqueado **em duas camadas**: o link some do menu/aba **e** a página faz `redirect("/dashboard")` no servidor pra quem tentar acessar direto pela URL — só esconder o link não bastava, os dados dessas seções nem chegam a ser consultados no banco pra um staff (as queries ficam atrás de `if (role === "owner")`, não só o componente visual).
+- **Meu perfil** (`/dashboard/perfil`) é a única página "estilo Configurações" liberada pra staff — cada usuário edita só o próprio nome/foto (`profiles.name`/`profiles.avatar_url`, migração `049_profile_name_avatar.sql`), mostrados na sidebar.
 
 ## Configurando o Supabase (uma vez)
 
@@ -58,7 +87,7 @@ A resposta traz um `token` — abra `http://localhost:3000/assinatura?token=<tok
 
 ## Duas formas de uma clínica funcionar
 
-1. **Motor de conversa próprio (padrão, inclusive já em uso pela ER Odontologia)**: a clínica cadastra os modelos de anamnese em `/dashboard/templates` e conecta o próprio WhatsApp sozinha em `/dashboard/whatsapp` (QR Code, self-service — usa `EVOLUTION_ADMIN_BASE_URL`/`EVOLUTION_ADMIN_API_KEY`). Sem Typebot. Uma anamnese em andamento pode ser cancelada a qualquer momento na seção "Em andamento" do `/dashboard` (marca como `abandoned`, não apaga o histórico).
+1. **Motor de conversa próprio (padrão, inclusive já em uso pela ER Odontologia)**: a clínica cadastra os modelos de anamnese em `/dashboard/templates` e conecta o próprio WhatsApp sozinha em `/dashboard/configuracoes` (seção WhatsApp, componente `ConnectWhatsApp` — QR Code, self-service, usa `EVOLUTION_ADMIN_BASE_URL`/`EVOLUTION_ADMIN_API_KEY`). Sem Typebot. Uma anamnese em andamento pode ser cancelada a qualquer momento na seção "Em andamento" do `/dashboard` (marca como `abandoned`, não apaga o histórico).
 2. **Typebot (fluxo legado)**: uma instância do Typebot montada manualmente, com o bloco de Webhook final chamando `POST /api/clinics/{clinicId}/anamnesis` com o header `X-Api-Key`. Continua funcionando pra qualquer clínica que ainda esteja configurada assim, mas não é o caminho recomendado pra clínicas novas.
 
 ## Planos, trial e cobrança de excedente
@@ -84,7 +113,7 @@ Adicionar um plano novo: direto em `/admin/plans/new`, sem precisar mexer em có
 
 ## Assinatura digital de atestados/prescrições (Certisign)
 
-Diferente da assinatura eletrônica simples da anamnese (seção acima), atestados e prescrições exigem assinatura com certificado ICP-Brasil da dentista responsável (CRO), hoje um A3 em nuvem da Certisign (RemoteID). O provider trocável fica em `lib/signature/` (`getSignatureProvider()`, `SIGNATURE_PROVIDER=mock|certisign`).
+Diferente da assinatura eletrônica simples da anamnese (seção acima), atestados e prescrições exigem assinatura com certificado ICP-Brasil da dentista responsável (CRO). O provider é trocável e centralizado em `lib/signature/index.ts` (`getSignatureProvider()`, `SIGNATURE_PROVIDER=mock|certisign|psc|local_agent` — as duas últimas opções estão documentadas mais abaixo, "Assinatura em Nuvem Direta" e "Agente local de assinatura"). Esta seção cobre a opção `certisign` (Portal de Assinaturas, A3 em nuvem via RemoteID).
 
 Fluxo real (Certisign), assíncrono por natureza — a dentista precisa confirmar a assinatura no app dela (PIN/biometria):
 1. `issueCertificate`/`issuePrescription` gera o PDF e chama `provider.requestSignature()`, que sobe o documento (`document/upload`) e cria o fluxo de assinatura (`document/create`, signatário no array `signers`, nunca `serverSigners` — a assinatura tem que ser pessoal da dentista, não automática via certificado de empresa). O registro fica `aguardando_assinatura`, com `signature_sign_url` (link pra ela assinar) e `signature_provider_doc_id` salvos.
@@ -96,6 +125,18 @@ Pendências que só dá pra confirmar testando no sandbox/com o suporte da Certi
 - Valor numérico do enum `PadraoAssinatura` (campo `signatureStandard` em `document/create`) correto pra PAdES (é o que evita `document/package` devolver um zip CAdES+manifesto+.p7s). Confirmado pela doc oficial que o campo se chama `signatureStandard`, não `signatureFormatId` (nome antigo, corrigido — não existia na API real).
 - `flowActions` e `package` (usados no fallback de reconciliação — cron e botão "Verificar assinatura agora") não aparecem no catálogo público do portal do desenvolvedor (só `upload`/`create`/`createBatch` estão documentados lá). Testar isolado com curl antes de confiar nesse caminho — se não existirem nesse formato, só o webhook resolve a assinatura.
 - Se a página de assinatura (`signUrl`) funciona sem o plugin Chrome quando a signatária usa certificado RemoteID em nuvem — a doc da Certisign menciona um plugin Chrome pra listar certificados locais, o que não deveria se aplicar ao fluxo mobile/RemoteID, mas vale confirmar com o suporte antes de liberar pra dentista assinar pelo iPhone.
+
+## Assinatura em Nuvem Direta (PSC/VaultID, `SIGNATURE_PROVIDER=psc`)
+
+Quarta variação de provider, diferente da Certisign Portal (seção acima) por ser **síncrona**: a clínica vincula uma vez o certificado em nuvem da dentista (`GET /api/auth/certisign?clinicId=...` → OAuth do PSC/VaultID via `lib/psc/PscClient.ts` → `GET /api/auth/certisign/callback` grava `psc_access_token`/`psc_certificate_alias`/`psc_certificate_pem` em `clinics`), e depois disso cada emissão assina o PDF na hora (`lib/signature/pscProvider.ts`, `PscSigner`), sem passar por `aguardando_assinatura`/webhook/polling como a Certisign Portal ou o `local_agent`. **Ainda não tem botão no painel** pra iniciar esse vínculo (`/dashboard/configuracoes` não expõe esse link hoje) — usar essa rota exige chamar a URL de vínculo diretamente.
+
+## Agente local de assinatura (ICP-Brasil, `SIGNATURE_PROVIDER=local_agent`)
+
+Terceira opção de provider (além de `certisign` e `psc` acima), pensada pra dentista que já tem um certificado A1/A3 instalado no Windows dela (e-CPF ICP-Brasil no repositório de certificados do Windows) em vez de um certificado em nuvem. Diferente dos providers de nuvem, a chave privada nunca sai da máquina da dentista — quem assina de fato é um agente rodando localmente, não o servidor.
+
+- **O agente** (pasta `agent/` na raiz do repo, fora de `app/`): app Windows (.NET 8, WinForms + Kestrel) que roda na bandeja do sistema e expõe uma API HTTP só em `http://127.0.0.1:52310` (nunca exposta externamente). Lê o repositório de certificados do Windows (`CurrentUser\My`), filtra só certificados ICP-Brasil válidos com chave privada, e assina hashes sob demanda (`POST /v1/sign`) usando a chave privada local — nunca a expõe. Instalador em `agent/installer/` (`Instalar.bat`), builda/empacota via `agent/pack.ps1`, distribuído como asset de uma GitHub Release (link de download configurado em `dashboard/configuracoes/page.tsx`, `AGENT_INSTALLER_URL` — atualizar essa constante a cada nova release do agente).
+- **Fluxo de assinatura** (`lib/signature/localAgentProvider.ts` + `deferredSigning.ts`): é assíncrono em duas etapas, mesmo sendo tudo local — `requestSignature()` no servidor prepara o PDF (rodapé de assinatura + placeholder CMS/PKCS#7 vazio), calcula o hash exato dos `authenticatedAttributes` em DER canônico, salva uma sessão temporária (`signature_sessions`, migração `047_signature_sessions.sql`) e devolve `{ status: "external_signing", hashToSignBase64, signatureSessionId }` pro navegador. O navegador chama o agente local direto (`AgentDetector.tsx` → `useAgent()`) pra assinar esse hash com a chave privada real, e manda o resultado de volta pro servidor (`POST .../sign-local/finish`), que reconstrói o SignerInfo do PKCS#7 reaproveitando os mesmos bytes DER que foram hasheados (não dá pra deixar o `node-forge` gerar o ASN.1 e só trocar a assinatura depois — ele assina com uma chave descartável internamente nesse processo, e reatribuir `signer.signature` depois não tem efeito nenhum na saída final).
+- **Na UI**, `NewCertificateForm`/`NewPrescriptionForm` só mostram o seletor de certificado do agente (`AgentCertificateSelector`) quando `NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent"` — certificados cujo CPF não bate com o CPF cadastrado da dentista aparecem desabilitados ("CPF incompatível").
 
 ## Painel mobile / PWA
 
@@ -113,7 +154,7 @@ Pendências que só dá pra confirmar testando no sandbox/com o suporte da Certi
 ## Integração com a Evolution API — pontos não óbvios
 
 - `POST /webhook/set/{instance}` espera o payload **aninhado**: `{"webhook": {"enabled": true, "url": ..., "events": [...]}}`. Algumas versões da documentação mostram um formato achatado (`{"enabled": true, "url": ...}`) que retorna 400 nessa instância — ver `lib/evolutionAdmin.ts`.
-- `setInstanceWebhook` (que registra essa URL) só é chamado no momento de **conectar/escanear o QR** (`/api/clinics/[clinicId]/whatsapp/connect`). Trocar `NEXT_PUBLIC_APP_URL` depois de uma clínica já estar conectada **não** atualiza o webhook sozinho — é preciso reconectar (ou usar "Trocar número" no `/dashboard/whatsapp`, que desconecta via `logoutInstance`/`DELETE /instance/logout/{instance}` — endpoint não verificado contra uma instância real ainda) ou chamar `setInstanceWebhook` manualmente com a URL nova.
+- `setInstanceWebhook` (que registra essa URL) só é chamado no momento de **conectar/escanear o QR** (`/api/clinics/[clinicId]/whatsapp/connect`). Trocar `NEXT_PUBLIC_APP_URL` depois de uma clínica já estar conectada **não** atualiza o webhook sozinho — é preciso reconectar (ou usar "Trocar número" em `/dashboard/configuracoes`, que desconecta via `logoutInstance`/`DELETE /instance/logout/{instance}` — endpoint não verificado contra uma instância real ainda) ou chamar `setInstanceWebhook` manualmente com a URL nova.
 - A rota `/api/webhooks/evolution/[instanceName]` loga (via `console.log`) cada caso em que ignora uma mensagem recebida (payload não reconhecido, clínica não encontrada, nenhuma conversa ativa pro telefone) — útil pra depurar pelos logs de produção quando uma resposta não avança a conversa.
 - **Celular brasileiro, 9º dígito**: o WhatsApp/Baileys às vezes entrega o `remoteJid` sem o "9" do celular (ex.: `557998616410` em vez de `5579998616410`), de forma inconsistente. `brPhoneVariants` (`lib/validation.ts`) gera as duas variantes possíveis, e o webhook busca a conversa ativa com `.in("patient_phone", variants)` em vez de igualdade exata — sem isso, respostas reais do paciente não batiam com a conversa criada.
 - Anamnese em andamento parada: `/dashboard` tem "Reenviar pergunta" (reenvia a pergunta atual, sem mudar `current_index`) e, se cancelada, "Retomar" (volta pra `active` mantendo `current_index`/`answers` e reenvia) — rotas em `/api/clinics/[clinicId]/conversations/[conversationId]/resend`.
