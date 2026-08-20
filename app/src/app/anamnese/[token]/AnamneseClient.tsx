@@ -461,234 +461,52 @@ export function AnamneseClient({ token }: { token: string }) {
               qualquer alteração no meu estado de saúde em consultas futuras.
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <SignatureCanvas 
-                onChange={result => {
-                  setSignature(result);
-                  setHasSignature(!!result);
-                  setSignatureSnapshot(result?.dataUrl ?? null);
-                  setSignError("");
-                }}
-                height={160}
-              />
+            <div className={styles.formGroup} style={{ marginTop: 24, textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16, lineHeight: 1.5, padding: "0 10px" }}>
+                <strong>Assinatura Eletrônica Avançada — Lei nº 14.063/2020.</strong><br/>
+                Seu IP, data e hora serão registrados para garantir a validade jurídica deste documento.
+              </p>
+              
+              <div className="w-full relative border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 mb-2" style={{ height: "240px", touchAction: "none" }}>
+                <SignatureCanvas 
+                  onChange={result => {
+                    setSignature(result);
+                    setHasSignature(!!result);
+                    setSignatureSnapshot(result?.dataUrl ?? null);
+                    setSignError("");
+                  }}
+                  height={240}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>Recomendamos realizar uma rubrica em vez de assinar por extenso</span>
+                <button 
+                  className={styles.button}
+                  style={{ padding: "6px 12px", fontSize: 13 }}
+                  onClick={() => {
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                      const ctx = canvas.getContext('2d');
+                      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                      setSignature(null);
+                    }
+                  }}
+                >
+                  Limpar
+                </button>
+              </div>
             </div>
 
             {signError && <div className={styles.errorMessage}>{signError}</div>}
 
-
-
             <div className={styles.buttonRow}>
-        <header className={styles.header}>
-          {clinicLogo ? <img src={clinicLogo} alt={clinicName} className={styles.logo} /> : <div style={{ fontSize: 20, fontWeight: "bold" }}>{clinicName}</div>}
-        </header>
-
-        <main className={styles.main}>
-          <h1 className={styles.title}>Ficha de Anamnese</h1>
-
-          <div className={styles.steps}>
-            <div className={`${styles.step} ${step === "identificacao" ? styles.active : styles.completed}`}>
-              <div className={styles.stepCircle}>1</div>
-              <span className={styles.stepLabel}>Identificação</span>
-            </div>
-            <div className={`${styles.step} ${step === "saude" ? styles.active : (step === "assinatura" ? styles.completed : "")}`} style={{ opacity: questions.length === 0 ? 0.3 : 1 }}>
-              <div className={styles.stepCircle}>2</div>
-              <span className={styles.stepLabel}>Saúde</span>
-            </div>
-            <div className={`${styles.step} ${step === "assinatura" ? styles.active : ""}`}>
-              <div className={styles.stepCircle}>3</div>
-              <span className={styles.stepLabel}>Assinatura</span>
+              <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
+              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSubmit}>Finalizar e Assinar</button>
             </div>
           </div>
-
-          {step === "identificacao" && (
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Dados Pessoais</h2>
-              
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Nome Completo</label>
-                <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome completo" />
-              </div>
-
-              <div className={styles.formRow}>
-                <div>
-                  <label className={styles.label}>CPF (opcional)</label>
-                  <input type="text" inputMode="numeric" className={styles.input} value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} placeholder="000.000.000-00" maxLength={14} />
-                </div>
-                <div>
-                  <label className={styles.label}>Data de Nascimento</label>
-                  <input type="date" className={styles.input} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div>
-                  <label className={styles.label}>RG (opcional)</label>
-                  <input type="text" className={styles.input} value={rg} onChange={e => setRg(e.target.value)} placeholder="0000000" />
-                </div>
-                <div>
-                  <label className={styles.label}>Celular</label>
-                  <input type="text" inputMode="numeric" className={styles.input} value={phone} onChange={e => setPhone(formatBRPhoneLocal(e.target.value))} placeholder="(00) 00000-0000" />
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Ocupação / Profissão (opcional)</label>
-                <input type="text" className={styles.input} value={occupation} onChange={e => setOccupation(e.target.value)} placeholder="Ex: Professor" />
-              </div>
-
-              <div className={styles.formRow}>
-                <div style={{ flex: "0 0 120px" }}>
-                  <label className={styles.label}>CEP (opcional)</label>
-                  <input type="text" inputMode="numeric" className={styles.input} value={cep} onChange={e => handleCepChange(e.target.value)} placeholder="00000-000" maxLength={9} />
-                </div>
-                <div>
-                  <label className={styles.label}>Endereço Residencial (Rua/Av) {isFetchingCep && <span style={{fontSize:12, color:"#6b7280"}}>(Buscando...)</span>}</label>
-                  <input type="text" className={styles.input} value={street} onChange={e => setStreet(e.target.value)} placeholder="Rua..." />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div style={{ flex: "0 0 100px" }}>
-                  <label className={styles.label}>Número</label>
-                  <input type="text" className={styles.input} value={addressNumber} onChange={e => setAddressNumber(e.target.value)} placeholder="123" />
-                </div>
-                <div>
-                  <label className={styles.label}>Complemento / Bairro</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="text" className={styles.input} value={complement} onChange={e => setComplement(e.target.value)} placeholder="Apto 1" style={{ flex: 1 }} />
-                    <input type="text" className={styles.input} value={neighborhood} onChange={e => setNeighborhood(e.target.value)} placeholder="Bairro" style={{ flex: 2 }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div>
-                  <label className={styles.label}>Cidade</label>
-                  <input type="text" className={styles.input} value={city} onChange={e => setCity(e.target.value)} placeholder="Cidade" />
-                </div>
-                <div style={{ flex: "0 0 80px" }}>
-                  <label className={styles.label}>UF</label>
-                  <input type="text" className={styles.input} value={uf} onChange={e => setUf(e.target.value.toUpperCase())} placeholder="SP" maxLength={2} />
-                </div>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Queixa Principal (Opcional)</label>
-                <textarea className={`${styles.input} ${styles.textarea}`} value={mainComplaint} onChange={e => setMainComplaint(e.target.value)} placeholder="Descreva brevemente o motivo da consulta..." />
-              </div>
-
-              {formError && <div className={styles.errorMessage}>{formError}</div>}
-
-              <div className={styles.buttonRow}>
-                <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>
-              </div>
-            </div>
-          )}
-
-          {step === "saude" && (
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Questionário de Saúde</h2>
-              <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 24 }}>Por favor, responda às perguntas abaixo com o máximo de sinceridade. Suas respostas são confidenciais.</p>
-              
-              {questions.map((q, i) => {
-                const ans = healthAnswers[i] || {};
-                return (
-                  <div key={i} className={`${styles.questionItem} ${ans.yesNo ? styles.active : ""}`}>
-                    <div className={styles.questionLabel}>{q.question}</div>
-                    
-                    <div className={styles.yesNoGroup}>
-                      <button 
-                        className={`${styles.yesNoBtn} ${ans.yesNo === "Sim" ? styles.selectedYes : ""}`}
-                        style={{ backgroundColor: ans.yesNo === "Sim" ? "#ef4444" : undefined, color: ans.yesNo === "Sim" ? "#fff" : undefined, borderColor: ans.yesNo === "Sim" ? "#ef4444" : undefined }}
-                        onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Sim" } }))}
-                      >
-                        Sim
-                      </button>
-                      <button 
-                        className={`${styles.yesNoBtn} ${ans.yesNo === "Não" ? styles.selectedNo : ""}`}
-                        style={{ backgroundColor: ans.yesNo === "Não" ? "#10b981" : undefined, color: ans.yesNo === "Não" ? "#fff" : undefined, borderColor: ans.yesNo === "Não" ? "#10b981" : undefined }}
-                        onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Não", text: "" } }))}
-                      >
-                        Não
-                      </button>
-                    </div>
-
-                    <div className={`${styles.detailInputWrapper} ${ans.yesNo === "Sim" ? styles.open : ""}`}>
-                      <label className={styles.label} style={{ fontSize: 13, color: "#4b5563" }}>Poderia detalhar?</label>
-                      <input 
-                        type="text" 
-                        className={styles.input} 
-                        value={ans.text || ""} 
-                        onChange={e => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], text: e.target.value } }))}
-                        placeholder="Descreva aqui..."
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-
-              <div className={styles.buttonRow}>
-                <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
-                <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>
-              </div>
-            </div>
-          )}
-
-          {step === "assinatura" && (
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Assinatura Digital</h2>
-              
-              <div className={styles.termsText}>
-                Eu, <strong>{name || "Paciente"}</strong>, inscrito(a) no CPF <strong>{cpf || "___.___.___-__"}</strong>, 
-                declaro que as informações aqui prestadas são verdadeiras e me comprometo a informar 
-                qualquer alteração no meu estado de saúde em consultas futuras.
-              </div>
-
-              <div className={styles.formGroup} style={{ marginTop: 24, textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16, lineHeight: 1.5, padding: "0 10px" }}>
-                  <strong>Assinatura Eletrônica Avançada — Lei nº 14.063/2020.</strong><br/>
-                  Seu IP, data e hora serão registrados para garantir a validade jurídica deste documento.
-                </p>
-                
-                <div className="w-full relative border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 mb-2" style={{ height: "240px", touchAction: "none" }}>
-                  <SignatureCanvas 
-                    onChange={result => {
-                      setSignature(result);
-                      setHasSignature(!!result);
-                      setSignatureSnapshot(result?.dataUrl ?? null);
-                      setSignError("");
-                    }}
-                    height={240}
-                  />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>Recomendamos realizar uma rubrica em vez de assinar por extenso</span>
-                  <button 
-                    className={styles.button}
-                    style={{ padding: "6px 12px", fontSize: 13 }}
-                    onClick={() => {
-                      const canvas = document.querySelector('canvas');
-                      if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        ctx?.clearRect(0, 0, canvas.width, canvas.height);
-                        setSignature(null);
-                      }
-                    }}
-                  >
-                    Limpar
-                  </button>
-                </div>
-              </div>
-
-              {signError && <div className={styles.errorMessage}>{signError}</div>}
-
-              <div className={styles.buttonRow}>
-                <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
-                <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSubmit}>Finalizar e Assinar</button>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
+        )}
+      </main>
+    </div>
     );
   };
 
