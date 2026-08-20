@@ -23,6 +23,21 @@ function TrashIcon() {
   );
 }
 
+function SignIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path
+        d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function AnamnesisActions({
   clinicId,
   anamnesisId,
@@ -76,16 +91,19 @@ export function AnamnesisActions({
   return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
       {dentistSignatureStatus === "assinada" ? (
-        <span className={`${styles.statusBadge} ${styles.statusOk}`}>Assinada (dentista)</span>
+        <span className={styles.iconActionBtn} style={{ color: "var(--brand-deep)", cursor: "default" }} title="Assinada pela dentista" aria-label="Assinada pela dentista">
+          <SignIcon />
+        </span>
       ) : (
         <button
           type="button"
           onClick={handleSignAsDentist}
           disabled={signing || !hasPatientSignature}
-          className={`${styles.btn} ${styles.btnGhost}`}
-          title={hasPatientSignature ? "Assinar como dentista" : "O paciente ainda não assinou esta anamnese"}
+          className={styles.iconActionBtn}
+          title={signing ? "Assinando…" : hasPatientSignature ? "Assinar como dentista" : "O paciente ainda não assinou esta anamnese"}
+          aria-label="Assinar como dentista"
         >
-          {signing ? "Assinando…" : "Assinar (dentista)"}
+          <SignIcon />
         </button>
       )}
 

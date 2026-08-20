@@ -267,7 +267,7 @@ export default async function EditPatientPage({
   const anTo = anFrom + DOCS_PAGE_SIZE - 1;
   let anamneses: Anamnesis[] = [];
   let anamnesesCount = 0;
-  let signatureIdByAnamnesis = new Map<string, string>();
+  let signatureIdByAnamnesis = new Map<string, { id: string; dentistSignatureStatus: "nao_assinada" | "assinada" }>();
   if (role === "owner" && patient.phone) {
     const { data: anamnesesData, count } = await supabase
       .from("anamneses")
@@ -282,12 +282,14 @@ export default async function EditPatientPage({
     if (anamneses.length > 0) {
       const { data: signaturesData } = await supabase
         .from("signatures")
-        .select("id, anamnesis_id")
+        .select("id, anamnesis_id, dentist_signature_status")
         .in(
           "anamnesis_id",
           anamneses.map((a) => a.id)
         );
-      signatureIdByAnamnesis = new Map((signaturesData ?? []).map((s) => [s.anamnesis_id, s.id]));
+      signatureIdByAnamnesis = new Map(
+        (signaturesData ?? []).map((s) => [s.anamnesis_id, { id: s.id, dentistSignatureStatus: s.dentist_signature_status as "nao_assinada" | "assinada" }])
+      );
     }
   }
   const anamnesesTotalPages = Math.max(1, Math.ceil(anamnesesCount / DOCS_PAGE_SIZE));
@@ -321,24 +323,25 @@ export default async function EditPatientPage({
             </thead>
             <tbody>
               {anamneses.map((a) => {
-                const signatureId = signatureIdByAnamnesis.get(a.id);
+                const signatureInfo = signatureIdByAnamnesis.get(a.id);
                 return (
                   <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
                     <td>{formatBRDate(a.created_at)}</td>
                     <td>
-                      {signatureId ? (
+                      {signatureInfo ? (
                         <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
                       ) : (
                         <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                       )}
                     </td>
                     <StopPropagationTd>
-                      {signatureId && (
+                      {signatureInfo && (
                         <AnamnesisGridActions
                           clinicId={clinic.id}
                           anamnesisId={a.id}
-                          signatureId={signatureId}
+                          signatureId={signatureInfo.id}
                           hasPhone={!!patient.phone}
+                          dentistSignatureStatus={signatureInfo.dentistSignatureStatus}
                           iconClassName={styles.iconActionBtn}
                         />
                       )}

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { AgentCertificateSelector, useAgent } from "@/components/AgentDetector";
+import { signAnamnesisAsDentist } from "@/lib/anamnesisDentistSigningClient";
 
 export function LinkIcon() {
   return (
@@ -35,6 +37,21 @@ function WhatsAppIcon() {
   );
 }
 
+function SignIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path
+        d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Ícones de Baixar/Reenviar por WhatsApp numa linha de anamnese já
  * assinada — usado no grid principal e na aba Anamneses da ficha do
  * paciente. `iconClassName` é passado de fora porque as duas telas usam
@@ -44,17 +61,23 @@ export function AnamnesisGridActions({
   anamnesisId,
   signatureId,
   hasPhone,
+  dentistSignatureStatus,
   iconClassName,
 }: {
   clinicId: string;
   anamnesisId: string;
   signatureId: string;
   hasPhone: boolean;
+  dentistSignatureStatus: "nao_assinada" | "assinada";
   iconClassName: string;
 }) {
   const router = useRouter();
   const [resending, setResending] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const { signHash } = useAgent();
   const { toasts, push, dismiss } = useToasts();
+  const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
   async function handleResend() {
     setResending(true);
@@ -88,6 +111,42 @@ export function AnamnesisGridActions({
           <WhatsAppIcon />
         </button>
       )}
+      {isLocalAgentMode &&
+        (dentistSignatureStatus === "assinada" ? (
+          <span className={iconClassName} style={{ color: "var(--brand-deep)", cursor: "default" }} title="Assinada pela dentista" aria-label="Assinada pela dentista">
+            <SignIcon />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowAgentSelector(true)}
+            disabled={signing}
+            className={iconClassName}
+            title={signing ? "Assinando…" : "Assinar como dentista"}
+            aria-label="Assinar como dentista"
+          >
+            <SignIcon />
+          </button>
+        ))}
+      <AgentCertificateSelector
+        open={showAgentSelector}
+        onOpenChange={setShowAgentSelector}
+        onCertificateSelected={async (cert) => {
+          setShowAgentSelector(false);
+          setSigning(true);
+          try {
+            const result = await signAnamnesisAsDentist(clinicId, anamnesisId, cert, signHash);
+            if (!result.ok) {
+              push(result.error, "error");
+              return;
+            }
+            push("Anamnese assinada pela dentista.", "success");
+            router.refresh();
+          } finally {
+            setSigning(false);
+          }
+        }}
+      />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );

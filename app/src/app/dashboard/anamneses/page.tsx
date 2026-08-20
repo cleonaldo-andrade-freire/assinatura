@@ -58,7 +58,7 @@ export default async function AnamnesesPage({
   ] = await Promise.all([
     supabase.from("anamneses").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
     supabase.from("signatures").select("id", { count: "exact", head: true }).eq("clinic_id", clinic.id),
-    supabase.from("signatures").select("id, anamnesis_id").eq("clinic_id", clinic.id),
+    supabase.from("signatures").select("id, anamnesis_id, dentist_signature_status").eq("clinic_id", clinic.id),
     supabase
       .from("conversations")
       .select("*")
@@ -70,7 +70,9 @@ export default async function AnamnesesPage({
     supabase.from("question_templates").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
   ]);
 
-  const signatureByAnamnesis = new Map((signatures ?? []).map((s) => [s.anamnesis_id, s.id]));
+  const signatureByAnamnesis = new Map(
+    (signatures ?? []).map((s) => [s.anamnesis_id, { id: s.id, dentistSignatureStatus: s.dentist_signature_status as "nao_assinada" | "assinada" }])
+  );
   const signedIds = Array.from(signatureByAnamnesis.keys());
   const conversations = (activeConversations as Conversation[]) ?? [];
 
@@ -273,7 +275,8 @@ export default async function AnamnesesPage({
               </thead>
               <tbody>
                 {anamneses.map((a) => {
-                  const signatureId = signatureByAnamnesis.get(a.id);
+                  const signatureInfo = signatureByAnamnesis.get(a.id);
+                  const signatureId = signatureInfo?.id;
                   return (
                     <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
                       <td>
@@ -309,6 +312,7 @@ export default async function AnamnesesPage({
                             anamnesisId={a.id}
                             signatureId={signatureId}
                             hasPhone={!!a.patient_phone}
+                            dentistSignatureStatus={signatureInfo!.dentistSignatureStatus}
                             iconClassName={styles.iconActionBtn}
                           />
                         ) : (

@@ -8,6 +8,16 @@ import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Anamnesis, Signature } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
+/** Sim = verde, Não = vermelho — só quando a resposta começa exatamente
+ * assim (ex.: "Sim Obs: ..."); respostas livres ("Nenhuma dor") ficam com a
+ * cor padrão. */
+function answerColor(answer: string): string | undefined {
+  const trimmed = answer.trim();
+  if (/^sim\b/i.test(trimmed)) return "var(--brand)";
+  if (/^não\b/i.test(trimmed)) return "var(--danger)";
+  return undefined;
+}
+
 function detailRow(label: string, value: React.ReactNode) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
@@ -64,7 +74,7 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
           {typedAnamnesis.answers.map((a, i) => (
             <div key={i} style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
               <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 2 }}>{a.question}</div>
-              <div style={{ fontSize: 14.5 }}>{a.answer}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: answerColor(a.answer) }}>{a.answer}</div>
             </div>
           ))}
         </div>
