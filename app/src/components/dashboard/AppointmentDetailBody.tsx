@@ -3,6 +3,7 @@
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
 import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";
+import { OpenTreatmentsSummary } from "@/components/dashboard/OpenTreatmentsSummary";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { formatBRDate, formatBRDateTime, formatBRTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
@@ -83,6 +84,7 @@ export function AppointmentDetailBody({
                   onMouseLeave={(e) => { e.currentTarget.style.color = ""; }}
                 >{a.patient_name}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>+55 {formatBRPhoneLocal(a.patient_phone)}</div>
+                <OpenTreatmentsSummary clinicId={clinicId} patientId={a.patient_id} />
               </div>
             </div>
             

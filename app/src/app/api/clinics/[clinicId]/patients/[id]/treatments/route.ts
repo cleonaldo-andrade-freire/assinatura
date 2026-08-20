@@ -12,8 +12,9 @@ const bodySchema = z.object({
   price_table_name: z.string().nullable().optional(),
 });
 
-/** Tratamentos em aberto do paciente — usado pelo formulário de novo
- * agendamento pra sugerir a observação automaticamente (ver NewAppointmentForm). */
+/** Tratamentos em aberto do paciente — usado pelo resumo no detalhe do
+ * agendamento (ver OpenTreatmentsSummary), pra dentista saber do que se
+ * trata sem precisar abrir a ficha do paciente antes. */
 export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic || clinic.id !== params.clinicId) {
@@ -23,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("treatments")
-    .select("id, treatment_name, tooth_region")
+    .select("id, treatment_name, tooth_region, price, created_at")
     .eq("clinic_id", clinic.id)
     .eq("patient_id", params.id)
     .eq("status", "aberto")
