@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import styles from "@/styles/shell.module.css";
 import { formatMoneyDisplay } from "@/lib/money";
-import { useNarrowViewport } from "@/lib/useNarrowViewport";
 
 interface DashboardKPIsProps {
   monthlyRevenue: number;
@@ -42,18 +41,12 @@ export function DashboardKPIs({
   dailyExpense,
   dailyBalance,
 }: DashboardKPIsProps) {
-  // ≤900px cobre tanto o celular quanto a faixa de tablet (768–900px, onde
-  // a sidebar já vira rail de ícones) — não depende da flag do shell mobile
-  // v2, é qualquer tela estreita, incluindo janela de navegador redimensionada.
-  const narrow = useNarrowViewport(900);
   const [visible, setVisible] = useState(true);
 
-  // Em tela estreita os cards já são pequenos (2 colunas) — o prefixo "R$"
-  // repetido 6 vezes só disputa espaço com o número, que é a informação que
-  // importa. Contexto (clínica odontológica brasileira) deixa a moeda óbvia
-  // sem ele.
+  // Sem o prefixo "R$" repetido 6 vezes — contexto (clínica odontológica
+  // brasileira) já deixa a moeda óbvia sem ele.
   function formatMoney(value: number): string {
-    return narrow ? formatMoneyDisplay(value) : `R$ ${formatMoneyDisplay(value)}`;
+    return formatMoneyDisplay(value);
   }
 
   useEffect(() => {
