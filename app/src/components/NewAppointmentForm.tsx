@@ -140,6 +140,31 @@ export function NewAppointmentForm({
     setSuggestions([]);
   }
 
+  // Sugere a observação a partir dos tratamentos em aberto do paciente — só
+  // preenche se o campo ainda estiver vazio (nunca sobrescreve o que a
+  // dentista já digitou). Ajuda a lembrar do que se trata o agendamento sem
+  // precisar abrir a ficha do paciente antes.
+  useEffect(() => {
+    if (!patientId) return;
+    let cancelled = false;
+    fetch(`/api/clinics/${clinicId}/patients/${patientId}/treatments`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { treatments?: { treatment_name: string; tooth_region: string | null }[] } | null) => {
+        if (cancelled || !data?.treatments?.length) return;
+        setNotes((prev) => {
+          if (prev.trim()) return prev;
+          const names = data.treatments!.map((t) => (t.tooth_region ? `${t.tooth_region} — ${t.treatment_name}` : t.treatment_name));
+          return `Tratamentos em aberto: ${names.join(", ")}`;
+        });
+      })
+      .catch(() => {
+        // sugestão é conveniência — falha silenciosa
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, clinicId]);
+
   /** Data prevista de retorno (só a data, sem horário) a partir da opção
    * escolhida — relativa à data desta consulta, não a hoje. Não cria
    * nenhuma consulta sozinha: é só um sinal pra "Retornos próximos" avisar

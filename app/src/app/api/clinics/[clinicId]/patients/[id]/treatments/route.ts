@@ -12,6 +12,26 @@ const bodySchema = z.object({
   price_table_name: z.string().nullable().optional(),
 });
 
+/** Tratamentos em aberto do paciente — usado pelo formulário de novo
+ * agendamento pra sugerir a observação automaticamente (ver NewAppointmentForm). */
+export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
+  const clinic = await getCurrentClinic();
+  if (!clinic || clinic.id !== params.clinicId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("treatments")
+    .select("id, treatment_name, tooth_region")
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", params.id)
+    .eq("status", "aberto")
+    .order("created_at", { ascending: true });
+
+  return NextResponse.json({ treatments: data ?? [] });
+}
+
 /** Cria um tratamento direto na ficha do paciente, sem passar por um orçamento. */
 export async function POST(req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const clinic = await getCurrentClinic();
