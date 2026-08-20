@@ -164,6 +164,7 @@
   width: 100%;
   padding: 12px 14px;
   font-size: 16px; /* 16px evita o zoom automático do iOS ao focar no input */
+  font-weight: 600;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background-color: #f9fafb;
