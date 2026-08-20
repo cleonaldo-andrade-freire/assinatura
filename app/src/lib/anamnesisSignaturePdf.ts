@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR } from "@/lib/pdfTextLayout";
+import { formatCPF } from "@/lib/validation";
 
 interface AnamnesisPdfData {
   clinicName: string;
@@ -19,6 +20,12 @@ interface AnamnesisPdfData {
     signedAt: string;
     ip: string;
     dataUrl: string; // The base64 signature image
+  };
+  dentistSignature?: {
+    signerName: string;
+    signerCpf: string;
+    signedAt: string;
+    provider: string;
   };
 }
 
@@ -150,9 +157,31 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   y -= 15;
   page.drawText(data.signature.signerName, { x: MARGIN, y, size: 10, font: bold });
   y -= 15;
-  page.drawText(`Documento assinado eletronicamente. IP: ${data.signature.ip}`, { x: MARGIN, y, size: 8, font: italic });
+  page.drawText(`Documento assinado eletronicamente (Assinatura Eletrônica Avançada — Lei nº 14.063/2020). IP: ${data.signature.ip}`, { x: MARGIN, y, size: 8, font: italic });
   y -= 12;
   page.drawText(`Data/Hora: ${formatDateBR(data.signature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
+  
+  // Assinatura do Dentista
+  if (data.dentistSignature) {
+    ensureSpace(120);
+    y -= 30;
+    page.drawText("Assinatura do Cirurgião-Dentista", { x: MARGIN, y, size: 12, font: bold, color: rgb(0.1, 0.5, 0.2) });
+    y -= 25;
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: MARGIN + 300, y },
+      thickness: 1,
+      color: rgb(0, 0, 0)
+    });
+    y -= 15;
+    page.drawText(data.dentistSignature.signerName, { x: MARGIN, y, size: 10, font: bold });
+    y -= 15;
+    page.drawText(`CPF: ${formatCPF(data.dentistSignature.signerCpf)}`, { x: MARGIN, y, size: 9, font });
+    y -= 15;
+    page.drawText(`Assinatura Eletrônica Avançada / ICP-Brasil (${data.dentistSignature.provider})`, { x: MARGIN, y, size: 8, font: italic });
+    y -= 12;
+    page.drawText(`Data/Hora: ${formatDateBR(data.dentistSignature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
+  }
   
   return await doc.save();
 }

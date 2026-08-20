@@ -661,7 +661,7 @@ export function AnamneseClient({ token }: { token: string }) {
                   />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>Assine com o dedo na área acima</span>
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>Recomendamos realizar uma rubrica em vez de assinar por extenso</span>
                   <button 
                     className={styles.button}
                     style={{ padding: "6px 12px", fontSize: 13 }}
