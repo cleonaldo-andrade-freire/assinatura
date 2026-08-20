@@ -25,21 +25,24 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const [{ data: clinic }, { data: signature }] = await Promise.all([
+  const [{ data: clinic }, { data: signature }, { data: patient }] = await Promise.all([
     supabase.from("clinics").select("name, logo_url").eq("id", anamnesis.clinic_id).single(),
     supabase.from("signatures").select("id").eq("anamnesis_id", anamnesis.id).maybeSingle(),
+    anamnesis.patient_phone ? supabase.from("patients").select("cpf, rg, birth_date, occupation, address").eq("clinic_id", anamnesis.clinic_id).eq("phone", anamnesis.patient_phone).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   return NextResponse.json({
     clinic_name: clinic?.name ?? "Clínica",
     clinic_logo_url: clinic?.logo_url ?? null,
     patient_name: anamnesis.patient_name,
-    patient_cpf: anamnesis.patient_cpf,
+    patient_cpf: patient?.cpf || anamnesis.patient_cpf || null,
+    patient_phone: anamnesis.patient_phone,
+    patient_rg: patient?.rg || null,
+    patient_birth_date: patient?.birth_date || null,
+    patient_occupation: patient?.occupation || null,
+    patient_address: patient?.address || null,
     answers: anamnesis.answers,
     already_signed: signature !== null,
-    // Novo campo, opcional — quem já lia essa resposta antes de hoje não
-    // quebra por ignorá-lo. Deixa /assinatura oferecer o PDF de novo pra
-    // quem reabre o link depois de já ter assinado.
     signature_id: signature?.id ?? null,
   });
 }

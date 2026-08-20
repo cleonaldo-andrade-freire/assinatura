@@ -11,6 +11,11 @@ interface AnamnesisData {
   clinic_logo_url: string | null;
   patient_name: string;
   patient_cpf: string | null;
+  patient_phone: string | null;
+  patient_rg: string | null;
+  patient_birth_date: string | null;
+  patient_occupation: string | null;
+  patient_address: string | null;
   answers: { question: string; answer: string }[];
   already_signed: boolean;
 }
@@ -27,9 +32,17 @@ export function AnamneseClient({ token }: { token: string }) {
   const [cpf, setCpf] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [rg, setRg] = useState("");
+  const [cep, setCep] = useState("");
+  const [street, setStreet] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [uf, setUf] = useState("");
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [phone, setPhone] = useState("");
   const [occupation, setOccupation] = useState("");
-  const [address, setAddress] = useState("");
+
   const [mainComplaint, setMainComplaint] = useState("");
 
   // Formulário - Saúde dinâmico (carregado do banco)
@@ -41,6 +54,34 @@ export function AnamneseClient({ token }: { token: string }) {
   const [hasSignature, setHasSignature] = useState(false);
   const [signError, setSignError] = useState("");
   const [signatureSnapshot, setSignatureSnapshot] = useState<string | null>(null);
+
+  // Erro de validação de formulário
+  const [formError, setFormError] = useState("");
+
+  async function handleCepChange(val: string) {
+    const raw = val.replace(/\D/g, "").slice(0, 8);
+    let masked = raw;
+    if (raw.length > 5) masked = raw.replace(/^(\d{5})(\d)/, "$1-$2");
+    setCep(masked);
+
+    if (raw.length === 8) {
+      setIsFetchingCep(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setStreet(data.logradouro || "");
+          setNeighborhood(data.bairro || "");
+          setCity(data.localidade || "");
+          setUf(data.uf || "");
+        }
+      } catch (e) {
+        // ignora erro
+      } finally {
+        setIsFetchingCep(false);
+      }
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -57,10 +98,20 @@ export function AnamneseClient({ token }: { token: string }) {
         setClinicName(data.clinic_name);
         setClinicLogo(data.clinic_logo_url);
         setName(data.patient_name || "");
-        setCpf(data.patient_cpf || "");
+        setCpf(data.patient_cpf ? formatCPF(data.patient_cpf) : "");
+        setPhone(data.patient_phone ? formatBRPhoneLocal(data.patient_phone) : "");
+        setRg(data.patient_rg || "");
+        setBirthDate(data.patient_birth_date || "");
+        setOccupation(data.patient_occupation || "");
         
+        // Se vier com endereço pré-preenchido, a gente pode colocar tudo no "street" ou tentar quebrar
+        // Como no backend tá uma string só, vamos jogar no campo da Rua provisoriamente, se não houver cep.
+        // Ou melhor, colocar no 'street' para ele conferir.
+        if (data.patient_address) {
+           setStreet(data.patient_address);
+        }
+
         // Populamos as perguntas originais que vieram do banco
-        // (A API send-link salvou as perguntas vazias no banco)
         if (data.answers && data.answers.length > 0) {
           setQuestions(data.answers);
           const initialH: Record<number, { text: string }> = {};
@@ -79,9 +130,10 @@ export function AnamneseClient({ token }: { token: string }) {
   }, [token]);
 
   function handleNext() {
+    setFormError("");
     if (step === "identificacao") {
-      if (!name.trim()) return alert("Nome é obrigatório.");
-      if (cpf && !isValidCPF(cpf)) return alert("CPF inválido.");
+      if (!name.trim()) return setFormError("Nome é obrigatório.");
+      if (cpf && !isValidCPF(cpf)) return setFormError("CPF inválido. Verifique se a numeração está correta.");
       
       // Se não houver perguntas, pula a etapa de saúde direto pra assinatura
       if (questions.length === 0) {
@@ -95,6 +147,7 @@ export function AnamneseClient({ token }: { token: string }) {
   }
 
   function handleBack() {
+    setFormError("");
     if (step === "saude") setStep("identificacao");
     if (step === "assinatura") {
       if (questions.length === 0) setStep("identificacao");
@@ -128,6 +181,16 @@ export function AnamneseClient({ token }: { token: string }) {
       }
     });
 
+    // Monta o endereço final
+    const parts = [];
+    if (street) parts.push(street);
+    if (addressNumber) parts.push(addressNumber);
+    if (complement) parts.push(`- ${complement}`);
+    if (neighborhood) parts.push(neighborhood);
+    if (city) parts.push(`${city} - ${uf}`);
+    
+    const finalAddress = parts.length > 0 ? `${cep ? cep + ' - ' : ''}${parts.join(", ")}` : undefined;
+
     try {
       const res = await fetch(`/api/anamnesis/${token}/submit`, {
         method: "POST",
@@ -140,7 +203,7 @@ export function AnamneseClient({ token }: { token: string }) {
             rg: rg.trim() || undefined,
             phone: phone ? toE164BR(phone) : undefined,
             occupation: occupation.trim() || undefined,
-            address: address.trim() || undefined,
+            address: finalAddress,
           },
           answers,
           signature: signature.strokeData,
@@ -274,15 +337,49 @@ export function AnamneseClient({ token }: { token: string }) {
               <input type="text" className={styles.input} value={occupation} onChange={e => setOccupation(e.target.value)} placeholder="Ex: Professor" />
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Endereço Residencial (opcional)</label>
-              <input type="text" className={styles.input} value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Número, Bairro, Cidade - UF" />
+            <div className={styles.formRow}>
+              <div style={{ flex: "0 0 120px" }}>
+                <label className={styles.label}>CEP (opcional)</label>
+                <input type="text" inputMode="numeric" className={styles.input} value={cep} onChange={e => handleCepChange(e.target.value)} placeholder="00000-000" maxLength={9} />
+              </div>
+              <div>
+                <label className={styles.label}>Endereço Residencial (Rua/Av) {isFetchingCep && <span style={{fontSize:12, color:"#6b7280"}}>(Buscando...)</span>}</label>
+                <input type="text" className={styles.input} value={street} onChange={e => setStreet(e.target.value)} placeholder="Rua..." />
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div style={{ flex: "0 0 100px" }}>
+                <label className={styles.label}>Número</label>
+                <input type="text" className={styles.input} value={addressNumber} onChange={e => setAddressNumber(e.target.value)} placeholder="123" />
+              </div>
+              <div>
+                <label className={styles.label}>Complemento / Bairro</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input type="text" className={styles.input} value={complement} onChange={e => setComplement(e.target.value)} placeholder="Apto 1" style={{ flex: 1 }} />
+                  <input type="text" className={styles.input} value={neighborhood} onChange={e => setNeighborhood(e.target.value)} placeholder="Bairro" style={{ flex: 2 }} />
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div>
+                <label className={styles.label}>Cidade</label>
+                <input type="text" className={styles.input} value={city} onChange={e => setCity(e.target.value)} placeholder="Cidade" />
+              </div>
+              <div style={{ flex: "0 0 80px" }}>
+                <label className={styles.label}>UF</label>
+                <input type="text" className={styles.input} value={uf} onChange={e => setUf(e.target.value.toUpperCase())} placeholder="SP" maxLength={2} />
+              </div>
+            </div>
             </div>
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Queixa Principal (Opcional)</label>
               <textarea className={`${styles.input} ${styles.textarea}`} value={mainComplaint} onChange={e => setMainComplaint(e.target.value)} placeholder="Descreva brevemente o motivo da consulta..." />
             </div>
+
+            {formError && <div className={styles.errorMessage}>{formError}</div>}
 
             <div className={styles.buttonRow}>
               <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>

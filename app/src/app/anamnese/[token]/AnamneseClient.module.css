@@ -147,13 +147,16 @@
 .input {
   width: 100%;
   padding: 12px 14px;
-  font-size: 15px;
+  font-size: 16px; /* 16px evita o zoom automático do iOS ao focar no input */
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background-color: #f9fafb;
   color: #111827;
   transition: all 0.2s ease;
   box-sizing: border-box;
+  appearance: none; /* padroniza a aparência, especialmente do input date no iOS */
+  -webkit-appearance: none;
+  min-height: 46px; /* garante a mesma altura para todos os inputs, incluindo date */
 }
 
 .input:focus {
