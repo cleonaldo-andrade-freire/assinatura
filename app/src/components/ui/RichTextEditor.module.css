@@ -1,0 +1,132 @@
+.wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font-size: 13.5;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.btn.italic {
+  font-style: italic;
+  font-weight: 500;
+}
+
+.btn.underline {
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.sep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
+  flex: none;
+}
+
+.select {
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.expandBtn {
+  margin-left: auto;
+}
+
+.editable {
+  min-height: 200px;
+  padding: 12px 14px;
+  font-size: 14.5;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
+  overflow-y: auto;
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.fullscreenOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreenHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.fullscreenTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-deep);
+  margin: 0;
+}
+
+.fullscreenBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.fullscreenBody .wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fullscreenBody .editable {
+  flex: 1;
+}

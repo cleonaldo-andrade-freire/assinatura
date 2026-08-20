@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sanitizeConsentTermHtml } from "@/lib/electronicConsent";
 
 const bodySchema = z.object({
   consent_term_text: z.string().min(1),
@@ -23,11 +24,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "invalid_body", details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const sanitized = sanitizeConsentTermHtml(parsed.data.consent_term_text.trim());
+  if (!sanitized.replace(/<[^>]*>/g, "").trim()) {
+    return NextResponse.json({ error: "empty_text" }, { status: 400 });
+  }
+
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
     .from("clinics")
     .update({
-      consent_term_text: parsed.data.consent_term_text.trim(),
+      consent_term_text: sanitized,
       consent_term_version: parsed.data.consent_term_version.trim(),
       consent_term_updated_at: new Date().toISOString(),
     })

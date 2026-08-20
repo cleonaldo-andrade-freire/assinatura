@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Clinic } from "@/lib/database.types";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import styles from "@/styles/shell.module.css";
 
 const DEFAULT_VERSION_PREFIX = "v";
@@ -10,6 +11,10 @@ const DEFAULT_VERSION_PREFIX = "v";
 function suggestNextVersion(current: string | null): string {
   const n = Number((current ?? "").replace(/^v/i, ""));
   return `${DEFAULT_VERSION_PREFIX}${Number.isFinite(n) && n > 0 ? n + 1 : 1}`;
+}
+
+function isHtmlEmpty(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").trim().length === 0;
 }
 
 export function ConsentTermForm({ clinicId, clinic }: { clinicId: string; clinic: Clinic }) {
@@ -27,12 +32,20 @@ export function ConsentTermForm({ clinicId, clinic }: { clinicId: string; clinic
     e.preventDefault();
     setError(null);
     setSaved(false);
+    if (isHtmlEmpty(text)) {
+      setError("Escreva o texto do termo antes de salvar.");
+      return;
+    }
+    if (!version.trim()) {
+      setError("Informe a versão do termo.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/consent-term`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consent_term_text: text.trim(), consent_term_version: version.trim() }),
+        body: JSON.stringify({ consent_term_text: text, consent_term_version: version.trim() }),
       });
       if (!res.ok) {
         setError("Falha ao salvar o termo.");
@@ -88,17 +101,12 @@ export function ConsentTermForm({ clinicId, clinic }: { clinicId: string; clinic
         )}
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label htmlFor="consentText" className={styles.label}>
-              Texto do termo
-            </label>
-            <textarea
-              id="consentText"
-              className={styles.input}
-              rows={10}
+            <label className={styles.label}>Texto do termo</label>
+            <RichTextEditor
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={setText}
+              label="Termo de Adesão Eletrônica"
               placeholder="Ex.: Ao assinar eletronicamente, o(a) paciente declara estar ciente do tratamento descrito nesta evolução clínica e concorda com o registro de sua assinatura eletrônica, nos termos da MP 2.200-2/2001 e da Lei nº 14.063/2020…"
-              required
             />
           </div>
           <div className={styles.field} style={{ maxWidth: 220 }}>

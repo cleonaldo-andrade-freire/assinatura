@@ -347,9 +347,13 @@ export function EvolucaoAssinaturaClient() {
                     <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
                       Termo de Adesão Eletrônica
                     </p>
-                    <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "var(--ink-soft)" }}>
-                      {doc.consentTermText}
-                    </div>
+                    {/* consentTermText já vem saneado no momento em que a clínica salva
+                        (única rota de escrita, ver sanitizeConsentTermHtml) — allowlist
+                        restrita a negrito/itálico/sublinhado/tamanho/lista, sem script. */}
+                    <div
+                      style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink-soft)" }}
+                      dangerouslySetInnerHTML={{ __html: doc.consentTermText }}
+                    />
                   </div>
                 </>
               )}
