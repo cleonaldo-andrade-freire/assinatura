@@ -72,13 +72,12 @@ export function NewAnamnesisForm({
     setBillingBlocked(false);
     setSending(true);
     try {
-      const res = await fetch(`/api/clinics/${clinicId}/conversations`, {
+      const res = await fetch(`/api/clinics/${clinicId}/anamnesis/send-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_name: patientName,
           patient_phone: toE164BR(patientPhone),
-          template_id: templateId,
         }),
       });
       const data = await res.json();
@@ -92,7 +91,7 @@ export function NewAnamnesisForm({
                 : "Assinatura inativa.")
           );
         } else {
-          setError(data.message || data.error || "Falha ao iniciar a anamnese.");
+          setError(data.message || data.error || "Falha ao enviar o link de anamnese.");
         }
         return;
       }
@@ -108,21 +107,6 @@ export function NewAnamnesisForm({
     } finally {
       setSending(false);
     }
-  }
-
-  if (templates.length === 0) {
-    const message = (
-      <p style={{ color: "var(--ink-soft)" }}>
-        Você ainda não tem nenhum modelo de anamnese cadastrado.{" "}
-        <a href="/dashboard/templates/new">Crie um modelo primeiro</a>.
-      </p>
-    );
-    if (bare) return message;
-    return (
-      <div className={styles.panel}>
-        <div className={styles.panelBody}>{message}</div>
-      </div>
-    );
   }
 
   const alerts = (
@@ -154,7 +138,7 @@ export function NewAnamnesisForm({
             fontSize: 14,
           }}
         >
-          Anamnese iniciada — a primeira pergunta já foi enviada.
+          Anamnese criada — o link do formulário já foi enviado para o WhatsApp do paciente.
         </div>
       )}
     </>
@@ -207,19 +191,6 @@ export function NewAnamnesisForm({
             required
           />
         </div>
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="templateId" className={styles.label}>
-          Modelo de anamnese
-        </label>
-        <select id="templateId" className={styles.select} value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} ({t.questions.length} perguntas)
-            </option>
-          ))}
-        </select>
       </div>
     </>
   );
