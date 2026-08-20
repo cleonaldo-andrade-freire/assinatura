@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SignatureMark } from "@/components/SignatureMark";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
-import { formatCPF, isValidCPF } from "@/lib/validation";
+import { formatCPF, isValidCPF, formatBRPhoneLocal, toE164BR } from "@/lib/validation";
+import styles from "./AnamneseClient.module.css";
 
-// Tipagem base
 interface AnamnesisData {
   clinic_name: string;
   clinic_logo_url: string | null;
@@ -16,15 +16,6 @@ interface AnamnesisData {
 }
 
 type Step = "loading" | "error" | "identificacao" | "saude" | "assinatura" | "submitting" | "success" | "already-signed";
-
-const DEFAULT_QUESTIONS = [
-  { id: "q1", label: "Dor de dente", type: "text" as const },
-  { id: "q2", label: "Está em tratamento médico atualmente?", type: "yesno" as const },
-  { id: "q3", label: "Está fazendo uso de alguma medicação?", type: "yesno" as const },
-  { id: "q4", label: "Tem alguma alergia?", type: "yesno" as const },
-  { id: "q5", label: "Fuma?", type: "yesno" as const },
-  { id: "q6", label: "Ingere bebida alcoólica?", type: "yesno" as const },
-];
 
 export function AnamneseClient({ token }: { token: string }) {
   const [step, setStep] = useState<Step>("loading");
@@ -41,8 +32,9 @@ export function AnamneseClient({ token }: { token: string }) {
   const [address, setAddress] = useState("");
   const [mainComplaint, setMainComplaint] = useState("");
 
-  // Formulário - Saúde
-  const [healthAnswers, setHealthAnswers] = useState<Record<string, { yesNo?: "Sim" | "Não", text: string }>>({});
+  // Formulário - Saúde dinâmico (carregado do banco)
+  const [questions, setQuestions] = useState<{ question: string; answer: string }[]>([]);
+  const [healthAnswers, setHealthAnswers] = useState<Record<number, { yesNo?: "Sim" | "Não", text: string }>>({});
   
   // Assinatura
   const [signature, setSignature] = useState<SignatureResult | null>(null);
@@ -67,12 +59,16 @@ export function AnamneseClient({ token }: { token: string }) {
         setName(data.patient_name || "");
         setCpf(data.patient_cpf || "");
         
-        // Populamos o dicionário de respostas de saúde vazio
-        const initialH: Record<string, { text: string }> = {};
-        for (const q of DEFAULT_QUESTIONS) {
-          initialH[q.id] = { text: "" };
+        // Populamos as perguntas originais que vieram do banco
+        // (A API send-link salvou as perguntas vazias no banco)
+        if (data.answers && data.answers.length > 0) {
+          setQuestions(data.answers);
+          const initialH: Record<number, { text: string }> = {};
+          data.answers.forEach((q, i) => {
+            initialH[i] = { text: "" };
+          });
+          setHealthAnswers(initialH);
         }
-        setHealthAnswers(initialH);
 
         setStep("identificacao");
       } catch {
@@ -86,7 +82,13 @@ export function AnamneseClient({ token }: { token: string }) {
     if (step === "identificacao") {
       if (!name.trim()) return alert("Nome é obrigatório.");
       if (cpf && !isValidCPF(cpf)) return alert("CPF inválido.");
-      setStep("saude");
+      
+      // Se não houver perguntas, pula a etapa de saúde direto pra assinatura
+      if (questions.length === 0) {
+        setStep("assinatura");
+      } else {
+        setStep("saude");
+      }
     } else if (step === "saude") {
       setStep("assinatura");
     }
@@ -94,7 +96,10 @@ export function AnamneseClient({ token }: { token: string }) {
 
   function handleBack() {
     if (step === "saude") setStep("identificacao");
-    if (step === "assinatura") setStep("saude");
+    if (step === "assinatura") {
+      if (questions.length === 0) setStep("identificacao");
+      else setStep("saude");
+    }
   }
 
   async function handleSubmit() {
@@ -110,261 +115,271 @@ export function AnamneseClient({ token }: { token: string }) {
       { question: "Queixa Principal e Evolução", answer: mainComplaint || "Nenhuma queixa descrita." }
     ];
 
-    for (const q of DEFAULT_QUESTIONS) {
-      const ans = healthAnswers[q.id];
-      if (q.type === "yesno") {
-        if (ans?.yesNo === "Sim") {
-          answers.push({ question: q.label, answer: `Sim\nObs: ${ans.text || "Nenhuma observação."}` });
+    questions.forEach((q, i) => {
+      const ans = healthAnswers[i];
+      if (ans?.yesNo) {
+        if (ans.yesNo === "Sim") {
+          answers.push({ question: q.question, answer: `Sim\nObs: ${ans.text || "Nenhuma observação."}` });
         } else {
-          answers.push({ question: q.label, answer: ans?.yesNo || "Não" });
+          answers.push({ question: q.question, answer: "Não" });
         }
       } else {
-        answers.push({ question: q.label, answer: ans?.text || "-" });
+        answers.push({ question: q.question, answer: ans?.text || "-" });
       }
-    }
+    });
 
     try {
       const res = await fetch(`/api/anamnesis/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient_name: name,
-          patient_cpf: cpf,
-          patient_phone: phone,
-          birth_date: birthDate,
-          rg,
-          occupation,
-          address,
+          patient: {
+            name: name.trim(),
+            cpf: cpf.replace(/\D/g, "") || undefined,
+            birth_date: birthDate || undefined,
+            rg: rg.trim() || undefined,
+            phone: phone ? toE164BR(phone) : undefined,
+            occupation: occupation.trim() || undefined,
+            address: address.trim() || undefined,
+          },
           answers,
-          signature: {
-            signerName: name,
-            signerCpf: cpf || "Não informado",
-            dataUrl: signatureSnapshot,
-            strokeData: signature.strokeData
-          }
+          signature: signature.strokeData,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to submit");
+        const err = await res.json();
+        throw new Error(err.message || "Falha ao salvar");
       }
+
       setStep("success");
-    } catch (e) {
-      console.error(e);
-      setSignError("Falha ao salvar. Tente novamente.");
+    } catch (e: any) {
+      setSignError(e.message || "Ocorreu um erro ao enviar. Tente novamente.");
       setStep("assinatura");
     }
   }
 
-  if (step === "loading") {
-    return <div className="flex h-screen items-center justify-center bg-[#f7f9fa]"><p className="text-gray-500 animate-pulse">Carregando...</p></div>;
+  if (step === "loading" || step === "submitting") {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingWrapper}>
+          <div className={styles.spinner}></div>
+          <p>{step === "loading" ? "Carregando formulário..." : "Enviando suas respostas..."}</p>
+        </div>
+      </div>
+    );
   }
+
   if (step === "error") {
-    return <div className="flex h-screen items-center justify-center bg-[#f7f9fa]"><p className="text-red-500">Documento não encontrado ou inválido.</p></div>;
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingWrapper}>
+          <h2 className={styles.title} style={{ color: "var(--danger)" }}>Erro ao carregar</h2>
+          <p>O link acessado é inválido ou já expirou.</p>
+        </div>
+      </div>
+    );
   }
+
   if (step === "already-signed") {
     return (
-      <div className="flex min-h-screen flex-col items-center bg-[#f7f9fa] py-16 px-4">
-        <div className="w-full max-w-2xl bg-white shadow-sm rounded-xl p-8 text-center border border-gray-100">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-6">
-            <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className={styles.container}>
+        <div className={styles.loadingWrapper}>
+          <div className={styles.successIcon} style={{ backgroundColor: "#f3f4f6", color: "#6b7280" }}>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Ficha já preenchida!</h2>
-          <p className="text-gray-500">Sua anamnese já foi assinada e salva com sucesso.</p>
+          <h2 className={styles.title}>Ficha Já Assinada</h2>
+          <p>Você já preencheu e assinou esta ficha de anamnese.</p>
         </div>
       </div>
     );
   }
+
   if (step === "success") {
     return (
-      <div className="flex min-h-screen flex-col items-center bg-[#f7f9fa] py-16 px-4">
-        <div className="w-full max-w-2xl bg-white shadow-sm rounded-xl p-8 text-center border border-gray-100">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-6">
-            <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          {clinicLogo ? <img src={clinicLogo} alt={clinicName} className={styles.logo} /> : <div style={{ fontSize: 20, fontWeight: "bold" }}>{clinicName}</div>}
+        </div>
+        <div className={styles.main}>
+          <div className={styles.card} style={{ textAlign: "center", padding: "40px 20px" }}>
+            <div className={styles.successIcon}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h2 className={styles.title}>Ficha Enviada com Sucesso!</h2>
+            <p style={{ color: "#6b7280" }}>Obrigado, {name.split(" ")[0]}! Suas respostas e assinatura foram registradas com segurança.</p>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Concluído!</h2>
-          <p className="text-gray-500 mb-6">Sua anamnese foi assinada eletronicamente e salva com sucesso.</p>
-          <a href={`/api/anamnesis/${token}/pdf`} target="_blank" rel="noreferrer" className="inline-flex justify-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
-            Baixar cópia em PDF
-          </a>
         </div>
       </div>
     );
   }
 
-  const stepsCount = 3;
-  const currentStep = step === "identificacao" ? 1 : step === "saude" ? 2 : 3;
-
   return (
-    <div className="min-h-screen bg-[#f7f9fa] text-gray-900 font-sans pb-20">
-      {/* Header Estilo Documento */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {clinicLogo ? <img src={clinicLogo} alt="Logo" className="h-8" /> : <div className="h-8 w-8 bg-gray-200 rounded-md"></div>}
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900 leading-tight">FICHA DE ANAMNESE</span>
-              <span className="text-xs text-gray-500">{clinicName}</span>
-            </div>
-          </div>
-          <div className="flex space-x-2">
-            {[1, 2, 3].map(s => (
-              <div key={s} className={`h-6 w-6 flex items-center justify-center rounded-full text-xs font-semibold ${s === currentStep ? "bg-blue-600 text-white" : s < currentStep ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}>
-                {s < currentStep ? "✓" : s}
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        {clinicLogo ? <img src={clinicLogo} alt={clinicName} className={styles.logo} /> : <div style={{ fontSize: 20, fontWeight: "bold" }}>{clinicName}</div>}
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden">
-          
-          {step === "identificacao" && (
-            <div className="p-6 sm:p-8">
-              <h2 className="text-sm font-bold tracking-widest text-gray-400 uppercase mb-6 pb-2 border-b border-gray-100">01. Identificação do Paciente</h2>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nome Completo</label>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="Digite seu nome" />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">CPF</label>
-                  <input type="text" value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="000.000.000-00" />
-                </div>
+      <main className={styles.main}>
+        <h1 className={styles.title}>Ficha de Anamnese</h1>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Data de Nascimento</label>
-                  <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">RG</label>
-                  <input type="text" value={rg} onChange={e => setRg(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="Opcional" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Celular</label>
-                  <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="(00) 00000-0000" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Ocupação / Profissão</label>
-                  <input type="text" value={occupation} onChange={e => setOccupation(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="Profissão" />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Endereço Residencial</label>
-                  <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg font-medium" placeholder="Rua, Número, Bairro, Cidade - UF" />
-                </div>
-
-                <div className="sm:col-span-2 mt-4 border-l-4 border-blue-100 pl-4 py-2">
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Queixa Principal e Evolução da Doença</label>
-                  <textarea rows={3} value={mainComplaint} onChange={e => setMainComplaint(e.target.value)} className="block w-full resize-none border-0 bg-gray-50 rounded-md p-3 text-gray-900 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" placeholder="Descreva brevemente a queixa ou deixe em branco..." />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === "saude" && (
-            <div className="p-6 sm:p-8">
-              <h2 className="text-sm font-bold tracking-widest text-gray-400 uppercase mb-6 pb-2 border-b border-gray-100">02. Questionário de Saúde</h2>
-              
-              <div className="space-y-8">
-                {DEFAULT_QUESTIONS.map(q => {
-                  const ans = healthAnswers[q.id];
-                  return (
-                    <div key={q.id} className="group">
-                      <label className="block text-sm font-bold text-gray-800 uppercase mb-3">{q.label}</label>
-                      
-                      {q.type === "yesno" ? (
-                        <div className="flex flex-col space-y-4">
-                          <div className="flex space-x-6">
-                            <label className="flex items-center cursor-pointer">
-                              <input type="radio" name={`q-${q.id}`} value="Sim" checked={ans?.yesNo === "Sim"} onChange={() => setHealthAnswers(prev => ({...prev, [q.id]: {...prev[q.id], yesNo: "Sim"}}))} className="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-600 cursor-pointer" />
-                              <span className="ml-3 text-gray-900 font-medium">SIM</span>
-                            </label>
-                            <label className="flex items-center cursor-pointer">
-                              <input type="radio" name={`q-${q.id}`} value="Não" checked={ans?.yesNo === "Não"} onChange={() => setHealthAnswers(prev => ({...prev, [q.id]: {...prev[q.id], yesNo: "Não", text: ""}}))} className="h-5 w-5 text-gray-400 border-gray-300 focus:ring-blue-600 cursor-pointer" />
-                              <span className="ml-3 text-gray-600">NÃO</span>
-                            </label>
-                          </div>
-                          
-                          {/* Campo dinâmico para "SIM" */}
-                          {ans?.yesNo === "Sim" && (
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-blue-500 pl-4 py-1 ml-1">
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">Qual/Quais? (Detalhe a resposta)</label>
-                              <input type="text" value={ans.text || ""} onChange={e => setHealthAnswers(prev => ({...prev, [q.id]: {...prev[q.id], text: e.target.value}}))} className="block w-full border-0 border-b border-gray-200 bg-gray-50 px-3 py-2 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-sm" placeholder="Descreva aqui..." autoFocus />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <input type="text" value={ans?.text || ""} onChange={e => setHealthAnswers(prev => ({...prev, [q.id]: {...prev[q.id], text: e.target.value}}))} className="block w-full border-0 border-b border-gray-200 bg-transparent py-2 px-0 text-gray-900 focus:border-blue-600 focus:ring-0 sm:text-lg" placeholder="Sua resposta..." />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {(step === "assinatura" || step === "submitting") && (
-            <div className="p-6 sm:p-8 flex flex-col items-center">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2 self-start">Assinatura do Paciente</h2>
-              <p className="text-sm text-gray-500 self-start mb-6">
-                Ao assinar abaixo, você confirma que todas as informações fornecidas são verdadeiras e que concorda com o Termo de Consentimento apresentado.
-              </p>
-
-              <div className="w-full relative mb-2">
-                <SignatureCanvas 
-                  onChange={result => {
-                    setSignature(result);
-                    setHasSignature(!!result);
-                    setSignatureSnapshot(result?.dataUrl ?? null);
-                    setSignError("");
-                  }}
-                  height={160}
-                />
-              </div>
-
-              {signError && <p className="text-red-500 text-sm font-semibold mb-4 bg-red-50 px-4 py-2 rounded-lg self-start w-full border border-red-100">{signError}</p>}
-
-              <SignatureMark />
-            </div>
-          )}
-          
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between sm:px-8 border-t border-gray-100">
-            {step !== "identificacao" ? (
-              <button type="button" disabled={step === "submitting"} onClick={handleBack} className="text-sm font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-50">
-                Voltar
-              </button>
-            ) : <div />}
-            
-            {step !== "assinatura" && step !== "submitting" ? (
-              <button type="button" onClick={handleNext} className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800">
-                Continuar
-              </button>
-            ) : (
-              <button type="button" disabled={step === "submitting" || !hasSignature} onClick={handleSubmit} className="rounded-lg bg-blue-600 px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50 flex items-center">
-                {step === "submitting" ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Salvando...
-                  </>
-                ) : "Finalizar e Assinar"}
-              </button>
-            )}
+        <div className={styles.steps}>
+          <div className={`${styles.step} ${step === "identificacao" ? styles.active : styles.completed}`}>
+            <div className={styles.stepCircle}>1</div>
+            <span className={styles.stepLabel}>Identificação</span>
+          </div>
+          <div className={`${styles.step} ${step === "saude" ? styles.active : (step === "assinatura" ? styles.completed : "")}`} style={{ opacity: questions.length === 0 ? 0.3 : 1 }}>
+            <div className={styles.stepCircle}>2</div>
+            <span className={styles.stepLabel}>Saúde</span>
+          </div>
+          <div className={`${styles.step} ${step === "assinatura" ? styles.active : ""}`}>
+            <div className={styles.stepCircle}>3</div>
+            <span className={styles.stepLabel}>Assinatura</span>
           </div>
         </div>
+
+        {step === "identificacao" && (
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Dados Pessoais</h2>
+            
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Nome Completo</label>
+              <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome completo" />
+            </div>
+
+            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label}>CPF (opcional)</label>
+                <input type="text" inputMode="numeric" className={styles.input} value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} placeholder="000.000.000-00" maxLength={14} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label}>Data de Nascimento</label>
+                <input type="date" className={styles.input} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label}>RG (opcional)</label>
+                <input type="text" className={styles.input} value={rg} onChange={e => setRg(e.target.value)} placeholder="0000000" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label}>Celular</label>
+                <input type="text" inputMode="numeric" className={styles.input} value={phone} onChange={e => setPhone(formatBRPhoneLocal(e.target.value))} placeholder="(00) 00000-0000" />
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Ocupação / Profissão (opcional)</label>
+              <input type="text" className={styles.input} value={occupation} onChange={e => setOccupation(e.target.value)} placeholder="Ex: Professor" />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Endereço Residencial (opcional)</label>
+              <input type="text" className={styles.input} value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Número, Bairro, Cidade - UF" />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Queixa Principal (Opcional)</label>
+              <textarea className={`${styles.input} ${styles.textarea}`} value={mainComplaint} onChange={e => setMainComplaint(e.target.value)} placeholder="Descreva brevemente o motivo da consulta..." />
+            </div>
+
+            <div className={styles.buttonRow}>
+              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>
+            </div>
+          </div>
+        )}
+
+        {step === "saude" && (
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Questionário de Saúde</h2>
+            <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 24 }}>Por favor, responda às perguntas abaixo com o máximo de sinceridade. Suas respostas são confidenciais.</p>
+            
+            {questions.map((q, i) => {
+              const ans = healthAnswers[i] || {};
+              // Inferência simples para saber se a pergunta é do tipo sim/não ou aberta
+              // Como os questionários antigos eram abertos, deixamos o paciente escolher Sim/Não para tudo ou escrever.
+              return (
+                <div key={i} className={`${styles.questionItem} ${ans.yesNo ? styles.active : ""}`}>
+                  <div className={styles.questionLabel}>{q.question}</div>
+                  
+                  <div className={styles.yesNoGroup}>
+                    <button 
+                      className={`${styles.yesNoBtn} ${ans.yesNo === "Sim" ? styles.selectedYes : ""}`}
+                      onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Sim" } }))}
+                    >
+                      Sim
+                    </button>
+                    <button 
+                      className={`${styles.yesNoBtn} ${ans.yesNo === "Não" ? styles.selectedNo : ""}`}
+                      onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Não", text: "" } }))}
+                    >
+                      Não
+                    </button>
+                  </div>
+
+                  <div className={`${styles.detailInputWrapper} ${ans.yesNo === "Sim" ? styles.open : ""}`}>
+                    <label className={styles.label} style={{ fontSize: 13, color: "#4b5563" }}>Poderia detalhar?</label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={ans.text || ""} 
+                      onChange={e => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], text: e.target.value } }))}
+                      placeholder="Descreva aqui..."
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className={styles.buttonRow}>
+              <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
+              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>
+            </div>
+          </div>
+        )}
+
+        {step === "assinatura" && (
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Assinatura Digital</h2>
+            
+            <div className={styles.termsText}>
+              Eu, <strong>{name || "Paciente"}</strong>, inscrito(a) no CPF <strong>{cpf || "___.___.___-__"}</strong>, 
+              declaro que as informações aqui prestadas são verdadeiras e me comprometo a informar 
+              qualquer alteração no meu estado de saúde em consultas futuras.
+            </div>
+
+            <div style={{ marginBottom: 8 }}>
+              <SignatureCanvas 
+                onChange={result => {
+                  setSignature(result);
+                  setHasSignature(!!result);
+                  setSignatureSnapshot(result?.dataUrl ?? null);
+                  setSignError("");
+                }}
+                height={160}
+              />
+            </div>
+
+            {signError && <div className={styles.errorMessage}>{signError}</div>}
+
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+              <SignatureMark
+                snapshotDataUrl={signatureSnapshot}
+                title={name}
+                subtitle={cpf ? `CPF: ${cpf}` : undefined}
+                timestamp={hasSignature ? new Date() : undefined}
+                ip="Autenticado"
+              />
+            </div>
+
+            <div className={styles.buttonRow}>
+              <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
+              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSubmit}>Finalizar e Assinar</button>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );

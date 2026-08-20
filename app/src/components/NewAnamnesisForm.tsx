@@ -78,6 +78,7 @@ export function NewAnamnesisForm({
         body: JSON.stringify({
           patient_name: patientName,
           patient_phone: toE164BR(patientPhone),
+          template_id: templateId,
         }),
       });
       const data = await res.json();
@@ -191,6 +192,19 @@ export function NewAnamnesisForm({
             required
           />
         </div>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="templateId" className={styles.label}>
+          Modelo de anamnese
+        </label>
+        <select id="templateId" className={styles.select} value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({t.questions.length} perguntas)
+            </option>
+          ))}
+        </select>
       </div>
     </>
   );

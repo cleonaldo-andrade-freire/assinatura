@@ -12,6 +12,7 @@ import { createAnamnesis } from "@/lib/anamnesis";
 const bodySchema = z.object({
   patient_name: z.string().min(1),
   patient_phone: z.string().min(8),
+  template_id: z.string().uuid(),
 });
 
 /**
@@ -51,14 +52,31 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   const input = parsed.data;
   const phone = input.patient_phone.replace(/\D/g, "");
 
+  const { data: template } = await sessionClient
+    .from("question_templates")
+    .select("questions")
+    .eq("id", input.template_id)
+    .eq("clinic_id", clinic.id)
+    .single();
+
+  if (!template) {
+    return NextResponse.json({ error: "template_not_found" }, { status: 404 });
+  }
+
+  const questions = template.questions as any[];
+  const initialAnswers = questions.map(q => ({
+    question: q.text || q.question || "Pergunta",
+    answer: "" // Empty answer to be filled by the patient
+  }));
+
   const adminClient = createSupabaseAdminClient();
   
-  // Cria a anamnese pendente (vazia)
+  // Cria a anamnese pendente (vazia, mas com as perguntas do modelo)
   const anamnesis = await createAnamnesis(adminClient, {
     clinicId: clinic.id,
     patientName: input.patient_name,
     patientPhone: phone,
-    answers: []
+    answers: initialAnswers
   });
 
   if (!anamnesis) {
