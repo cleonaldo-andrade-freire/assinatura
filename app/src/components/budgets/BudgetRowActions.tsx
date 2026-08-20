@@ -7,6 +7,71 @@ import { ToastStack, useToasts } from "@/components/ui/Toast";
 import type { BudgetStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
+function PdfIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 3h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M21 11.5a8.5 8.5 0 01-12.36 7.56L3 21l2.02-5.4A8.5 8.5 0 1121 11.5z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ApproveIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GenerateIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 12a8 8 0 0113.66-5.66M20 12a8 8 0 01-13.66 5.66"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M17.5 3v4h-4M6.5 21v-4h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function BudgetRowActions({
   clinicId,
   budgetId,
@@ -92,42 +157,60 @@ export function BudgetRowActions({
   }
 
   return (
-    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
       {hasPdf && (
         <a
           href={`/api/clinics/${clinicId}/budgets/${budgetId}/pdf`}
           target="_blank"
           rel="noreferrer"
-          className={`${styles.btn} ${styles.btnGhost}`}
+          className={styles.iconActionBtn}
+          title="Ver PDF"
+          aria-label="Ver PDF"
         >
-          Ver PDF
+          <PdfIcon />
         </a>
       )}
-      <button type="button" disabled={sending} onClick={handleSend} className={`${styles.btn} ${styles.btnGhost}`}>
-        {sending ? "Enviando…" : "📲 WhatsApp"}
+      <button
+        type="button"
+        disabled={sending}
+        onClick={handleSend}
+        className={styles.iconActionBtn}
+        title={sending ? "Enviando…" : "Enviar por WhatsApp"}
+        aria-label="Enviar por WhatsApp"
+      >
+        <WhatsAppIcon />
       </button>
       {status !== "aprovado" ? (
-        <button type="button" disabled={approving} onClick={handleApprove} className={`${styles.btn} ${styles.btnGhost}`}>
-          {approving ? "Aprovando…" : "Aprovar"}
+        <button
+          type="button"
+          disabled={approving}
+          onClick={handleApprove}
+          className={styles.iconActionBtn}
+          title={approving ? "Aprovando…" : "Aprovar"}
+          aria-label="Aprovar orçamento"
+        >
+          <ApproveIcon />
         </button>
       ) : (
         <button
           type="button"
           disabled={generating}
           onClick={handleGenerateTreatments}
-          className={`${styles.btn} ${styles.btnGhost}`}
-          title="Recria os tratamentos deste orçamento na ficha do paciente, caso não tenham sido gerados"
+          className={styles.iconActionBtn}
+          title={generating ? "Gerando…" : "Recria os tratamentos deste orçamento na ficha do paciente, caso não tenham sido gerados"}
+          aria-label="Gerar tratamentos"
         >
-          {generating ? "Gerando…" : "Gerar tratamentos"}
+          <GenerateIcon />
         </button>
       )}
       <button
         type="button"
         onClick={() => setConfirmDeleteOpen(true)}
-        className={`${styles.btn} ${styles.btnGhost}`}
-        style={{ color: "var(--danger)" }}
+        className={styles.iconActionBtn}
+        title="Excluir orçamento"
+        aria-label="Excluir orçamento"
       >
-        Excluir
+        <TrashIcon />
       </button>
 
       <ConfirmDialog

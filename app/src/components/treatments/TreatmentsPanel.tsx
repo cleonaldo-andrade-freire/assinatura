@@ -14,6 +14,30 @@ import type { Treatment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 import tp from "./treatments.module.css";
 
+function FinalizeIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8 12.5l2.5 2.5L16 9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function TreatmentsPanel({
   clinicId,
   patientId,
@@ -175,10 +199,16 @@ export function TreatmentsPanel({
                     {subtitleParts.length > 0 && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{subtitleParts.join(" — ")}</div>}
                   </div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatMoneyDisplay(t.price)}</div>
-                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     {t.status === "aberto" ? (
-                      <button type="button" onClick={() => setFinalizeIds([t.id])} className={`${styles.btn} ${styles.btnGhost}`}>
-                        Finalizar
+                      <button
+                        type="button"
+                        onClick={() => setFinalizeIds([t.id])}
+                        className={styles.iconActionBtn}
+                        title="Finalizar tratamento"
+                        aria-label="Finalizar tratamento"
+                      >
+                        <FinalizeIcon />
                       </button>
                     ) : (
                       <span className={`${styles.statusDot} ${styles.statusOk}`}>Finalizado</span>
@@ -186,10 +216,11 @@ export function TreatmentsPanel({
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteIds([t.id])}
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ color: "var(--danger)" }}
+                      className={styles.iconActionBtn}
+                      title="Excluir tratamento"
+                      aria-label="Excluir tratamento"
                     >
-                      Excluir
+                      <TrashIcon />
                     </button>
                   </div>
                 </div>

@@ -13,7 +13,7 @@ import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
 import { TreatmentsPanel } from "@/components/treatments/TreatmentsPanel";
 import { DebitsPanel } from "@/components/debits/DebitsPanel";
 import { PatientImagesPanel } from "@/components/patientImages/PatientImagesPanel";
-import { AppointmentDetailTrigger } from "@/components/dashboard/AppointmentDetailTrigger";
+import { PatientAppointmentsTable } from "@/components/dashboard/PatientAppointmentsTable";
 import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
 import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
 import { NewPrescriptionTrigger } from "@/components/NewPrescriptionTrigger";
@@ -347,32 +347,7 @@ export default async function EditPatientPage({
       <div className={styles.emptyState}>Nenhum agendamento pra este paciente ainda.</div>
     ) : (
       <>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Data e horário</th>
-              <th>Profissional</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map((a) => (
-              <tr key={a.id}>
-                <td>{formatBRDateTime(a.scheduled_at, "medium")}</td>
-                <td>{a.professional_name}</td>
-                <td>
-                  <span className={`${styles.statusDot} ${styles[APPOINTMENT_STATUS_CLASS[a.status]]}`}>
-                    {APPOINTMENT_STATUS_LABEL[a.status]}
-                  </span>
-                </td>
-                <td>
-                  <AppointmentDetailTrigger clinicId={clinic.id} appointmentId={a.id} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <PatientAppointmentsTable clinicId={clinic.id} appointments={appointments} />
         <Pagination
           page={appointmentsPage}
           totalPages={appointmentsTotalPages}
