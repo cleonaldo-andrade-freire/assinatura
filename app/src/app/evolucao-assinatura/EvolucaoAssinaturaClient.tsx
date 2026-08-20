@@ -283,6 +283,7 @@ export function EvolucaoAssinaturaClient() {
               placeholder="000.000.000-00"
               maxLength={14}
               disabled={step === "verifying"}
+              style={{ fontWeight: 700 }}
             />
             {cpfError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{cpfError}</div>}
           </div>

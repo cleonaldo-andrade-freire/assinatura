@@ -79,12 +79,24 @@ a {
   max-width: 560px;
   margin: 0 auto;
   padding: 24px 16px 64px;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
 }
 
 .wrap-wide {
   max-width: 900px;
   margin: 0 auto;
   padding: 24px 16px 64px;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
+}
+
+/* Mesmo esquema anti-scroll-horizontal da anamnese (AnamneseClient.module.css
+   .mobileScreen) — evita que algum elemento filho (ex.: hash/código longo,
+   imagem) force a página inteira a rolar de lado no celular. */
+.wrap *,
+.wrap-wide * {
+  max-width: 100%;
 }
 
 .card {
