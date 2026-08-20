@@ -19,6 +19,7 @@ interface AnamnesisPdfData {
     signerCpf: string;
     signedAt: string;
     ip: string;
+    userAgent: string;
     dataUrl: string; // The base64 signature image
   };
   dentistSignature?: {
@@ -181,6 +182,42 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
     page.drawText(`Assinatura Eletrônica Avançada / ICP-Brasil (${data.dentistSignature.provider})`, { x: MARGIN, y, size: 8, font: italic });
     y -= 12;
     page.drawText(`Data/Hora: ${formatDateBR(data.dentistSignature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
+  }
+
+  // === TRILHA DE AUDITORIA ===
+  page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  y = PAGE_HEIGHT - 60;
+  
+  page.drawText("TRILHA DE AUDITORIA DA ASSINATURA", { x: MARGIN, y, size: 14, font: bold });
+  y -= 25;
+  page.drawText("Evidência jurídica da assinatura eletrônica (Lei 14.063/2020) — guardada integralmente pelo sistema.", { x: MARGIN, y, size: 9, font: italic, color: rgb(0.3, 0.3, 0.3) });
+  y -= 30;
+  
+  const drawAuditField = (label: string, value: string, currentY: number) => {
+    page.drawText(label, { x: MARGIN, y: currentY, size: 9, font: bold });
+    page.drawText(value, { x: MARGIN + 150, y: currentY, size: 9, font });
+  };
+
+  drawAuditField("Assinado por (Paciente):", `${data.signature.signerName} (CPF: ${formatCPF(data.signature.signerCpf)})`, y);
+  y -= 20;
+  drawAuditField("Data/hora (servidor):", formatDateBR(data.signature.signedAt), y);
+  y -= 20;
+  drawAuditField("Endereço IP:", data.signature.ip, y);
+  y -= 20;
+  drawAuditField("Dispositivo/navegador:", data.signature.userAgent.substring(0, 80), y);
+  if (data.signature.userAgent.length > 80) {
+    y -= 12;
+    page.drawText(data.signature.userAgent.substring(80, 160), { x: MARGIN + 150, y, size: 9, font });
+  }
+  y -= 30;
+
+  if (data.dentistSignature) {
+    drawAuditField("Assinado por (Dentista):", `${data.dentistSignature.signerName} (CPF: ${formatCPF(data.dentistSignature.signerCpf)})`, y);
+    y -= 20;
+    drawAuditField("Data/hora (Certisign):", formatDateBR(data.dentistSignature.signedAt), y);
+    y -= 20;
+    drawAuditField("Provedor:", data.dentistSignature.provider, y);
+    y -= 30;
   }
   
   return await doc.save();

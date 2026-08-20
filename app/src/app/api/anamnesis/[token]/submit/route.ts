@@ -149,6 +149,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       signerCpf: payload.signature.signerCpf,
       signedAt: signedAtServer,
       ip: ip,
+      userAgent: userAgent,
       dataUrl: payload.signature.dataUrl
     }
   });
