@@ -93,38 +93,38 @@ export function DashboardKPIs({
 
       {visible && (
         <div className={`${styles.statGrid} ${styles.statGridDashboard}`}>
-          <div className={styles.statCard}>
-            <div className={styles.statValue}>{formatMoney(dailyRevenue)}</div>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Receitas do dia</div>
+            <div className={styles.statValue}>{formatMoney(dailyRevenue)}</div>
           </div>
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+            <div className={styles.statLabel}>Despesas do dia</div>
             <div className={styles.statValue} style={{ color: "var(--danger)" }}>
               {formatMoney(dailyExpense)}
             </div>
-            <div className={styles.statLabel}>Despesas do dia</div>
           </div>
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+            <div className={styles.statLabel}>Saldo do dia</div>
             <div className={styles.statValue} style={{ color: dailyBalance < 0 ? "var(--danger)" : "var(--brand-deep)" }}>
               {formatMoney(dailyBalance)}
             </div>
-            <div className={styles.statLabel}>Saldo do dia</div>
           </div>
 
-          <div className={styles.statCard}>
-            <div className={styles.statValue}>{formatMoney(monthlyRevenue)}</div>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Receitas do mês</div>
+            <div className={styles.statValue}>{formatMoney(monthlyRevenue)}</div>
           </div>
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+            <div className={styles.statLabel}>Despesas do mês</div>
             <div className={styles.statValue} style={{ color: "var(--danger)" }}>
               {formatMoney(monthlyExpense)}
             </div>
-            <div className={styles.statLabel}>Despesas do mês</div>
           </div>
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+            <div className={styles.statLabel}>Saldo do mês</div>
             <div className={styles.statValue} style={{ color: monthlyBalance < 0 ? "var(--danger)" : "var(--brand-deep)" }}>
               {formatMoney(monthlyBalance)}
             </div>
-            <div className={styles.statLabel}>Saldo do mês</div>
           </div>
         </div>
       )}

@@ -500,6 +500,24 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Nos cards do Hoje/Dashboard, o rótulo vem primeiro (em cima, alinhado à
+   esquerda) e o valor depois (embaixo, alinhado à direita) — inverso do
+   padrão de .statCard/.statValue/.statLabel usado no resto do sistema, que
+   fica intacto pras outras telas (Configurações, listas de documentos etc). */
+.statCardDashboard {
+  display: flex;
+  flex-direction: column;
+}
+
+.statCardDashboard .statLabel {
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.statCardDashboard .statValue {
+  text-align: right;
+}
+
 @media (max-width: 720px) {
   .statGrid {
     grid-template-columns: repeat(2, 1fr);
