@@ -99,6 +99,15 @@ function PrescriptionIcon() {
   );
 }
 
+function EvolutionsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 19l1-4 10-10 3 3-10 10-4 1z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 6.5l3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function PatientsIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -192,6 +201,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/anamneses", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
   { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
+  { href: "/dashboard/evolucoes", label: "Evoluções", icon: EvolutionsIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
   { href: "/dashboard/despesas", label: "Despesas", icon: ExpensesIcon },

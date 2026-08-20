@@ -617,7 +617,15 @@ export interface TreatmentEvolution {
   sent_whatsapp_at: string | null;
   // Ver migration 054 — reenvio automático do link expirado (cron 1x/dia).
   signature_followup_count: number;
+  // Ver migration 055 — assinatura ICP-Brasil da dentista (documento
+  // separado da assinatura de ciência do paciente acima).
+  dentist_signature_status: DentistSignatureStatus;
+  dentist_signed_at: string | null;
+  dentist_pdf_storage_key: string | null;
+  dentist_pdf_sha256: string | null;
 }
+
+export type DentistSignatureStatus = "nao_assinada" | "assinada";
 
 export interface TreatmentEvolutionSignature {
   id: string;

@@ -8,6 +8,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { EvolutionFormModal, type EvolutionFormResult } from "@/components/treatments/EvolutionFormModal";
+import { AgentCertificateSelector, useAgent } from "@/components/AgentDetector";
+import { signEvolutionAsDentist } from "@/lib/evolutionDentistSigningClient";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { formatBRDate, formatBRTime } from "@/lib/date";
@@ -73,6 +75,10 @@ export function TreatmentDetailModal({
   const [confirmDeleteEvolutionId, setConfirmDeleteEvolutionId] = useState<string | null>(null);
   const [deletingEvolutionId, setDeletingEvolutionId] = useState<string | null>(null);
   const [requestingSignatureId, setRequestingSignatureId] = useState<string | null>(null);
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const [signingEvolutionId, setSigningEvolutionId] = useState<string | null>(null);
+  const { signHash } = useAgent();
+  const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
   // Suprime o Esc daqui enquanto algo aninhado por cima (evolução ou um
   // ConfirmDialog) já trata o próprio Esc — senão os dois fechariam juntos.
@@ -220,6 +226,15 @@ export function TreatmentDetailModal({
     } finally {
       setRequestingSignatureId(null);
     }
+  }
+
+  function handleSignAsDentist(id: string) {
+    if (!isLocalAgentMode) {
+      push("Este recurso exige o Agente de Assinatura Digital local — configure em Configurações.", "error");
+      return;
+    }
+    setSigningEvolutionId(id);
+    setShowAgentSelector(true);
   }
 
   function toggleExpanded(id: string) {
@@ -438,6 +453,17 @@ export function TreatmentDetailModal({
                                 {formatBRDate(`${e.evolution_date}T12:00:00-03:00`)} · {formatBRTime(e.created_at)}
                               </span>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                {e.dentist_signature_status === "assinada" ? (
+                                  <span className={`${styles.statusBadge} ${styles.statusOk}`}>Assinada (dentista)</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSignAsDentist(e.id)}
+                                    style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                                  >
+                                    Assinar
+                                  </button>
+                                )}
                                 {e.signature_status !== "nao_solicitada" && (
                                   <span
                                     className={`${styles.statusBadge} ${
@@ -565,6 +591,29 @@ export function TreatmentDetailModal({
               onConfirm={() => confirmDeleteEvolutionId && handleDeleteEvolution(confirmDeleteEvolutionId)}
               onCancel={() => setConfirmDeleteEvolutionId(null)}
             />
+
+            <AgentCertificateSelector
+              open={showAgentSelector}
+              onOpenChange={(o) => {
+                setShowAgentSelector(o);
+                if (!o) setSigningEvolutionId(null);
+              }}
+              onCertificateSelected={async (cert) => {
+                setShowAgentSelector(false);
+                if (!signingEvolutionId) return;
+                const id = signingEvolutionId;
+                const result = await signEvolutionAsDentist(clinicId, id, cert, signHash);
+                setSigningEvolutionId(null);
+                if (!result.ok) {
+                  push(result.error, "error");
+                  return;
+                }
+                push(result.sentToPatient ? "Evolução assinada e enviada ao paciente por WhatsApp." : "Evolução assinada.", "success");
+                const refreshed = await fetch(`/api/clinics/${clinicId}/treatments/${treatment!.id}/evolutions`).then((r) => r.json());
+                setEvolutions(refreshed.evolutions ?? []);
+              }}
+            />
+
             <ToastStack toasts={toasts} onDismiss={dismiss} />
           </div>,
           document.body

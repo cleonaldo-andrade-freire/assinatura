@@ -23,13 +23,46 @@ function onlyDigits(v: string | null | undefined): string {
   return (v ?? "").replace(/\D/g, "");
 }
 
+export interface EvolutionSnapshot {
+  schema: "evolucao/v1";
+  clinic: { name: string; logoUrl: string | null };
+  dentist: { name: string; cro: string; croUf: string };
+  patient: { name: string; cpf: string | null };
+  treatment: { name: string; toothRegion: string | null };
+  evolutionDate: string;
+  text: string;
+}
+
+/** Congela o conteúdo — usado tanto por `requestEvolutionSignature` quanto
+ * pelo fluxo de assinatura da dentista (`evolutionDentistSignature.ts`),
+ * pra garantir que os dois nunca calculem o snapshot de formas diferentes
+ * (o que quebraria a comparação de hash entre o que a dentista assinou e o
+ * que foi mandado ao paciente). */
+export async function buildEvolutionSnapshot(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  ev: TreatmentEvolution,
+  clinic: Clinic,
+  patient: { name: string; cpf: string | null }
+): Promise<EvolutionSnapshot> {
+  const { data: treatment } = await supabase.from("treatments").select("treatment_name, tooth_region").eq("id", ev.treatment_id).maybeSingle();
+  return {
+    schema: "evolucao/v1",
+    clinic: { name: clinic.name, logoUrl: clinic.logo_url },
+    dentist: { name: clinic.dentist_name!, cro: clinic.dentist_cro!, croUf: clinic.dentist_cro_uf! },
+    patient: { name: patient.name, cpf: patient.cpf ?? null },
+    treatment: { name: treatment?.treatment_name ?? "Tratamento", toothRegion: treatment?.tooth_region ?? null },
+    evolutionDate: ev.evolution_date,
+    text: ev.text,
+  };
+}
+
 // ============================================================
 // 1. Solicitar assinatura — lado autenticado (dentista).
 // ============================================================
 export async function requestEvolutionSignature(
   clinicId: string,
   evolutionId: string,
-  options?: { isFollowup?: boolean }
+  options?: { isFollowup?: boolean; reuseFrozenSnapshot?: boolean }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const isFollowup = options?.isFollowup ?? false;
   const supabase = createSupabaseAdminClient();
@@ -50,18 +83,17 @@ export async function requestEvolutionSignature(
   if (!patient.phone) return { ok: false, error: "patient_no_phone" };
   if (!patient.cpf) return { ok: false, error: "patient_no_cpf" };
 
-  const { data: treatment } = await supabase.from("treatments").select("treatment_name, tooth_region").eq("id", ev.treatment_id).maybeSingle();
-
-  const snapshot = {
-    schema: "evolucao/v1" as const,
-    clinic: { name: clinic.name, logoUrl: clinic.logo_url },
-    dentist: { name: clinic.dentist_name, cro: clinic.dentist_cro, croUf: clinic.dentist_cro_uf },
-    patient: { name: patient.name as string, cpf: (patient.cpf as string | null) ?? null },
-    treatment: { name: treatment?.treatment_name ?? "Tratamento", toothRegion: treatment?.tooth_region ?? null },
-    evolutionDate: ev.evolution_date,
-    text: ev.text,
-  };
-  const contentHash = computeContentHash(snapshot);
+  // Reaproveita o snapshot já congelado quando esta chamada é a continuação
+  // automática de uma assinatura da dentista que acabou de rodar (ver
+  // evolutionDentistSignature.ts) — o hash tem que ser idêntico ao que ela
+  // assinou, não pode ser recalculado aqui (mesmo que o resultado desse
+  // igual na prática, recalcular fora do momento exato da assinatura é o
+  // tipo de coisa que quebra silenciosamente numa refatoração futura).
+  const snapshot =
+    options?.reuseFrozenSnapshot && ev.content_snapshot
+      ? (ev.content_snapshot as unknown as EvolutionSnapshot)
+      : await buildEvolutionSnapshot(supabase, ev, clinic, patient as { name: string; cpf: string | null });
+  const contentHash = options?.reuseFrozenSnapshot && ev.content_hash ? ev.content_hash : computeContentHash(snapshot);
   const tokenExpiresAt = new Date(Date.now() + TOKEN_TTL_HOURS * 60 * 60 * 1000).toISOString();
 
   // Reenvio (token já existia): gera token novo, nunca reativa o velho — um

@@ -19,6 +19,7 @@ export default async function DocumentosPage() {
     { href: "/dashboard/anamneses", title: "Anamneses", description: "Enviadas, em andamento e assinadas" },
     { href: "/dashboard/atestados", title: "Atestados", description: "Emitidos pela clínica" },
     { href: "/dashboard/prescricoes", title: "Prescrições", description: "Emitidas pela clínica" },
+    { href: "/dashboard/evolucoes", title: "Evoluções", description: "Pendentes de assinatura da dentista" },
   ];
 
   return (
