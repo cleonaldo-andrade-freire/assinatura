@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   const { data: anamnesis } = await supabase
     .from("anamneses")
-    .select("id, clinic_id, patient_name, patient_cpf, answers")
+    .select("id, clinic_id, patient_name, patient_cpf, patient_phone, answers")
     .eq("token", params.token)
     .single();
 
