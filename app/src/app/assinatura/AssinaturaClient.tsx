@@ -30,6 +30,7 @@ interface Record_ {
   patient_name: string;
   answers: Answer[];
   already_signed: boolean;
+  signature_id: string | null;
 }
 
 type Status = "loading" | "error" | "form" | "sending" | "success" | "send-error" | "already-signed";
@@ -41,6 +42,7 @@ function demoData(): Record_ {
     clinic_logo_url: null,
     patient_name: "Paciente Exemplo",
     already_signed: false,
+    signature_id: null,
     answers: [
       { question: "Está em tratamento médico atualmente?", answer: "Não" },
       { question: "Possui alguma alergia a medicamentos ou anestésicos?", answer: "Não" },
@@ -538,6 +540,33 @@ export function AssinaturaClient() {
         <div className="card" style={{ textAlign: "center" }}>
           <h1>Documento já assinado</h1>
           <p style={{ color: "var(--ink-soft)" }}>Esta anamnese já foi assinada anteriormente.</p>
+          {token && record?.signature_id && (
+            <a
+              href={`/api/anamnesis/${encodeURIComponent(token)}/pdf`}
+              download="anamnese-assinada.pdf"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                marginTop: 8,
+                background: "var(--surface)",
+                border: "1.5px solid var(--line)",
+                color: "var(--ink)",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px 20px",
+                fontSize: 14.5,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+              Baixar minha cópia em PDF
+            </a>
+          )}
         </div>
       )}
 

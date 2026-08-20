@@ -250,14 +250,14 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
                   href={`/api/prescriptions/download/${p.id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                  className={styles.iconActionBtn}
+                  title="Baixar PDF"
+                  aria-label="Baixar PDF"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                   </svg>
-                  Baixar PDF
                 </a>
               </>
             )}

@@ -157,13 +157,14 @@ export function BudgetRowActions({
   }
 
   return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", flexWrap: "nowrap" }}>
       {hasPdf && (
         <a
           href={`/api/clinics/${clinicId}/budgets/${budgetId}/pdf`}
           target="_blank"
           rel="noreferrer"
           className={styles.iconActionBtn}
+          style={{ width: 28, height: 28, flexShrink: 0 }}
           title="Ver PDF"
           aria-label="Ver PDF"
         >
@@ -175,6 +176,7 @@ export function BudgetRowActions({
         disabled={sending}
         onClick={handleSend}
         className={styles.iconActionBtn}
+        style={{ width: 28, height: 28, flexShrink: 0 }}
         title={sending ? "Enviando…" : "Enviar por WhatsApp"}
         aria-label="Enviar por WhatsApp"
       >
@@ -186,6 +188,7 @@ export function BudgetRowActions({
           disabled={approving}
           onClick={handleApprove}
           className={styles.iconActionBtn}
+          style={{ width: 28, height: 28, flexShrink: 0 }}
           title={approving ? "Aprovando…" : "Aprovar"}
           aria-label="Aprovar orçamento"
         >
@@ -197,6 +200,7 @@ export function BudgetRowActions({
           disabled={generating}
           onClick={handleGenerateTreatments}
           className={styles.iconActionBtn}
+          style={{ width: 28, height: 28, flexShrink: 0 }}
           title={generating ? "Gerando…" : "Recria os tratamentos deste orçamento na ficha do paciente, caso não tenham sido gerados"}
           aria-label="Gerar tratamentos"
         >
@@ -207,6 +211,7 @@ export function BudgetRowActions({
         type="button"
         onClick={() => setConfirmDeleteOpen(true)}
         className={styles.iconActionBtn}
+        style={{ width: 28, height: 28, flexShrink: 0 }}
         title="Excluir orçamento"
         aria-label="Excluir orçamento"
       >

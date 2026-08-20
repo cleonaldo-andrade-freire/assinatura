@@ -37,6 +37,10 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     patient_cpf: anamnesis.patient_cpf,
     answers: anamnesis.answers,
     already_signed: signature !== null,
+    // Novo campo, opcional — quem já lia essa resposta antes de hoje não
+    // quebra por ignorá-lo. Deixa /assinatura oferecer o PDF de novo pra
+    // quem reabre o link depois de já ter assinado.
+    signature_id: signature?.id ?? null,
   });
 }
 

@@ -5,12 +5,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { formatBRDate } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
 import type { Certificate, CertificateTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
+import { CertificateGridActions } from "@/components/CertificateGridActions";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
@@ -137,6 +139,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                   <th>Data</th>
                   <th>Dias de afastamento</th>
                   <th>Status</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -163,6 +166,9 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                         {DOCUMENT_STATUS_LABEL[c.status]}
                       </span>
                     </td>
+                    <StopPropagationTd>
+                      <CertificateGridActions clinicId={clinic.id} certificateId={c.id} status={c.status} hasPhone={!!c.patient_phone} />
+                    </StopPropagationTd>
                   </ClickableRow>
                 ))}
               </tbody>

@@ -6,6 +6,10 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PatientForm } from "@/components/PatientForm";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { StopPropagationTd } from "@/components/ui/StopPropagation";
+import { AnamnesisGridActions } from "@/components/AnamnesisGridActions";
+import { CertificateGridActions } from "@/components/CertificateGridActions";
+import { PrescriptionGridActions } from "@/components/PrescriptionGridActions";
 import { PatientTabs } from "@/components/PatientTabs";
 import { PATIENT_TABS, STAFF_ALLOWED_TAB_KEYS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
@@ -263,7 +267,7 @@ export default async function EditPatientPage({
   const anTo = anFrom + DOCS_PAGE_SIZE - 1;
   let anamneses: Anamnesis[] = [];
   let anamnesesCount = 0;
-  let signedAnamnesisIds = new Set<string>();
+  let signatureIdByAnamnesis = new Map<string, string>();
   if (role === "owner" && patient.phone) {
     const { data: anamnesesData, count } = await supabase
       .from("anamneses")
@@ -278,12 +282,12 @@ export default async function EditPatientPage({
     if (anamneses.length > 0) {
       const { data: signaturesData } = await supabase
         .from("signatures")
-        .select("anamnesis_id")
+        .select("id, anamnesis_id")
         .in(
           "anamnesis_id",
           anamneses.map((a) => a.id)
         );
-      signedAnamnesisIds = new Set((signaturesData ?? []).map((s) => s.anamnesis_id));
+      signatureIdByAnamnesis = new Map((signaturesData ?? []).map((s) => [s.anamnesis_id, s.id]));
     }
   }
   const anamnesesTotalPages = Math.max(1, Math.ceil(anamnesesCount / DOCS_PAGE_SIZE));
@@ -312,21 +316,36 @@ export default async function EditPatientPage({
               <tr>
                 <th>Data</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {anamneses.map((a) => (
-                <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
-                  <td>{formatBRDate(a.created_at)}</td>
-                  <td>
-                    {signedAnamnesisIds.has(a.id) ? (
-                      <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
-                    ) : (
-                      <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
-                    )}
-                  </td>
-                </ClickableRow>
-              ))}
+              {anamneses.map((a) => {
+                const signatureId = signatureIdByAnamnesis.get(a.id);
+                return (
+                  <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
+                    <td>{formatBRDate(a.created_at)}</td>
+                    <td>
+                      {signatureId ? (
+                        <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
+                      ) : (
+                        <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
+                      )}
+                    </td>
+                    <StopPropagationTd>
+                      {signatureId && (
+                        <AnamnesisGridActions
+                          clinicId={clinic.id}
+                          anamnesisId={a.id}
+                          signatureId={signatureId}
+                          hasPhone={!!patient.phone}
+                          iconClassName={styles.iconActionBtn}
+                        />
+                      )}
+                    </StopPropagationTd>
+                  </ClickableRow>
+                );
+              })}
             </tbody>
           </table>
           <Pagination
@@ -480,6 +499,7 @@ export default async function EditPatientPage({
                 <th>Data</th>
                 <th>Dias de afastamento</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -492,6 +512,9 @@ export default async function EditPatientPage({
                       {DOCUMENT_STATUS_LABEL[c.status]}
                     </span>
                   </td>
+                  <StopPropagationTd>
+                    <CertificateGridActions clinicId={clinic.id} certificateId={c.id} status={c.status} hasPhone={!!patient.phone} />
+                  </StopPropagationTd>
                 </ClickableRow>
               ))}
             </tbody>
@@ -537,6 +560,7 @@ export default async function EditPatientPage({
                 <th>Data</th>
                 <th>Itens</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -549,6 +573,9 @@ export default async function EditPatientPage({
                       {DOCUMENT_STATUS_LABEL[p.status]}
                     </span>
                   </td>
+                  <StopPropagationTd>
+                    <PrescriptionGridActions clinicId={clinic.id} prescriptionId={p.id} status={p.status} hasPhone={!!patient.phone} />
+                  </StopPropagationTd>
                 </ClickableRow>
               ))}
             </tbody>

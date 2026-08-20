@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
 
+function BanIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function RevokeDocumentButton({ revokeUrl }: { revokeUrl: string }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -36,10 +45,11 @@ export function RevokeDocumentButton({ revokeUrl }: { revokeUrl: string }) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className={`${styles.btn} ${styles.btnGhost}`}
-          style={{ color: "var(--danger)" }}
+          className={styles.iconActionBtn}
+          title="Revogar documento"
+          aria-label="Revogar documento"
         >
-          Revogar documento
+          <BanIcon />
         </button>
         <ToastStack toasts={toasts} onDismiss={dismiss} />
       </>
