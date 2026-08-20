@@ -92,7 +92,7 @@ export async function requestEvolutionSignature(
     payload: { content_hash: contentHash },
   });
 
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura-evolucao?token=${refreshed.signature_token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/evolucao-assinatura?token=${refreshed.signature_token}`;
   const message =
     `📋 Olá, ${firstName(patient.name)}! Segue o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
     `Por favor, leia e confirme sua ciência assinando no link abaixo — leva menos de 1 minuto:\n${link}\n\n` +
