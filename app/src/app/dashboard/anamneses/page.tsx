@@ -11,7 +11,7 @@ import { formatBRDate, formatBRDateTime } from "@/lib/date";
 import type { Conversation, QuestionTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
-import { AnamnesisGridActions } from "@/components/AnamnesisGridActions";
+import { AnamnesisGridActions, LinkIcon } from "@/components/AnamnesisGridActions";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 5;
@@ -312,9 +312,11 @@ export default async function AnamnesesPage({
                             iconClassName={styles.iconActionBtn}
                           />
                         ) : (
-                          <a href={`/assinatura?token=${a.token}`} target="_blank" rel="noreferrer">
-                            Link de assinatura
-                          </a>
+                          <div style={{ display: "flex", justifyContent: "flex-end", paddingRight: 4 }}>
+                            <a href={`/assinatura?token=${a.token}`} target="_blank" rel="noreferrer" className={styles.iconActionBtn} title="Ver link de assinatura" aria-label="Ver link de assinatura">
+                              <LinkIcon />
+                            </a>
+                          </div>
                         )}
                       </StopPropagationTd>
                     </ClickableRow>

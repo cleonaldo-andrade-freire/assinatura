@@ -247,23 +247,23 @@ export function AnamneseClient({ token }: { token: string }) {
               <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome completo" />
             </div>
 
-            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
+            <div className={styles.formRow}>
+              <div>
                 <label className={styles.label}>CPF (opcional)</label>
                 <input type="text" inputMode="numeric" className={styles.input} value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} placeholder="000.000.000-00" maxLength={14} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <label className={styles.label}>Data de Nascimento</label>
                 <input type="date" className={styles.input} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
+            <div className={styles.formRow}>
+              <div>
                 <label className={styles.label}>RG (opcional)</label>
                 <input type="text" className={styles.input} value={rg} onChange={e => setRg(e.target.value)} placeholder="0000000" />
               </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <label className={styles.label}>Celular</label>
                 <input type="text" inputMode="numeric" className={styles.input} value={phone} onChange={e => setPhone(formatBRPhoneLocal(e.target.value))} placeholder="(00) 00000-0000" />
               </div>
