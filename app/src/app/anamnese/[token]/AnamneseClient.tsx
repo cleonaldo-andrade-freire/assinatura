@@ -196,17 +196,20 @@ export function AnamneseClient({ token }: { token: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient: {
-            name: name.trim(),
-            cpf: cpf.replace(/\D/g, "") || undefined,
-            birth_date: birthDate || undefined,
-            rg: rg.trim() || undefined,
-            phone: phone ? toE164BR(phone) : undefined,
-            occupation: occupation.trim() || undefined,
-            address: finalAddress,
-          },
+          patient_name: name.trim(),
+          patient_cpf: cpf.replace(/\D/g, "") || undefined,
+          patient_phone: phone ? toE164BR(phone) : undefined,
+          birth_date: birthDate || undefined,
+          rg: rg.trim() || undefined,
+          occupation: occupation.trim() || undefined,
+          address: finalAddress,
           answers,
-          signature: signature.strokeData,
+          signature: {
+            signerName: name.trim(),
+            signerCpf: cpf.replace(/\D/g, "") || "",
+            dataUrl: signature.dataUrl,
+            strokeData: signature.strokeData,
+          },
         }),
       });
 
