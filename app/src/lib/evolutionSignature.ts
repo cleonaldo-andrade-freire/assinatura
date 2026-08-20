@@ -28,8 +28,10 @@ function onlyDigits(v: string | null | undefined): string {
 // ============================================================
 export async function requestEvolutionSignature(
   clinicId: string,
-  evolutionId: string
+  evolutionId: string,
+  options?: { isFollowup?: boolean }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const isFollowup = options?.isFollowup ?? false;
   const supabase = createSupabaseAdminClient();
 
   const { data: evolutionData } = await supabase.from("treatment_evolutions").select("*").eq("id", evolutionId).eq("clinic_id", clinicId).maybeSingle();
@@ -77,6 +79,10 @@ export async function requestEvolutionSignature(
       signature_refused_reason: null,
       content_snapshot: snapshot,
       content_hash: contentHash,
+      // Reenvio manual (a clínica clicou de novo) zera a contagem de
+      // lembretes automáticos — só o cron incrementa, e só conta desde o
+      // último toque humano (ver migration 054).
+      signature_followup_count: isFollowup ? ev.signature_followup_count + 1 : 0,
     })
     .eq("id", evolutionId)
     .select("signature_token")
@@ -87,16 +93,19 @@ export async function requestEvolutionSignature(
     clinicId,
     documentType: "treatment_evolution",
     documentId: evolutionId,
-    eventType: "solicitacao_criada",
-    actor: "dentist",
+    eventType: isFollowup ? "lembrete_automatico" : "solicitacao_criada",
+    actor: isFollowup ? "system" : "dentist",
     payload: { content_hash: contentHash },
   });
 
   const link = `${process.env.NEXT_PUBLIC_APP_URL}/evolucao-assinatura?token=${refreshed.signature_token}`;
-  const message =
-    `📋 Olá, ${firstName(patient.name)}! Segue o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
-    `Por favor, leia e confirme sua ciência assinando no link abaixo — leva menos de 1 minuto:\n${link}\n\n` +
-    `O link expira em 48 horas. Qualquer dúvida, é só responder esta mensagem.`;
+  const message = isFollowup
+    ? `📋 Olá, ${firstName(patient.name)}! Ainda não recebemos sua confirmação sobre o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
+      `O link anterior expirou — segue um novo, leva menos de 1 minuto:\n${link}\n\n` +
+      `O link expira em 48 horas. Qualquer dúvida, é só responder esta mensagem.`
+    : `📋 Olá, ${firstName(patient.name)}! Segue o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
+      `Por favor, leia e confirme sua ciência assinando no link abaixo — leva menos de 1 minuto:\n${link}\n\n` +
+      `O link expira em 48 horas. Qualquer dúvida, é só responder esta mensagem.`;
   const sent = await sendText(clinic, patient.phone, message);
 
   if (sent) {

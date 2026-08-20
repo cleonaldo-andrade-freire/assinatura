@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/check-signatures",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/evolution-signature-followup",
+      "schedule": "0 7 * * *"
     }
   ]
 }

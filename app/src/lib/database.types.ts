@@ -615,6 +615,8 @@ export interface TreatmentEvolution {
   content_snapshot: Record<string, unknown> | null;
   content_hash: string | null;
   sent_whatsapp_at: string | null;
+  // Ver migration 054 — reenvio automático do link expirado (cron 1x/dia).
+  signature_followup_count: number;
 }
 
 export interface TreatmentEvolutionSignature {
