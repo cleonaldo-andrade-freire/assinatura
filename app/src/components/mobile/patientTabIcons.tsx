@@ -105,11 +105,27 @@ function PrescricoesIcon() {
   );
 }
 
+function DadosPessoaisIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 /** Ícone por aba da ficha do paciente — usado só no shell mobile v2
  * (PatientTabs.tsx troca o rótulo em texto por isso, ver useMobileV2Active).
  * 8 abas em texto não cabem numa tela de celular sem cortar; em ícone,
  * cabem todas sem precisar de scroll horizontal. */
 export const PATIENT_TAB_ICONS: Record<PatientTabKey, () => JSX.Element> = {
+  dados_pessoais: DadosPessoaisIcon,
   agendamentos: AgendamentosIcon,
   orcamentos: OrcamentosIcon,
   tratamentos: TratamentosIcon,
