@@ -49,7 +49,6 @@ export function AnamneseClient({ token }: { token: string }) {
   const [hasSignature, setHasSignature] = useState(false);
   const [signError, setSignError] = useState("");
   const [signatureSnapshot, setSignatureSnapshot] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -322,38 +321,16 @@ export function AnamneseClient({ token }: { token: string }) {
                 Ao assinar abaixo, você confirma que todas as informações fornecidas são verdadeiras e que concorda com o Termo de Consentimento apresentado.
               </p>
 
-              <div className="w-full relative border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 mb-2" style={{ height: "240px", touchAction: "none" }}>
+              <div className="w-full relative mb-2">
                 <SignatureCanvas 
-                  ref={canvasRef as any}
-                  onDrawEnd={result => {
+                  onChange={result => {
                     setSignature(result);
-                    setHasSignature(true);
-                    if (canvasRef.current) setSignatureSnapshot(canvasRef.current.toDataURL("image/png"));
+                    setHasSignature(!!result);
+                    setSignatureSnapshot(result?.dataUrl ?? null);
                     setSignError("");
                   }}
-                  onClear={() => {
-                    setSignature(null);
-                    setHasSignature(false);
-                    setSignatureSnapshot(null);
-                  }}
+                  height={160}
                 />
-                
-                {!hasSignature && (
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center opacity-30">
-                    <span className="text-lg font-bold uppercase tracking-widest text-gray-400">Assine Aqui</span>
-                  </div>
-                )}
-                
-                <div className="pointer-events-none absolute inset-x-0 bottom-6 border-b border-gray-300 opacity-50 px-12" />
-              </div>
-              
-              <div className="flex w-full justify-between px-2 mb-6 text-sm text-gray-500">
-                <span>Use o dedo (celular) ou o mouse (computador)</span>
-                {hasSignature && (
-                  <button type="button" onClick={() => (canvasRef.current as any)?.clear()} className="font-semibold text-blue-600 hover:text-blue-500">
-                    Limpar
-                  </button>
-                )}
               </div>
 
               {signError && <p className="text-red-500 text-sm font-semibold mb-4 bg-red-50 px-4 py-2 rounded-lg self-start w-full border border-red-100">{signError}</p>}
