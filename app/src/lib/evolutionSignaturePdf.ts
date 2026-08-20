@@ -3,6 +3,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { formatBRPhoneLocal } from "@/lib/validation";
+import { formatTreatmentsLabel } from "@/lib/treatments";
 import type { SignatureStrokeData } from "@/components/SignatureCanvas";
 
 const MARGIN = 48;
@@ -15,7 +16,7 @@ interface EvolutionSnapshot {
   clinic: { name: string; logoUrl: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
-  treatment: { name: string; toothRegion: string | null };
+  treatments: { name: string; toothRegion: string | null }[];
   evolutionDate: string;
   text: string;
 }
@@ -97,7 +98,7 @@ export async function buildEvolutionSignedPdf(
   if (snapshot.patient.cpf) field("CPF:", snapshot.patient.cpf);
   field("Dentista responsável:", `${snapshot.dentist.name} — CRO ${snapshot.dentist.cro}/${snapshot.dentist.croUf}`);
   field("Data do atendimento:", formatDateBR(snapshot.evolutionDate));
-  field("Tratamento:", snapshot.treatment.toothRegion ? `${snapshot.treatment.toothRegion} — ${snapshot.treatment.name}` : snapshot.treatment.name);
+  field(snapshot.treatments.length > 1 ? "Tratamentos:" : "Tratamento:", formatTreatmentsLabel(snapshot.treatments));
 
   ensureSpace(20);
   y -= 6;

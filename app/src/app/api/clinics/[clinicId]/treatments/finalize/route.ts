@@ -40,20 +40,32 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   if (error) return NextResponse.json({ error: "update_failed", message: error.message }, { status: 500 });
 
-  // Best-effort — finalizar já registra uma evolução no histórico de cada
-  // tratamento (uma linha por tratamento, mesmo texto/data), pra "tela de
-  // edição do tratamento" sempre mostrar isso junto com as outras.
+  // Best-effort — finalizar já registra uma evolução no histórico,
+  // vinculada a TODOS os tratamentos finalizados juntos (uma linha só,
+  // mesmo quando vários tratamentos são finalizados numa mesma leva), pra
+  // que assinar essa evolução cubra o lote inteiro em vez de exigir uma
+  // assinatura por tratamento.
   try {
-    await supabase.from("treatment_evolutions").insert(
-      (data ?? []).map((t) => ({
-        clinic_id: clinic.id,
-        treatment_id: t.id,
-        patient_id: t.patient_id,
-        evolution_date: parsed.data.finalized_at,
-        text: parsed.data.evolution_text,
-        image_keys: [],
-      }))
-    );
+    const finalized = data ?? [];
+    if (finalized.length > 0) {
+      const { data: evolution, error: evolutionError } = await supabase
+        .from("treatment_evolutions")
+        .insert({
+          clinic_id: clinic.id,
+          treatment_id: finalized[0].id, // âncora legada — o grupo completo fica em treatment_evolution_treatments
+          patient_id: finalized[0].patient_id,
+          evolution_date: parsed.data.finalized_at,
+          text: parsed.data.evolution_text,
+          image_keys: [],
+        })
+        .select("id")
+        .single();
+      if (evolutionError) throw new Error(evolutionError.message);
+
+      await supabase.from("treatment_evolution_treatments").insert(
+        finalized.map((t) => ({ treatment_evolution_id: evolution.id, treatment_id: t.id }))
+      );
+    }
   } catch (err) {
     console.error("Falha ao registrar evolução ao finalizar tratamento:", err);
   }

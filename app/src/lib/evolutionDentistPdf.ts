@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
+import { formatTreatmentsLabel } from "@/lib/treatments";
 
 const MARGIN = 48;
 const PAGE_WIDTH = 595.28; // A4, em pt
@@ -11,7 +12,7 @@ interface EvolutionSnapshot {
   clinic: { name: string; logoUrl: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
-  treatment: { name: string; toothRegion: string | null };
+  treatments: { name: string; toothRegion: string | null }[];
   evolutionDate: string;
   text: string;
 }
@@ -58,7 +59,7 @@ export async function buildEvolutionDentistPdf(snapshot: EvolutionSnapshot): Pro
   if (snapshot.patient.cpf) field("CPF:", snapshot.patient.cpf);
   field("Dentista responsável:", `${snapshot.dentist.name} — CRO ${snapshot.dentist.cro}/${snapshot.dentist.croUf}`);
   field("Data do atendimento:", formatDateBR(snapshot.evolutionDate));
-  field("Tratamento:", snapshot.treatment.toothRegion ? `${snapshot.treatment.toothRegion} — ${snapshot.treatment.name}` : snapshot.treatment.name);
+  field(snapshot.treatments.length > 1 ? "Tratamentos:" : "Tratamento:", formatTreatmentsLabel(snapshot.treatments));
 
   ensureSpace(20);
   y -= 6;

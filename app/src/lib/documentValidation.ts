@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeValidationCode } from "@/lib/validationCode";
 import { verifySignatureChain } from "@/lib/documentSignatureEvents";
+import { formatTreatmentsLabel } from "@/lib/treatments";
 
 export interface DocumentValidationResult {
   found: boolean;
@@ -91,7 +92,7 @@ export async function lookupEvolutionValidation(supabase: SupabaseClient, rawCod
   const snapshot = evolution.content_snapshot as {
     dentist: { name: string; cro: string; croUf: string };
     patient: { name: string };
-    treatment: { name: string; toothRegion: string | null };
+    treatments: { name: string; toothRegion: string | null }[];
     evolutionDate: string;
   } | null;
 
@@ -104,7 +105,7 @@ export async function lookupEvolutionValidation(supabase: SupabaseClient, rawCod
     dentistCro: snapshot?.dentist.cro,
     dentistCroUf: snapshot?.dentist.croUf,
     patientName: snapshot?.patient.name,
-    treatmentName: snapshot?.treatment.name,
+    treatmentName: snapshot?.treatments ? formatTreatmentsLabel(snapshot.treatments) : undefined,
     evolutionDate: snapshot?.evolutionDate,
     signedAt: signature.signed_at_server,
     sha256: signature.sha256,

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatCPF, isValidCPF } from "@/lib/validation";
+import { formatTreatmentsLabel } from "@/lib/treatments";
 import { SignatureMark } from "@/components/SignatureMark";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
 import richTextStyles from "@/components/ui/RichTextEditor.module.css";
@@ -20,7 +21,7 @@ interface Snapshot {
   clinic: { name: string; logoUrl: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
-  treatment: { name: string; toothRegion: string | null };
+  treatments: { name: string; toothRegion: string | null }[];
   evolutionDate: string;
   text: string;
 }
@@ -326,11 +327,8 @@ export function EvolucaoAssinaturaClient() {
                   </dd>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Tratamento</dt>
-                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>
-                    {doc.snapshot.treatment.name}
-                    {doc.snapshot.treatment.toothRegion ? ` — ${doc.snapshot.treatment.toothRegion}` : ""}
-                  </dd>
+                  <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{doc.snapshot.treatments.length > 1 ? "Tratamentos" : "Tratamento"}</dt>
+                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatTreatmentsLabel(doc.snapshot.treatments)}</dd>
                 </div>
                 <div>
                   <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Data</dt>

@@ -28,7 +28,10 @@ export interface EvolutionSnapshot {
   clinic: { name: string; logoUrl: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
-  treatment: { name: string; toothRegion: string | null };
+  /** Todos os tratamentos cobertos por esta evolução — pode ser mais de um
+   * quando vários tratamentos são finalizados juntos (ver
+   * treatment_evolution_treatments). */
+  treatments: { name: string; toothRegion: string | null }[];
   evolutionDate: string;
   text: string;
 }
@@ -44,13 +47,21 @@ export async function buildEvolutionSnapshot(
   clinic: Clinic,
   patient: { name: string; cpf: string | null }
 ): Promise<EvolutionSnapshot> {
-  const { data: treatment } = await supabase.from("treatments").select("treatment_name, tooth_region").eq("id", ev.treatment_id).maybeSingle();
+  const { data: links } = await supabase
+    .from("treatment_evolution_treatments")
+    .select("treatments(treatment_name, tooth_region)")
+    .eq("treatment_evolution_id", ev.id);
+  const treatments = (links ?? [])
+    .map((l) => l.treatments as unknown as { treatment_name: string; tooth_region: string | null } | null)
+    .filter((t): t is { treatment_name: string; tooth_region: string | null } => t !== null)
+    .map((t) => ({ name: t.treatment_name, toothRegion: t.tooth_region }));
+
   return {
     schema: "evolucao/v1",
     clinic: { name: clinic.name, logoUrl: clinic.logo_url },
     dentist: { name: clinic.dentist_name!, cro: clinic.dentist_cro!, croUf: clinic.dentist_cro_uf! },
     patient: { name: patient.name, cpf: patient.cpf ?? null },
-    treatment: { name: treatment?.treatment_name ?? "Tratamento", toothRegion: treatment?.tooth_region ?? null },
+    treatments: treatments.length > 0 ? treatments : [{ name: "Tratamento", toothRegion: null }],
     evolutionDate: ev.evolution_date,
     text: ev.text,
   };
@@ -369,15 +380,7 @@ export async function signEvolution(
     .order("sequence", { ascending: true });
   const chainCheck = await verifySignatureChain(supabase, "treatment_evolution", evolution.id);
 
-  const snapshot = evolution.content_snapshot as {
-    schema: "evolucao/v1";
-    clinic: { name: string; logoUrl: string | null };
-    dentist: { name: string; cro: string; croUf: string };
-    patient: { name: string; cpf: string | null };
-    treatment: { name: string; toothRegion: string | null };
-    evolutionDate: string;
-    text: string;
-  };
+  const snapshot = evolution.content_snapshot as unknown as EvolutionSnapshot;
 
   const pdfBytes = await buildEvolutionSignedPdf(
     snapshot,

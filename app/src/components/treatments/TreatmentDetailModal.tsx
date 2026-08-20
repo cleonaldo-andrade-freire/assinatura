@@ -14,6 +14,7 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { formatBRDate, formatBRTime } from "@/lib/date";
 import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
+import { formatTreatmentsLabel } from "@/lib/treatments";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -21,6 +22,13 @@ import tp from "./treatments.module.css";
 
 const CUSTOM_TREATMENT_VALUE = "__custom__";
 const EVOLUTION_TRUNCATE_LENGTH = 260;
+
+/** Evolução como devolvida por GET .../treatments/{id}/evolutions — inclui
+ * os outros tratamentos que compartilham essa mesma evolução (finalizados
+ * juntos), quando houver. */
+type EvolutionWithLinks = TreatmentEvolution & {
+  linked_treatments: { id: string; treatment_name: string; tooth_region: string | null }[];
+};
 
 interface CatalogTable extends PriceTable {
   items: PriceTableItem[];
@@ -61,7 +69,7 @@ export function TreatmentDetailModal({
   const [toothSelection, setToothSelection] = useState<string[]>([]);
   const [savingFields, setSavingFields] = useState(false);
 
-  const [evolutions, setEvolutions] = useState<TreatmentEvolution[]>([]);
+  const [evolutions, setEvolutions] = useState<EvolutionWithLinks[]>([]);
   const [loadingEvolutions, setLoadingEvolutions] = useState(false);
 
   const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
@@ -167,7 +175,7 @@ export function TreatmentDetailModal({
     setEvolutionModalOpen(true);
   }
 
-  function openEditEvolution(e: TreatmentEvolution) {
+  function openEditEvolution(e: EvolutionWithLinks) {
     setEvolutionModalInitial(e);
     setEvolutionModalOpen(true);
   }
@@ -193,7 +201,11 @@ export function TreatmentDetailModal({
           push(data.message || "Falha ao salvar a evolução. Tenta de novo.");
           return;
         }
-        setEvolutions((prev) => prev.map((ev) => (ev.id === evolutionModalInitial.id ? (data.evolution as TreatmentEvolution) : ev)));
+        // PATCH só edita texto/data/imagens, nunca os tratamentos vinculados
+        // — mantém o linked_treatments que já estava carregado.
+        setEvolutions((prev) =>
+          prev.map((ev) => (ev.id === evolutionModalInitial.id ? { ...(data.evolution as TreatmentEvolution), linked_treatments: ev.linked_treatments } : ev))
+        );
         push("Evolução atualizada.", "success");
       } else {
         const res = await fetch(`/api/clinics/${clinicId}/treatments/${treatment.id}/evolutions`, { method: "POST", body: form });
@@ -202,7 +214,12 @@ export function TreatmentDetailModal({
           push("Falha ao salvar a evolução. Tenta de novo.");
           return;
         }
-        setEvolutions((prev) => [data.evolution as TreatmentEvolution, ...prev]);
+        // Evolução recém-criada por aqui é sempre de um tratamento só (este).
+        const created: EvolutionWithLinks = {
+          ...(data.evolution as TreatmentEvolution),
+          linked_treatments: [{ id: treatment.id, treatment_name: treatment.treatment_name, tooth_region: treatment.tooth_region }],
+        };
+        setEvolutions((prev) => [created, ...prev]);
         push("Evolução adicionada.", "success");
       }
       setEvolutionModalOpen(false);
@@ -512,6 +529,11 @@ export function TreatmentDetailModal({
                                 )}
                               </div>
                             </div>
+                            {e.linked_treatments.length > 1 && (
+                              <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 6px" }}>
+                                Também: {formatTreatmentsLabel(e.linked_treatments.filter((t) => t.id !== treatment!.id).map((t) => ({ name: t.treatment_name, toothRegion: t.tooth_region })))}
+                              </p>
+                            )}
                             <p className={tp.evolutionText}>
                               {displayText}
                               {isLong && (

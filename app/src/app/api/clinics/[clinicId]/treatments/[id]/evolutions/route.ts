@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MAX_EVOLUTION_IMAGES, saveEvolutionImage } from "@/lib/treatmentEvolutionStorage";
-import type { TreatmentEvolution } from "@/lib/database.types";
 
-/** Lista as evoluções de um tratamento, mais recente primeiro. */
+/** Lista as evoluções vinculadas a um tratamento (via treatment_evolution_treatments — uma evolução pode cobrir mais de um tratamento), mais recente primeiro. */
 export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const clinic = await getCurrentClinic();
   if (!clinic || clinic.id !== params.clinicId) {
@@ -12,15 +11,36 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
   }
 
   const supabase = await createSupabaseServerClient();
+  const { data: links, error: linksError } = await supabase
+    .from("treatment_evolution_treatments")
+    .select("treatment_evolution_id")
+    .eq("treatment_id", params.id);
+  if (linksError) return NextResponse.json({ error: "query_failed", message: linksError.message }, { status: 500 });
+
+  const evolutionIds = (links ?? []).map((l) => l.treatment_evolution_id);
+  if (evolutionIds.length === 0) return NextResponse.json({ evolutions: [] });
+
   const { data, error } = await supabase
     .from("treatment_evolutions")
-    .select("*")
+    .select("*, treatment_evolution_treatments(treatments(id, treatment_name, tooth_region))")
     .eq("clinic_id", clinic.id)
-    .eq("treatment_id", params.id)
+    .in("id", evolutionIds)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: "query_failed", message: error.message }, { status: 500 });
-  return NextResponse.json({ evolutions: (data as TreatmentEvolution[]) ?? [] });
+
+  // `linked_treatments` é um campo de apresentação (não faz parte da tabela
+  // treatment_evolutions) — a UI usa pra mostrar "também vinculada a X, Y"
+  // quando a evolução cobre mais de um tratamento.
+  type LinkedTreatment = { id: string; treatment_name: string; tooth_region: string | null };
+  const evolutions = (data ?? []).map((ev) => {
+    const { treatment_evolution_treatments, ...rest } = ev as typeof ev & {
+      treatment_evolution_treatments: { treatments: LinkedTreatment }[];
+    };
+    return { ...rest, linked_treatments: treatment_evolution_treatments.map((l: { treatments: LinkedTreatment }) => l.treatments) };
+  });
+
+  return NextResponse.json({ evolutions });
 }
 
 /** Cria uma evolução — multipart/form-data com `evolution_date`, `text` e até 5 `images`. */
@@ -75,6 +95,11 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   if (insertError || !evolution) {
     return NextResponse.json({ error: "insert_failed", message: insertError?.message }, { status: 500 });
   }
+
+  // A query de listagem (GET acima) lê só pela tabela de junção — sem este
+  // link, a evolução recém-criada ficaria invisível na tela de edição do
+  // tratamento.
+  await supabase.from("treatment_evolution_treatments").insert({ treatment_evolution_id: evolution.id, treatment_id: treatment.id });
 
   if (images.length > 0) {
     try {

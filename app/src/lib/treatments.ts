@@ -65,3 +65,14 @@ export function buildFinalizationText(treatments: Pick<Treatment, "treatment_nam
   const verb = treatments.length === 1 ? "foi finalizado" : "foram finalizados";
   return `${parts.join(", ")} ${verb}`;
 }
+
+/**
+ * Rótulo dos tratamentos vinculados a uma evolução — usado no PDF assinado,
+ * na tela pública de confirmação e no aviso "Também vinculada a" da tela de
+ * edição do tratamento. Mesma convenção de formatação (toothRegion — name)
+ * já usada no campo "Tratamento:" de antes desta evolução poder cobrir mais
+ * de um tratamento.
+ */
+export function formatTreatmentsLabel(treatments: { name: string; toothRegion: string | null }[]): string {
+  return treatments.map((t) => (t.toothRegion ? `${t.toothRegion} — ${t.name}` : t.name)).join("; ");
+}
