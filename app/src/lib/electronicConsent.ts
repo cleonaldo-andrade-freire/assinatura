@@ -3,18 +3,25 @@ import sanitizeHtml from "sanitize-html";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Clinic } from "@/lib/database.types";
 
-/** O texto do termo vem do editor rico em Configurações (RichTextEditor) e
- * é exibido pro paciente na página pública de assinatura — sanitiza no
- * momento de salvar (única rota que escreve nesta coluna), não na leitura,
- * pra `clinics.consent_term_text` já nascer confiável em qualquer lugar
- * que o ler depois. Allowlist cobre só o que o editor produz: negrito,
- * itálico, sublinhado, tamanho de fonte e lista — nada de script/estilo
- * arbitrário/atributo de evento. */
+/** O texto do termo vem do editor rico em Configurações (RichTextEditor,
+ * baseado em Tiptap/ProseMirror) e é exibido pro paciente na página pública
+ * de assinatura — sanitiza no momento de salvar (única rota que escreve
+ * nesta coluna), não na leitura, pra `clinics.consent_term_text` já nascer
+ * confiável em qualquer lugar que o ler depois. Allowlist cobre exatamente
+ * o que o editor consegue produzir (negrito/itálico/sublinhado/tachado,
+ * títulos, cor, tamanho de fonte, alinhamento, listas, citação, link,
+ * linha horizontal) — nada de script/estilo arbitrário/atributo de evento. */
 export function sanitizeConsentTermHtml(html: string): string {
   return sanitizeHtml(html, {
-    allowedTags: ["b", "strong", "i", "em", "u", "span", "p", "div", "br", "ul", "ol", "li"],
-    allowedAttributes: { span: ["style"] },
-    allowedStyles: { span: { "font-size": [/^\d{1,3}px$/] } },
+    allowedTags: ["b", "strong", "i", "em", "u", "s", "span", "p", "div", "br", "hr", "ul", "ol", "li", "h1", "h2", "h3", "blockquote", "a"],
+    allowedAttributes: { span: ["style"], p: ["style"], h1: ["style"], h2: ["style"], h3: ["style"], a: ["href", "rel", "target"] },
+    allowedStyles: {
+      span: { "font-size": [/^\d{1,3}px$/], color: [/^#[0-9a-f]{3,8}$/i] },
+      p: { "text-align": [/^(left|center|right|justify)$/] },
+      h1: { "text-align": [/^(left|center|right|justify)$/] },
+      h2: { "text-align": [/^(left|center|right|justify)$/] },
+      h3: { "text-align": [/^(left|center|right|justify)$/] },
+    },
     disallowedTagsMode: "discard",
   });
 }

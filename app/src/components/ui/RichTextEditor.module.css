@@ -26,24 +26,50 @@
   border-radius: 6px;
   background: none;
   color: var(--ink);
-  font-size: 13.5;
+  font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
+  line-height: 1;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   background: var(--surface);
   border-color: var(--line);
 }
 
-.btn.italic {
-  font-style: italic;
-  font-weight: 500;
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
-.btn.underline {
-  text-decoration: underline;
-  font-weight: 500;
+.btnActive {
+  background: var(--brand-tint);
+  border-color: var(--brand);
+  color: var(--brand-deep);
+}
+
+.colorSwatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.colorSwatch:hover {
+  background: var(--surface);
+}
+
+.colorSwatch input[type="color"] {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
 .sep {
@@ -60,7 +86,7 @@
   border-radius: 6px;
   background: var(--surface);
   color: var(--ink);
-  font-size: 12.5;
+  font-size: 12.5px;
   padding: 0 6px;
   cursor: pointer;
 }
@@ -72,17 +98,80 @@
 .editable {
   min-height: 200px;
   padding: 12px 14px;
-  font-size: 14.5;
+  font-size: 14.5px;
   line-height: 1.6;
   color: var(--ink);
   outline: none;
   overflow-y: auto;
 }
 
-.editable:empty::before {
+/* Estilos do conteúdo formatado — compartilhados entre a área de edição
+   (Tiptap monta o ProseMirror direto nesta div, classe vinda de
+   editorProps.attributes.class) e a renderização somente-leitura no
+   portal público do paciente (ver EvolucaoAssinaturaClient). */
+.editable :global(p.is-editor-empty:first-child)::before {
   content: attr(data-placeholder);
   color: var(--ink-faint);
+  float: left;
+  height: 0;
   pointer-events: none;
+}
+
+.editable h1,
+.richContent h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: var(--brand-deep);
+}
+
+.editable h2,
+.richContent h2 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: var(--brand-deep);
+}
+
+.editable h3,
+.richContent h3 {
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.editable p,
+.richContent p {
+  margin: 0 0 0.6em;
+}
+
+.editable ul,
+.richContent ul,
+.editable ol,
+.richContent ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.4em;
+}
+
+.editable blockquote,
+.richContent blockquote {
+  margin: 0.6em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--brand);
+  color: var(--ink-soft);
+}
+
+.editable hr,
+.richContent hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+
+.editable a,
+.richContent a {
+  color: var(--brand);
+  text-decoration: underline;
 }
 
 .fullscreenOverlay {

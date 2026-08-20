@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { formatCPF, isValidCPF } from "@/lib/validation";
 import { SignatureMark } from "@/components/SignatureMark";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
+import richTextStyles from "@/components/ui/RichTextEditor.module.css";
 
 interface StatusResponse {
   found: boolean;
@@ -351,6 +352,7 @@ export function EvolucaoAssinaturaClient() {
                         (única rota de escrita, ver sanitizeConsentTermHtml) — allowlist
                         restrita a negrito/itálico/sublinhado/tamanho/lista, sem script. */}
                     <div
+                      className={richTextStyles.richContent}
                       style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink-soft)" }}
                       dangerouslySetInnerHTML={{ __html: doc.consentTermText }}
                     />

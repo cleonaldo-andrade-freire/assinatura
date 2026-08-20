@@ -1,70 +1,105 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import TextAlign from "@tiptap/extension-text-align";
+import Link from "@tiptap/extension-link";
+import Placeholder from "@tiptap/extension-placeholder";
+import { FontSize } from "@/lib/tiptap/fontSize";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import styles from "./RichTextEditor.module.css";
 
 const FONT_SIZES = [
-  { label: "Pequeno", px: 13 },
-  { label: "Normal", px: 15 },
-  { label: "Grande", px: 18 },
-  { label: "Título", px: 22 },
+  { label: "Pequeno", px: "13px" },
+  { label: "Normal", px: "15px" },
+  { label: "Grande", px: "18px" },
+  { label: "Título", px: "22px" },
+  { label: "Destaque", px: "28px" },
 ];
 
-/** Marcador temporário: `execCommand("fontSize")` só sabe produzir a tag
- * legada `<font size="N">` (N de 1 a 7) — aplicamos com um valor
- * improvável de aparecer organicamente (7) e trocamos pelo `<span
- * style="font-size:…">` que realmente queremos logo em seguida. Truque
- * padrão pra ter tamanho de fonte em pixel com `execCommand`, que não
- * suporta isso nativamente. */
-const FONT_SIZE_MARKER = "7";
-
-function Toolbar({
-  onBold,
-  onItalic,
-  onUnderline,
-  onList,
-  onClearFormat,
-  onFontSize,
-  isFullscreen,
-  onToggleFullscreen,
+function Btn({
+  active,
+  disabled,
+  onClick,
+  title,
+  children,
 }: {
-  onBold: () => void;
-  onItalic: () => void;
-  onUnderline: () => void;
-  onList: () => void;
-  onClearFormat: () => void;
-  onFontSize: (px: number) => void;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
 }) {
-  // onMouseDown com preventDefault em cada botão — sem isso, o clique tira o
-  // foco/seleção de texto do editor antes do execCommand rodar, e a
-  // formatação não tem em cima do quê aplicar.
-  function stop(e: React.MouseEvent) {
-    e.preventDefault();
+  return (
+    <button
+      type="button"
+      className={`${styles.btn} ${active ? styles.btnActive : ""}`}
+      disabled={disabled}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Toolbar({ editor, isFullscreen, onToggleFullscreen }: { editor: Editor; isFullscreen: boolean; onToggleFullscreen: () => void }) {
+  function setLink() {
+    const previous = editor.getAttributes("link").href as string | undefined;
+    const url = window.prompt("Endereço do link (deixe em branco pra remover):", previous ?? "https://");
+    if (url === null) return;
+    if (!url.trim()) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
   }
 
   return (
     <div className={styles.toolbar}>
-      <button type="button" className={styles.btn} onMouseDown={stop} onClick={onBold} title="Negrito">
-        B
-      </button>
-      <button type="button" className={`${styles.btn} ${styles.italic}`} onMouseDown={stop} onClick={onItalic} title="Itálico">
-        I
-      </button>
-      <button type="button" className={`${styles.btn} ${styles.underline}`} onMouseDown={stop} onClick={onUnderline} title="Sublinhado">
-        U
-      </button>
+      <Btn title="Desfazer" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10h-1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Btn>
+      <Btn title="Refazer" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 7l5 5-5 5M20 12H9A5 5 0 009 22h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Btn>
+
       <div className={styles.sep} />
+
+      <select
+        className={styles.select}
+        value={editor.isActive("heading", { level: 1 }) ? "h1" : editor.isActive("heading", { level: 2 }) ? "h2" : editor.isActive("heading", { level: 3 }) ? "h3" : "p"}
+        onMouseDown={(e) => e.preventDefault()}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "p") editor.chain().focus().setParagraph().run();
+          else editor.chain().focus().setHeading({ level: Number(v[1]) as 1 | 2 | 3 }).run();
+        }}
+        title="Estilo do bloco"
+      >
+        <option value="p">Parágrafo</option>
+        <option value="h1">Título 1</option>
+        <option value="h2">Título 2</option>
+        <option value="h3">Título 3</option>
+      </select>
+
       <select
         className={styles.select}
         defaultValue=""
-        onMouseDown={stop}
+        onMouseDown={(e) => e.preventDefault()}
         onChange={(e) => {
-          const px = Number(e.target.value);
-          if (px) onFontSize(px);
+          if (e.target.value) editor.chain().focus().setFontSize(e.target.value).run();
           e.target.value = "";
         }}
         title="Tamanho da fonte"
@@ -78,17 +113,83 @@ function Toolbar({
           </option>
         ))}
       </select>
+
       <div className={styles.sep} />
-      <button type="button" className={styles.btn} onMouseDown={stop} onClick={onList} title="Lista com marcadores">
-        •
-      </button>
-      <button type="button" className={styles.btn} onMouseDown={stop} onClick={onClearFormat} title="Limpar formatação">
+
+      <Btn title="Negrito" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <strong>B</strong>
+      </Btn>
+      <Btn title="Itálico" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <em>I</em>
+      </Btn>
+      <Btn title="Sublinhado" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <span style={{ textDecoration: "underline" }}>U</span>
+      </Btn>
+      <Btn title="Tachado" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <span style={{ textDecoration: "line-through" }}>S</span>
+      </Btn>
+
+      <label className={styles.colorSwatch} title="Cor do texto">
+        <input
+          type="color"
+          onMouseDown={(e) => e.preventDefault()}
+          value={editor.getAttributes("textStyle").color || "#1e2b27"}
+          onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+        />
+      </label>
+
+      <div className={styles.sep} />
+
+      <Btn title="Alinhar à esquerda" active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6h16M4 12h10M4 18h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </Btn>
+      <Btn title="Centralizar" active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6h16M7 12h10M5 18h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </Btn>
+      <Btn title="Alinhar à direita" active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6h16M10 12h10M6 18h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </Btn>
+      <Btn title="Justificar" active={editor.isActive({ textAlign: "justify" })} onClick={() => editor.chain().focus().setTextAlign("justify").run()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </Btn>
+
+      <div className={styles.sep} />
+
+      <Btn title="Lista com marcadores" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        •≡
+      </Btn>
+      <Btn title="Lista numerada" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        1.
+      </Btn>
+      <Btn title="Citação" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 7a3 3 0 00-3 3v3h4v-6zm10 0a3 3 0 00-3 3v3h4v-6z" fill="currentColor" />
+        </svg>
+      </Btn>
+      <Btn title="Link" active={editor.isActive("link")} onClick={setLink}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 15l6-6M10 6l1.5-1.5a3.5 3.5 0 015 5L15 11M14 18l-1.5 1.5a3.5 3.5 0 01-5-5L9 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Btn>
+      <Btn title="Linha horizontal" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+        —
+      </Btn>
+      <Btn title="Limpar formatação" onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}>
         ⌫
-      </button>
+      </Btn>
+
       <button
         type="button"
         className={`${styles.btn} ${styles.expandBtn}`}
-        onMouseDown={stop}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={onToggleFullscreen}
         title={isFullscreen ? "Sair da tela cheia" : "Editar em tela cheia"}
       >
@@ -106,40 +207,6 @@ function Toolbar({
   );
 }
 
-function EditableArea({
-  editorRef,
-  initialHtml,
-  onChange,
-  placeholder,
-  className,
-}: {
-  editorRef: React.RefObject<HTMLDivElement>;
-  initialHtml: string;
-  onChange: (html: string) => void;
-  placeholder?: string;
-  className: string;
-}) {
-  // Só roda no mount (contentEditable é não-controlado de propósito — deixar
-  // o React re-setar innerHTML a cada render por causa de um `value`
-  // controlado faria o cursor pular pro início a cada tecla digitada).
-  useEffect(() => {
-    if (editorRef.current) editorRef.current.innerHTML = initialHtml || "";
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <div
-      ref={editorRef}
-      className={className}
-      contentEditable
-      suppressContentEditableWarning
-      data-placeholder={placeholder}
-      onInput={() => onChange(editorRef.current?.innerHTML ?? "")}
-      onBlur={() => onChange(editorRef.current?.innerHTML ?? "")}
-    />
-  );
-}
-
 export function RichTextEditor({
   value,
   onChange,
@@ -151,14 +218,26 @@ export function RichTextEditor({
   placeholder?: string;
   label?: string;
 }) {
-  const editorRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // Muda a cada entrada/saída de tela cheia pra forçar o remount do
-  // EditableArea com o conteúdo mais recente (que já está em `value`, porque
-  // todo input já disparou onChange) — mover o editor pra dentro/fora do
-  // portal troca o container real, então precisamos de um mount novo de
-  // qualquer forma; isso só garante que ele nasça com o texto atualizado.
-  const [mountKey, setMountKey] = useState(0);
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Underline,
+      TextStyle,
+      Color,
+      FontSize,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Link.configure({ openOnClick: false, autolink: false }),
+      Placeholder.configure({ placeholder }),
+    ],
+    content: value,
+    onUpdate: ({ editor: e }) => onChange(e.getHTML()),
+    editorProps: {
+      attributes: { class: styles.editable },
+    },
+  });
 
   useEscapeToClose(() => setIsFullscreen(false), isFullscreen);
 
@@ -171,72 +250,24 @@ export function RichTextEditor({
     };
   }, [isFullscreen]);
 
-  function toggleFullscreen() {
-    setMountKey((k) => k + 1);
-    setIsFullscreen((f) => !f);
-  }
+  if (!editor) return null;
 
-  function emit() {
-    onChange(editorRef.current?.innerHTML ?? "");
-  }
-
-  function exec(command: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false);
-    emit();
-  }
-
-  function applyFontSize(px: number) {
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.focus();
-    document.execCommand("fontSize", false, FONT_SIZE_MARKER);
-    editor.querySelectorAll(`font[size="${FONT_SIZE_MARKER}"]`).forEach((node) => {
-      const span = document.createElement("span");
-      span.style.fontSize = `${px}px`;
-      span.innerHTML = node.innerHTML;
-      node.replaceWith(span);
-    });
-    emit();
-  }
-
-  const toolbar = (
-    <Toolbar
-      onBold={() => exec("bold")}
-      onItalic={() => exec("italic")}
-      onUnderline={() => exec("underline")}
-      onList={() => exec("insertUnorderedList")}
-      onClearFormat={() => exec("removeFormat")}
-      onFontSize={applyFontSize}
-      isFullscreen={isFullscreen}
-      onToggleFullscreen={toggleFullscreen}
-    />
-  );
-
-  const editor: ReactNode = (
-    <EditableArea
-      key={mountKey}
-      editorRef={editorRef}
-      initialHtml={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={styles.editable}
-    />
-  );
+  const toolbar = <Toolbar editor={editor} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen((f) => !f)} />;
+  const content = <EditorContent editor={editor} />;
 
   if (isFullscreen && typeof document !== "undefined") {
     return createPortal(
       <div className={styles.fullscreenOverlay} role="dialog" aria-modal="true">
         <div className={styles.fullscreenHeader}>
           <p className={styles.fullscreenTitle}>{label || "Editando"}</p>
-          <button type="button" onClick={toggleFullscreen} className={styles.btn} style={{ fontWeight: 600, minWidth: "auto", padding: "0 14px" }}>
+          <button type="button" onClick={() => setIsFullscreen(false)} className={styles.btn} style={{ fontWeight: 600, minWidth: "auto", padding: "0 14px" }}>
             Concluir
           </button>
         </div>
         <div className={styles.fullscreenBody}>
           <div className={styles.wrap}>
             {toolbar}
-            {editor}
+            {content}
           </div>
         </div>
       </div>,
@@ -247,7 +278,7 @@ export function RichTextEditor({
   return (
     <div className={styles.wrap}>
       {toolbar}
-      {editor}
+      {content}
     </div>
   );
 }
