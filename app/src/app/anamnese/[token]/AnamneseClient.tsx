@@ -363,15 +363,7 @@ export function AnamneseClient({ token }: { token: string }) {
 
             {signError && <div className={styles.errorMessage}>{signError}</div>}
 
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
-              <SignatureMark
-                snapshotDataUrl={signatureSnapshot}
-                title={name}
-                subtitle={cpf ? `CPF: ${cpf}` : undefined}
-                timestamp={hasSignature ? new Date() : undefined}
-                ip="Autenticado"
-              />
-            </div>
+
 
             <div className={styles.buttonRow}>
               <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
