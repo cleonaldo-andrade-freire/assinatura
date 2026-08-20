@@ -3,24 +3,44 @@ import sanitizeHtml from "sanitize-html";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Clinic } from "@/lib/database.types";
 
+const QL_ALIGN_CLASS = /^ql-align-(center|right|justify)$/;
+const QL_SIZE_CLASS = /^ql-size-(small|large|huge)$/;
+const CSS_COLOR = [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d.,\s%]+\)$/i];
+
 /** O texto do termo vem do editor rico em Configurações (RichTextEditor,
- * baseado em Tiptap/ProseMirror) e é exibido pro paciente na página pública
- * de assinatura — sanitiza no momento de salvar (única rota que escreve
- * nesta coluna), não na leitura, pra `clinics.consent_term_text` já nascer
- * confiável em qualquer lugar que o ler depois. Allowlist cobre exatamente
- * o que o editor consegue produzir (negrito/itálico/sublinhado/tachado,
- * títulos, cor, tamanho de fonte, alinhamento, listas, citação, link,
- * linha horizontal) — nada de script/estilo arbitrário/atributo de evento. */
+ * baseado em Quill/react-quill-new) e é exibido pro paciente na página
+ * pública de assinatura — sanitiza no momento de salvar (única rota que
+ * escreve nesta coluna), não na leitura, pra `clinics.consent_term_text` já
+ * nascer confiável em qualquer lugar que o ler depois. Allowlist reflete
+ * exatamente como `editor.getSemanticHTML()` (usado por padrão pelo
+ * react-quill-new) serializa cada formato — checado direto na fonte do
+ * pacote `quill`, não por suposição: listas viram `<ul>`/`<ol>` limpos (sem
+ * o `data-list`/`.ql-ui` que só existem no DOM de edição, nunca no HTML
+ * semântico exportado), `size`/`align` viram classe (`ql-size-*`/
+ * `ql-align-*`), `color`/`background` viram `style` inline. Nada de script/
+ * estilo arbitrário/atributo de evento passa. */
 export function sanitizeConsentTermHtml(html: string): string {
   return sanitizeHtml(html, {
-    allowedTags: ["b", "strong", "i", "em", "u", "s", "span", "p", "div", "br", "hr", "ul", "ol", "li", "h1", "h2", "h3", "blockquote", "a"],
-    allowedAttributes: { span: ["style"], p: ["style"], h1: ["style"], h2: ["style"], h3: ["style"], a: ["href", "rel", "target"] },
+    allowedTags: ["b", "strong", "i", "em", "u", "s", "span", "p", "br", "ul", "ol", "li", "h1", "h2", "h3", "blockquote", "a"],
+    allowedAttributes: {
+      span: ["style", "class"],
+      p: ["class"],
+      h1: ["class"],
+      h2: ["class"],
+      h3: ["class"],
+      li: ["class"],
+      a: ["href", "rel", "target"],
+    },
+    allowedClasses: {
+      span: [QL_SIZE_CLASS],
+      p: [QL_ALIGN_CLASS],
+      h1: [QL_ALIGN_CLASS],
+      h2: [QL_ALIGN_CLASS],
+      h3: [QL_ALIGN_CLASS],
+      li: [QL_ALIGN_CLASS],
+    },
     allowedStyles: {
-      span: { "font-size": [/^\d{1,3}px$/], color: [/^#[0-9a-f]{3,8}$/i] },
-      p: { "text-align": [/^(left|center|right|justify)$/] },
-      h1: { "text-align": [/^(left|center|right|justify)$/] },
-      h2: { "text-align": [/^(left|center|right|justify)$/] },
-      h3: { "text-align": [/^(left|center|right|justify)$/] },
+      span: { color: CSS_COLOR, "background-color": CSS_COLOR },
     },
     disallowedTagsMode: "discard",
   });

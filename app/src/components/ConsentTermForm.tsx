@@ -6,10 +6,10 @@ import dynamic from "next/dynamic";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
-// Tiptap sozinho pesa ~130kB — carregado só quando este painel realmente
-// monta (em vez de inline em Configurações, que é uma página com um monte
-// de outros painéis que não precisam disso), e nunca no servidor (é
-// contentEditable puro, não faz sentido em SSR).
+// Quill sozinho pesa uma boa fatia do bundle — carregado só quando este
+// painel realmente monta (em vez de inline em Configurações, que é uma
+// página com um monte de outros painéis que não precisam disso), e nunca
+// no servidor (edição de texto não faz sentido em SSR).
 const RichTextEditor = dynamic(() => import("@/components/ui/RichTextEditor").then((m) => m.RichTextEditor), {
   ssr: false,
   loading: () => <div className={styles.input} style={{ minHeight: 200, color: "var(--ink-faint)", fontSize: 13.5 }}>Carregando editor…</div>,

@@ -1,177 +1,73 @@
 .wrap {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 6px;
-  border-bottom: 1px solid var(--line);
+/* Quill (tema snow) já vem com toolbar e área de conteúdo prontas — só
+   ajustamos raio de borda e tipografia pra combinar com o resto do
+   formulário, sem reconstruir nenhum botão. */
+.quillRoot :global(.ql-toolbar.ql-snow) {
+  border-color: var(--line);
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
   background: var(--surface-sunken);
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: none;
-  color: var(--ink);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--surface);
+.quillRoot :global(.ql-container.ql-snow) {
   border-color: var(--line);
-}
-
-.btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.btnActive {
-  background: var(--brand-tint);
-  border-color: var(--brand);
-  color: var(--brand-deep);
-}
-
-.colorSwatch {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.colorSwatch:hover {
-  background: var(--surface);
-}
-
-.colorSwatch input[type="color"] {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.sep {
-  width: 1px;
-  height: 20px;
-  background: var(--line);
-  margin: 0 4px;
-  flex: none;
-}
-
-.select {
-  height: 30px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 12.5px;
-  padding: 0 6px;
-  cursor: pointer;
-}
-
-.expandBtn {
-  margin-left: auto;
-}
-
-.editable {
-  min-height: 200px;
-  padding: 12px 14px;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  font-family: inherit;
   font-size: 14.5px;
-  line-height: 1.6;
+}
+
+.quillRoot :global(.ql-editor) {
+  min-height: 200px;
   color: var(--ink);
-  outline: none;
-  overflow-y: auto;
+  line-height: 1.6;
 }
 
-/* Estilos do conteúdo formatado — compartilhados entre a área de edição
-   (Tiptap monta o ProseMirror direto nesta div, classe vinda de
-   editorProps.attributes.class) e a renderização somente-leitura no
-   portal público do paciente (ver EvolucaoAssinaturaClient). */
-.editable :global(p.is-editor-empty:first-child)::before {
-  content: attr(data-placeholder);
+.quillRoot :global(.ql-editor.ql-blank::before) {
   color: var(--ink-faint);
-  float: left;
-  height: 0;
-  pointer-events: none;
+  font-style: normal;
 }
 
-.editable h1,
-.richContent h1 {
-  font-size: 1.5em;
-  font-weight: 700;
-  margin: 0.6em 0 0.3em;
-  color: var(--brand-deep);
-}
-
-.editable h2,
-.richContent h2 {
-  font-size: 1.25em;
-  font-weight: 700;
-  margin: 0.6em 0 0.3em;
-  color: var(--brand-deep);
-}
-
-.editable h3,
-.richContent h3 {
-  font-size: 1.1em;
-  font-weight: 700;
-  margin: 0.6em 0 0.3em;
-}
-
-.editable p,
-.richContent p {
-  margin: 0 0 0.6em;
-}
-
-.editable ul,
-.richContent ul,
-.editable ol,
-.richContent ol {
-  margin: 0 0 0.6em;
-  padding-left: 1.4em;
-}
-
-.editable blockquote,
-.richContent blockquote {
-  margin: 0.6em 0;
-  padding-left: 12px;
-  border-left: 3px solid var(--brand);
+.quillRoot :global(.ql-snow .ql-picker),
+.quillRoot :global(.ql-snow .ql-stroke) {
   color: var(--ink-soft);
 }
 
-.editable hr,
-.richContent hr {
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 1em 0;
+.quillRoot :global(.ql-snow.ql-toolbar button:hover),
+.quillRoot :global(.ql-snow .ql-toolbar button:hover),
+.quillRoot :global(.ql-snow.ql-toolbar button.ql-active),
+.quillRoot :global(.ql-snow .ql-toolbar button.ql-active) {
+  color: var(--brand);
 }
 
-.editable a,
-.richContent a {
+.quillRoot :global(.ql-snow.ql-toolbar button:hover .ql-stroke),
+.quillRoot :global(.ql-snow .ql-toolbar button.ql-active .ql-stroke) {
+  stroke: var(--brand);
+}
+
+.expandBtn {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.expandBtn:hover {
   color: var(--brand);
-  text-decoration: underline;
+  border-color: var(--brand);
 }
 
 .fullscreenOverlay {
@@ -200,22 +96,84 @@
   margin: 0;
 }
 
+.exitFullscreenBtn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exitFullscreenBtn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 .fullscreenBody {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
   padding: 20px;
   overflow: hidden;
 }
 
-.fullscreenBody .wrap {
-  flex: 1;
+.fullscreenBody .quillRoot {
+  height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.fullscreenBody .quillRoot :global(.ql-container.ql-snow) {
+  flex: 1;
   min-height: 0;
 }
 
-.fullscreenBody .editable {
-  flex: 1;
+.fullscreenBody .quillRoot :global(.ql-editor) {
+  min-height: 100%;
+}
+
+/* Renderização somente-leitura do termo assinado pelo paciente
+   (EvolucaoAssinaturaClient) — mesma tipografia do editor, sem toolbar. */
+.richContent h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: var(--brand-deep);
+}
+
+.richContent h2 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: var(--brand-deep);
+}
+
+.richContent h3 {
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.richContent p {
+  margin: 0 0 0.6em;
+}
+
+.richContent ul,
+.richContent ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.4em;
+}
+
+.richContent blockquote {
+  margin: 0.6em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--brand);
+  color: var(--ink-soft);
+}
+
+.richContent a {
+  color: var(--brand);
+  text-decoration: underline;
 }
