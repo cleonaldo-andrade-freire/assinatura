@@ -160,7 +160,11 @@
   margin-bottom: 8px;
 }
 
-.input {
+/* .input.input (classe duplicada) de propósito — input[type="text"] do
+   globals.css tem especificidade elemento+atributo (0,1,1), que bate uma
+   classe só (0,1,0) e silenciosamente ganhava do font-weight: bold daqui
+   (ver mesmo problema/solução em shell.module.css:1150). */
+.input.input {
   width: 100%;
   padding: 12px 14px;
   font-size: 16px; /* 16px evita o zoom automático do iOS ao focar no input */

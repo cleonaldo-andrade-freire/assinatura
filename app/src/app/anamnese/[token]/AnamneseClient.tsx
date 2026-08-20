@@ -153,6 +153,8 @@ export function AnamneseClient({ token }: { token: string }) {
         setStep("saude");
       }
     } else if (step === "saude") {
+      const unanswered = questions.some((_, i) => !healthAnswers[i]?.yesNo);
+      if (unanswered) return setFormError("Por favor, responda todas as perguntas antes de continuar.");
       setStep("assinatura");
     }
   }
@@ -444,6 +446,8 @@ export function AnamneseClient({ token }: { token: string }) {
               );
             })}
 
+            {formError && <div className={styles.errorMessage}>{formError}</div>}
+
             <div className={styles.buttonRow}>
               <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
               <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleNext}>Continuar</button>
@@ -467,8 +471,9 @@ export function AnamneseClient({ token }: { token: string }) {
                 Seu IP, data e hora serão registrados para garantir a validade jurídica deste documento.
               </p>
               
-              <div className="w-full relative border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 mb-2" style={{ height: "240px", touchAction: "none" }}>
-                <SignatureCanvas 
+              <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Recomendamos realizar uma rubrica em vez de assinar por extenso</p>
+              <div className="w-full relative border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 p-2" style={{ touchAction: "none" }}>
+                <SignatureCanvas
                   onChange={result => {
                     setSignature(result);
                     setHasSignature(!!result);
@@ -477,23 +482,6 @@ export function AnamneseClient({ token }: { token: string }) {
                   }}
                   height={240}
                 />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#6b7280" }}>Recomendamos realizar uma rubrica em vez de assinar por extenso</span>
-                <button 
-                  className={styles.button}
-                  style={{ padding: "6px 12px", fontSize: 13 }}
-                  onClick={() => {
-                    const canvas = document.querySelector('canvas');
-                    if (canvas) {
-                      const ctx = canvas.getContext('2d');
-                      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-                      setSignature(null);
-                    }
-                  }}
-                >
-                  Limpar
-                </button>
               </div>
             </div>
 
