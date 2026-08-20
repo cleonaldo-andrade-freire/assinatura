@@ -65,7 +65,13 @@ export function OpenTreatmentsSummary({ clinicId, patientId }: { clinicId: strin
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          // O botão vive dentro do bloco clicável que abre a ficha do
+          // paciente (ver AppointmentDetailBody) — sem isso, o clique
+          // borbulhava e navegava por cima do modal recém-aberto.
+          e.stopPropagation();
+          setOpen(true);
+        }}
         style={{
           display: "inline-flex",
           alignItems: "center",
