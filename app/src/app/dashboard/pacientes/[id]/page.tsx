@@ -96,9 +96,9 @@ export default async function EditPatientPage({
   const prescriptionTemplates = (prescriptionTemplatesData as PrescriptionTemplate[]) ?? [];
   const questionTemplates = (questionTemplatesData as QuestionTemplate[]) ?? [];
 
-  const requestedTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "agendamentos";
+  const requestedTab: PatientTabKey = isTabKey(searchParams.tab) ? searchParams.tab : "dados_pessoais";
   const activeTab: PatientTabKey =
-    role === "staff" && !STAFF_ALLOWED_TAB_KEYS.has(requestedTab) ? "agendamentos" : requestedTab;
+    role === "staff" && !STAFF_ALLOWED_TAB_KEYS.has(requestedTab) ? "dados_pessoais" : requestedTab;
   // Preserva a aba atual nos links de paginação — sem isso, paginar dentro
   // de "Atestados" te devolvia na recarga com a aba "Anamneses" em foco.
   function pageHref(base: string, extra: Record<string, string | number>) {
@@ -602,12 +602,11 @@ export default async function EditPatientPage({
       userName={userName}
       userAvatarUrl={userAvatarUrl}
     >
-      <PatientForm clinicId={clinic.id} patient={patient} />
-
       <PatientTabs
         initialTab={activeTab}
         role={role}
         panels={{
+          dados_pessoais: <PatientForm clinicId={clinic.id} patient={patient} />,
           anamneses: anamnesesPanel,
           agendamentos: agendamentosPanel,
           orcamentos: orcamentosPanel,

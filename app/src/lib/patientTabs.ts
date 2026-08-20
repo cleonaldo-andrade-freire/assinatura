@@ -8,6 +8,7 @@
  * the client". Dado puro fica bem longe da diretiva de cliente.
  */
 export const PATIENT_TABS = [
+  { key: "dados_pessoais", label: "Dados Pessoais" },
   { key: "agendamentos", label: "Agendamentos" },
   { key: "orcamentos", label: "Orçamentos" },
   { key: "tratamentos", label: "Tratamentos" },
@@ -24,4 +25,4 @@ export type PatientTabKey = (typeof PATIENT_TABS)[number]["key"];
 // critério do menu lateral (ClinicShell): dados clínicos/documentos ficam
 // só com o owner, o operacional (agenda, tratamentos, débitos, imagens)
 // continua liberado.
-export const STAFF_ALLOWED_TAB_KEYS = new Set<PatientTabKey>(["agendamentos", "tratamentos", "debitos"]);
+export const STAFF_ALLOWED_TAB_KEYS = new Set<PatientTabKey>(["dados_pessoais", "agendamentos", "tratamentos", "debitos"]);

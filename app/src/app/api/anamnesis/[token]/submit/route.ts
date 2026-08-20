@@ -1,0 +1,186 @@
+import crypto from "crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isValidToken } from "@/lib/validation";
+import { savePdf } from "@/lib/pdfStorage";
+import { notifyClinicSigned } from "@/lib/evolution"; // Pode ser ajustado para anamnese
+// Importe a função de geração de PDF depois que criarmos
+import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf"; 
+
+const answerSchema = z.object({
+  question: z.string(),
+  answer: z.string(),
+});
+
+const strokeSchema = z.object({ 
+  index: z.number(), 
+  points: z.array(z.object({ x: z.number(), y: z.number(), t: z.number(), p: z.number().nullable() })) 
+});
+
+const signatureSchema = z.object({
+  signerName: z.string().min(1),
+  signerCpf: z.string().min(1),
+  dataUrl: z.string().min(1),
+  strokeData: z.object({
+    schema: z.literal("tracado/v1"),
+    canvas: z.object({ cssWidth: z.number(), cssHeight: z.number(), dpr: z.number() }),
+    capturedAt: z.string(),
+    pointerType: z.string(),
+    strokes: z.array(strokeSchema),
+    metrics: z.object({
+      durationTotalMs: z.number(),
+      pointsTotal: z.number(),
+      numStrokes: z.number(),
+      bbox: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }),
+    }),
+  }),
+});
+
+const bodySchema = z.object({
+  patient_name: z.string().min(1),
+  patient_cpf: z.string().optional().nullable(),
+  patient_phone: z.string().optional().nullable(),
+  birth_date: z.string().optional().nullable(),
+  rg: z.string().optional().nullable(),
+  occupation: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  answers: z.array(answerSchema),
+  signature: signatureSchema,
+});
+
+export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
+  if (!isValidToken(params.token)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  // 1. Busca a anamnese pendente
+  const { data: anamnesis } = await supabase
+    .from("anamneses")
+    .select("id, clinic_id, patient_cpf, patient_phone")
+    .eq("token", params.token)
+    .single();
+
+  if (!anamnesis) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  // 2. Verifica se já assinou
+  const { data: existingSignature } = await supabase
+    .from("signatures")
+    .select("id")
+    .eq("anamnesis_id", anamnesis.id)
+    .maybeSingle();
+
+  if (existingSignature) {
+    return NextResponse.json({ error: "already_signed" }, { status: 409 });
+  }
+
+  // 3. Valida o payload
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_body", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const payload = parsed.data;
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const userAgent = req.headers.get("user-agent") || "unknown";
+  const signedAtServer = new Date().toISOString();
+
+  // 4. Atualiza os dados da Anamnese (Answers)
+  const { error: updateError } = await supabase
+    .from("anamneses")
+    .update({ 
+      patient_name: payload.patient_name,
+      patient_cpf: payload.patient_cpf || anamnesis.patient_cpf,
+      patient_phone: payload.patient_phone || anamnesis.patient_phone,
+      answers: payload.answers 
+    })
+    .eq("id", anamnesis.id);
+
+  if (updateError) {
+    return NextResponse.json({ error: "update_anamnesis_failed" }, { status: 500 });
+  }
+
+  // 5. Enriquecimento do Paciente (Patients)
+  // Busca o paciente pelo cpf ou telefone para atualizar
+  let patientQuery = supabase.from("patients").select("id").eq("clinic_id", anamnesis.clinic_id);
+  if (payload.patient_cpf) {
+    patientQuery = patientQuery.eq("cpf", payload.patient_cpf);
+  } else if (payload.patient_phone) {
+    patientQuery = patientQuery.eq("phone", payload.patient_phone);
+  }
+  const { data: patientMatches } = await patientQuery;
+
+  if (patientMatches && patientMatches.length > 0) {
+    const patientId = patientMatches[0].id;
+    await supabase.from("patients").update({
+      name: payload.patient_name,
+      cpf: payload.patient_cpf,
+      phone: payload.patient_phone,
+      birth_date: payload.birth_date,
+      rg: payload.rg,
+      occupation: payload.occupation,
+      address: payload.address,
+      updated_at: new Date().toISOString()
+    }).eq("id", patientId);
+  }
+
+  // 6. Busca dados da clínica para o PDF
+  const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", anamnesis.clinic_id).single();
+
+  // 7. Geração do PDF no backend
+  const pdfBytes = await buildAnamnesisSignedPdf({
+    clinicName: clinic?.name || "Clínica",
+    clinicLogoUrl: clinic?.logo_url || null,
+    patient: {
+      name: payload.patient_name,
+      cpf: payload.patient_cpf || null,
+      birthDate: payload.birth_date || null,
+      rg: payload.rg || null,
+      occupation: payload.occupation || null,
+      address: payload.address || null
+    },
+    answers: payload.answers,
+    signature: {
+      signerName: payload.signature.signerName,
+      signerCpf: payload.signature.signerCpf,
+      signedAt: signedAtServer,
+      ip: ip,
+      dataUrl: payload.signature.dataUrl
+    }
+  });
+
+  const pdfBuffer = Buffer.from(pdfBytes);
+  const sha256 = crypto.createHash("sha256").update(pdfBuffer).digest("hex");
+  
+  // 8. Salvar PDF no Storage
+  const pdfStorageKey = await savePdf(anamnesis.clinic_id, anamnesis.id, pdfBuffer);
+
+  // 9. Registrar Assinatura
+  const { data: signatureData, error: signatureError } = await supabase
+    .from("signatures")
+    .insert({
+      anamnesis_id: anamnesis.id,
+      clinic_id: anamnesis.clinic_id,
+      signer_name: payload.signature.signerName,
+      signer_cpf: payload.signature.signerCpf,
+      signed_at_client: payload.signature.strokeData.capturedAt,
+      signed_at_server: signedAtServer,
+      ip,
+      user_agent: userAgent,
+      sha256,
+      pdf_storage_key: pdfStorageKey,
+      stroke_data: payload.signature.strokeData as any,
+    })
+    .select("id")
+    .single();
+
+  if (signatureError) {
+    return NextResponse.json({ error: "signature_failed" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, signature_id: signatureData.id });
+}

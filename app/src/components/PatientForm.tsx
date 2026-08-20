@@ -14,6 +14,9 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
   const [cpf, setCpf] = useState(patient?.cpf ? formatCPF(patient.cpf) : "");
   const [phone, setPhone] = useState(patient?.phone ? formatBRPhoneLocal(patient.phone) : "");
   const [birthDate, setBirthDate] = useState(patient?.birth_date ?? "");
+  const [rg, setRg] = useState(patient?.rg ?? "");
+  const [occupation, setOccupation] = useState(patient?.occupation ?? "");
+  const [address, setAddress] = useState(patient?.address ?? "");
   const [notes, setNotes] = useState(patient?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,9 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
           cpf: cpf.trim() || undefined,
           phone: phone.trim() ? toE164BR(phone) : undefined,
           birth_date: birthDate.trim() || undefined,
+          rg: rg.trim() || undefined,
+          occupation: occupation.trim() || undefined,
+          address: address.trim() || undefined,
           notes: notes.trim() || undefined,
         }),
       });
@@ -112,19 +118,63 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
             </div>
           </div>
 
-          <div className={styles.field} style={{ maxWidth: 220 }}>
-            <label htmlFor="patientBirthDate" className={styles.label}>
-              Data de nascimento (opcional)
-            </label>
-            <input
-              id="patientBirthDate"
-              type="date"
-              className={styles.input}
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              max={brDateOnly()}
-            />
-            {birthDateError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{birthDateError}</div>}
+          <div className={styles.formRow}>
+            <div className={styles.field}>
+              <label htmlFor="patientBirthDate" className={styles.label}>
+                Data de nascimento (opcional)
+              </label>
+              <input
+                id="patientBirthDate"
+                type="date"
+                className={styles.input}
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                max={brDateOnly()}
+              />
+              {birthDateError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{birthDateError}</div>}
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="patientRg" className={styles.label}>
+                RG (opcional)
+              </label>
+              <input
+                id="patientRg"
+                type="text"
+                className={styles.input}
+                value={rg}
+                onChange={(e) => setRg(e.target.value)}
+                maxLength={20}
+              />
+            </div>
+          </div>
+
+          <div className={styles.formRow}>
+            <div className={styles.field}>
+              <label htmlFor="patientOccupation" className={styles.label}>
+                Ocupação / Profissão (opcional)
+              </label>
+              <input
+                id="patientOccupation"
+                type="text"
+                className={styles.input}
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="patientAddress" className={styles.label}>
+                Endereço Residencial (opcional)
+              </label>
+              <input
+                id="patientAddress"
+                type="text"
+                className={styles.input}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className={styles.field}>

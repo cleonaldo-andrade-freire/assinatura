@@ -16,7 +16,7 @@ const bodySchema = z.object({
   patient_name: z.string().min(1),
   patient_cpf: z.string().optional(),
   patient_phone: z.string().optional(),
-  answers: z.array(answerSchema),
+  answers: z.array(answerSchema).optional().default([]),
 });
 
 /**
