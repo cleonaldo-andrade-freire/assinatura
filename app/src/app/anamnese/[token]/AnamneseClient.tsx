@@ -404,12 +404,14 @@ export function AnamneseClient({ token }: { token: string }) {
                   <div className={styles.yesNoGroup}>
                     <button 
                       className={`${styles.yesNoBtn} ${ans.yesNo === "Sim" ? styles.selectedYes : ""}`}
+                      style={{ backgroundColor: ans.yesNo === "Sim" ? "#ef4444" : undefined, color: ans.yesNo === "Sim" ? "#fff" : undefined, borderColor: ans.yesNo === "Sim" ? "#ef4444" : undefined }}
                       onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Sim" } }))}
                     >
                       Sim
                     </button>
                     <button 
                       className={`${styles.yesNoBtn} ${ans.yesNo === "Não" ? styles.selectedNo : ""}`}
+                      style={{ backgroundColor: ans.yesNo === "Não" ? "#10b981" : undefined, color: ans.yesNo === "Não" ? "#fff" : undefined, borderColor: ans.yesNo === "Não" ? "#10b981" : undefined }}
                       onClick={() => setHealthAnswers(prev => ({ ...prev, [i]: { ...prev[i], yesNo: "Não", text: "" } }))}
                     >
                       Não
