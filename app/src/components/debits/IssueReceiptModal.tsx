@@ -103,7 +103,7 @@ export function IssueReceiptModal({
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 style={{ textAlign: "center", textDecoration: "none" }}
               >
-                Baixar PDF
+                📄 Baixar PDF
               </a>
               <button type="button" disabled={sendingWhatsApp} onClick={handleSendWhatsApp} className={`${styles.btn} ${styles.btnGhost}`}>
                 {sendingWhatsApp ? "Enviando…" : "📲 Enviar por WhatsApp"}

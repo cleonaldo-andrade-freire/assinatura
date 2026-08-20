@@ -303,8 +303,18 @@ export default async function AnamnesesPage({
                       </td>
                       <StopPropagationTd>
                         {signatureId ? (
-                          <a href={`/api/pdf/${signatureId}`} target="_blank" rel="noreferrer">
-                            Baixar PDF
+                          <a
+                            href={`/api/pdf/${signatureId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.iconActionBtn}
+                            title="Baixar PDF assinado"
+                            aria-label="Baixar PDF assinado"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                            </svg>
                           </a>
                         ) : (
                           <a href={`/assinatura?token=${a.token}`} target="_blank" rel="noreferrer">

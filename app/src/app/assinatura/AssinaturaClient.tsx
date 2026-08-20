@@ -849,7 +849,10 @@ export function AssinaturaClient() {
               href={pdfUrl}
               download="anamnese-assinada.pdf"
               style={{
-                display: "inline-block",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 background: "var(--surface)",
                 border: "1.5px solid var(--line)",
                 color: "var(--ink)",
@@ -860,6 +863,10 @@ export function AssinaturaClient() {
                 textDecoration: "none",
               }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
               Baixar minha cópia em PDF
             </a>
           )}
