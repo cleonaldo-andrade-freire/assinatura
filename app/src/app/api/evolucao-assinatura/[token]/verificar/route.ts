@@ -27,7 +27,19 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: result.error }, { status: statusByError[result.error] ?? 400 });
   }
 
-  const session = issueSessionToken(params.token);
+  let session: ReturnType<typeof issueSessionToken>;
+  try {
+    session = issueSessionToken(params.token);
+  } catch (err) {
+    // EVOLUTION_SIGNATURE_SESSION_SECRET ausente no ambiente é o caso mais
+    // provável aqui — sem isso o segundo fator até confere certo, mas nunca
+    // consegue emitir a sessão que libera o documento. Volta um JSON com
+    // causa identificável em vez de deixar a exceção virar a página de erro
+    // padrão da Vercel (sem corpo JSON, o frontend só mostra "tente de novo"
+    // genérico e não dá pra saber o motivo pelo Network tab).
+    console.error("Falha ao emitir sessão de assinatura de evolução:", err);
+    return NextResponse.json({ error: "server_misconfigured" }, { status: 500 });
+  }
   const res = NextResponse.json({ ok: true, expires_at: session.expiresAt });
   res.cookies.set(sessionCookieName(params.token), session.value, {
     httpOnly: true,

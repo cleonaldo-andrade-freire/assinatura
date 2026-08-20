@@ -26,7 +26,10 @@ export function issueSessionToken(evolutionToken: string): { value: string; expi
 
 /** Retorna `true` só se o cookie foi emitido pra ESTE token de evolução
  * específico e ainda não expirou — impede reaproveitar a sessão de um
- * documento pra ler/assinar outro. */
+ * documento pra ler/assinar outro. É um predicado (nunca deveria lançar
+ * exceção pro chamador): se o segredo não estiver configurado no ambiente,
+ * trata como "sessão inválida" (nega acesso) em vez de derrubar a rota com
+ * um 500 sem corpo JSON — só loga, pra aparecer nos logs do servidor. */
 export function verifySessionToken(cookieValue: string | undefined, evolutionToken: string): boolean {
   if (!cookieValue) return false;
   const parts = cookieValue.split(".");
@@ -37,7 +40,13 @@ export function verifySessionToken(cookieValue: string | undefined, evolutionTok
   const expiresAt = Number(expiresAtPart);
   if (!Number.isFinite(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) return false;
 
-  const expectedSignature = crypto.createHmac("sha256", getSecret()).update(`${tokenPart}.${expiresAtPart}`).digest("hex");
+  let expectedSignature: string;
+  try {
+    expectedSignature = crypto.createHmac("sha256", getSecret()).update(`${tokenPart}.${expiresAtPart}`).digest("hex");
+  } catch (err) {
+    console.error("Falha ao verificar sessão de assinatura de evolução:", err);
+    return false;
+  }
   const a = Buffer.from(signature, "hex");
   const b = Buffer.from(expectedSignature, "hex");
   return a.length === b.length && crypto.timingSafeEqual(a, b);

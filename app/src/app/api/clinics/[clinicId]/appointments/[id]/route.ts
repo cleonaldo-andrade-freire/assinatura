@@ -110,8 +110,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     }
   }
 
+  // Remarcar um agendamento já confirmado volta ele pra "agendado" — a
+  // confirmação que o paciente deu foi pro horário ANTIGO, não faz sentido
+  // continuar valendo pro novo. Também é o que destrava de novo o link de
+  // confirmação: processAppointmentResponse só atualiza a linha quando o
+  // status ainda é "agendado" (ver appointmentNotifications.ts), então sem
+  // isso o link mandado por sendAppointmentRescheduled logo abaixo
+  // pareceria funcionar mas não faria nada ao ser tocado.
+  const autoResetToAgendado = scheduledAtChanged && appointment.status === "confirmado" && input.status === undefined;
+
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (input.status !== undefined) update.status = input.status;
+  else if (autoResetToAgendado) update.status = "agendado";
   if (input.scheduled_at !== undefined) update.scheduled_at = input.scheduled_at;
   if (input.duration_minutes !== undefined) update.duration_minutes = input.duration_minutes;
   if (input.urgent !== undefined) update.urgent = input.urgent;
@@ -149,6 +159,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
         to: { scheduled_at: updated.scheduled_at, duration_minutes: updated.duration_minutes },
       },
     });
+    if (autoResetToAgendado) {
+      await recordAppointmentEvent(supabase, {
+        appointmentId: appointment.id,
+        clinicId: clinic.id,
+        eventType: "status_changed",
+        fromStatus: "confirmado",
+        toStatus: "agendado",
+        actor: "sistema",
+        meta: { motivo: "remarcado — confirmação anterior valia pro horário antigo" },
+      });
+    }
     // Best-effort — mesmo padrão do resto do app: uma falha de WhatsApp não
     // pode impedir a remarcação de ter sido salva.
     try {
