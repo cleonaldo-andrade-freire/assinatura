@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getClinicAndRole } from "@/lib/auth";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { ClinicProfileForm } from "@/components/ClinicProfileForm";
+import { ConsentTermForm } from "@/components/ConsentTermForm";
 import { LogoUpload } from "@/components/LogoUpload";
 import { ConnectWhatsApp } from "@/components/ConnectWhatsApp";
 import { PlanPicker } from "@/components/PlanPicker";
@@ -118,6 +119,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
       </div>
 
       <ClinicProfileForm clinicId={clinic.id} clinic={clinic} />
+
+      <ConsentTermForm clinicId={clinic.id} clinic={clinic} />
 
       {/* Equipe — somente owner */}
       {role === "owner" && (

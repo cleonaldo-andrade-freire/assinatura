@@ -39,3 +39,15 @@ export async function ensureUniqueValidationCode(supabase: SupabaseClient): Prom
   }
   throw new Error("Não foi possível gerar um código de validação único depois de várias tentativas.");
 }
+
+/** Mesma ideia de `ensureUniqueValidationCode`, mas pro código embutido no
+ * manifesto de assinatura da evolução clínica (tabela própria, não
+ * `certificates`/`prescriptions`). */
+export async function ensureUniqueEvolutionSignatureCode(supabase: SupabaseClient): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = randomCode();
+    const { data } = await supabase.from("treatment_evolution_signatures").select("id").eq("verification_code", candidate).maybeSingle();
+    if (!data) return candidate;
+  }
+  throw new Error("Não foi possível gerar um código de verificação único depois de várias tentativas.");
+}

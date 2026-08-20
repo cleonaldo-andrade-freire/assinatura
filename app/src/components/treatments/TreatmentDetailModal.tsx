@@ -72,6 +72,7 @@ export function TreatmentDetailModal({
 
   const [confirmDeleteEvolutionId, setConfirmDeleteEvolutionId] = useState<string | null>(null);
   const [deletingEvolutionId, setDeletingEvolutionId] = useState<string | null>(null);
+  const [requestingSignatureId, setRequestingSignatureId] = useState<string | null>(null);
 
   // Suprime o Esc daqui enquanto algo aninhado por cima (evolução ou um
   // ConfirmDialog) já trata o próprio Esc — senão os dois fechariam juntos.
@@ -183,7 +184,7 @@ export function TreatmentDetailModal({
         const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${evolutionModalInitial.id}`, { method: "PATCH", body: form });
         const data = await res.json();
         if (!res.ok) {
-          push("Falha ao salvar a evolução. Tenta de novo.");
+          push(data.message || "Falha ao salvar a evolução. Tenta de novo.");
           return;
         }
         setEvolutions((prev) => prev.map((ev) => (ev.id === evolutionModalInitial.id ? (data.evolution as TreatmentEvolution) : ev)));
@@ -204,6 +205,23 @@ export function TreatmentDetailModal({
     }
   }
 
+  async function handleRequestSignature(id: string) {
+    setRequestingSignatureId(id);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${id}/solicitar-assinatura`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        push(data.message || "Falha ao solicitar assinatura. Tenta de novo.", "error");
+        return;
+      }
+      const refreshed = await fetch(`/api/clinics/${clinicId}/treatments/${treatment!.id}/evolutions`).then((r) => r.json());
+      setEvolutions(refreshed.evolutions ?? []);
+      push("Solicitação enviada por WhatsApp ao paciente.", "success");
+    } finally {
+      setRequestingSignatureId(null);
+    }
+  }
+
   function toggleExpanded(id: string) {
     setExpandedEvolutionIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   }
@@ -213,7 +231,8 @@ export function TreatmentDetailModal({
     try {
       const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        push("Falha ao excluir. Tenta de novo.");
+        const data = await res.json().catch(() => null);
+        push(data?.message || "Falha ao excluir. Tenta de novo.");
         return;
       }
       setEvolutions((prev) => prev.filter((e) => e.id !== id));
@@ -418,22 +437,53 @@ export function TreatmentDetailModal({
                               <span className={tp.evolutionDate}>
                                 {formatBRDate(`${e.evolution_date}T12:00:00-03:00`)} · {formatBRTime(e.created_at)}
                               </span>
-                              <div style={{ display: "flex", gap: 10 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditEvolution(e)}
-                                  style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12 }}
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={deletingEvolutionId === e.id}
-                                  onClick={() => setConfirmDeleteEvolutionId(e.id)}
-                                  style={{ border: "none", background: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12 }}
-                                >
-                                  Excluir
-                                </button>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                {e.signature_status !== "nao_solicitada" && (
+                                  <span
+                                    className={`${styles.statusBadge} ${
+                                      e.signature_status === "assinada"
+                                        ? styles.statusOk
+                                        : e.signature_status === "recusada" || e.signature_status === "expirada"
+                                        ? styles.statusDanger
+                                        : styles.statusWarn
+                                    }`}
+                                  >
+                                    {
+                                      { solicitada: "Assinatura pendente", assinada: "Assinada", recusada: "Recusada", expirada: "Link expirado" }[
+                                        e.signature_status
+                                      ]
+                                    }
+                                  </span>
+                                )}
+                                {(e.signature_status === "nao_solicitada" || e.signature_status === "recusada" || e.signature_status === "expirada") && (
+                                  <button
+                                    type="button"
+                                    disabled={requestingSignatureId === e.id}
+                                    onClick={() => handleRequestSignature(e.id)}
+                                    style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                                  >
+                                    {requestingSignatureId === e.id ? "Enviando…" : "Solicitar assinatura"}
+                                  </button>
+                                )}
+                                {e.signature_status !== "solicitada" && e.signature_status !== "assinada" && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditEvolution(e)}
+                                      style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12 }}
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={deletingEvolutionId === e.id}
+                                      onClick={() => setConfirmDeleteEvolutionId(e.id)}
+                                      style={{ border: "none", background: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12 }}
+                                    >
+                                      Excluir
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                             <p className={tp.evolutionText}>

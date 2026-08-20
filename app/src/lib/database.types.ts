@@ -38,6 +38,14 @@ export interface Clinic {
   psc_refresh_token?: string | null;
   psc_certificate_alias?: string | null;
   psc_certificate_pem?: string | null;
+  /** Texto do Termo de Adesão ao Meio Eletrônico, configurável pela própria
+   * clínica em Configurações (nasce vazio — enquanto vazio, solicitar
+   * assinatura de evolução fica bloqueado, ver lib/electronicConsent.ts).
+   * Nunca hardcoded no código: cada clínica cola a versão revisada pelo
+   * próprio advogado. */
+  consent_term_text: string | null;
+  consent_term_version: string | null;
+  consent_term_updated_at: string | null;
   created_at: string;
 }
 
@@ -82,6 +90,9 @@ export interface Signature {
   sha256: string;
   pdf_storage_key: string;
   created_at: string;
+  /** Traçado vetorial (pontos + pressão + tempo) — ver migration 052 e
+   * SignatureCanvas.tsx. `null` em assinaturas feitas antes dessa migration. */
+  stroke_data: Record<string, unknown> | null;
 }
 
 export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";
@@ -573,6 +584,9 @@ export interface Expense {
 }
 
 /** Um registro de evolução (nota + até 5 imagens) — um tratamento pode ter vários ao longo do tempo. */
+/** nao_solicitada → solicitada → assinada | recusada | expirada. Ver migration 052. */
+export type EvolutionSignatureStatus = "nao_solicitada" | "solicitada" | "assinada" | "recusada" | "expirada";
+
 export interface TreatmentEvolution {
   id: string;
   clinic_id: string;
@@ -586,6 +600,70 @@ export interface TreatmentEvolution {
   /** Descrição opcional de cada imagem, mesma ordem/posição de `image_keys`. */
   image_descriptions: string[] | null;
   created_at: string;
+  // Assinatura eletrônica (módulo de evolução, ver migration 052) — todos
+  // opcionais/com default, evoluções criadas antes deste módulo continuam
+  // válidas com signature_status = "nao_solicitada".
+  signature_token: string | null;
+  signature_status: EvolutionSignatureStatus;
+  signature_requested_at: string | null;
+  signature_token_expires_at: string | null;
+  signature_verification_attempts: number;
+  signature_blocked_until: string | null;
+  signature_refused_at: string | null;
+  signature_refused_reason: string | null;
+  content_snapshot: Record<string, unknown> | null;
+  content_hash: string | null;
+  sent_whatsapp_at: string | null;
+}
+
+export interface TreatmentEvolutionSignature {
+  id: string;
+  treatment_evolution_id: string;
+  clinic_id: string;
+  signer_name: string;
+  signer_cpf: string | null;
+  signed_at_client: string;
+  signed_at_server: string;
+  ip: string | null;
+  user_agent: string | null;
+  sha256: string;
+  pdf_storage_key: string;
+  stroke_data: Record<string, unknown> | null;
+  verification_code: string;
+  created_at: string;
+}
+
+export interface ElectronicConsentTerm {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  term_version: string;
+  term_text_hash: string;
+  accepted_at: string;
+  accept_channel: string;
+  phone_e164: string;
+  ip: string | null;
+  user_agent: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  created_at: string;
+}
+
+export interface DocumentSignatureEvent {
+  id: number;
+  clinic_id: string;
+  document_type: "anamnesis" | "treatment_evolution";
+  document_id: string;
+  sequence: number;
+  event_type: string;
+  occurred_at: string;
+  actor: "system" | "dentist" | "patient";
+  actor_id: string | null;
+  payload: Record<string, unknown>;
+  ip: string | null;
+  user_agent: string | null;
+  previous_hash: string | null;
+  event_hash: string;
 }
 
 /** Imagem solta na galeria do paciente (aba Imagens) — sem vínculo com tratamento/evolução. */

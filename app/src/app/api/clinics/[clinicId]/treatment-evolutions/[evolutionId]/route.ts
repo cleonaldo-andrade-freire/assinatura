@@ -20,6 +20,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (!evolution) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  if (evolution.signature_status === "solicitada" || evolution.signature_status === "assinada") {
+    // Editar depois de solicitar/assinar faria o texto exibido no sistema
+    // divergir do que foi (ou está sendo) assinado pelo paciente — o
+    // snapshot já congelado não muda, mas a evolução "viva" pareceria
+    // adulterada em relação ao PDF assinado.
+    return NextResponse.json(
+      { error: "signature_in_progress", message: "Esta evolução já foi enviada para assinatura e não pode mais ser editada." },
+      { status: 409 }
+    );
+  }
 
   const form = await req.formData().catch(() => null);
   if (!form) {
@@ -96,12 +106,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: { clinicId
   const supabase = await createSupabaseServerClient();
   const { data: evolution } = await supabase
     .from("treatment_evolutions")
-    .select("image_keys")
+    .select("image_keys, signature_status")
     .eq("id", params.evolutionId)
     .eq("clinic_id", clinic.id)
     .maybeSingle();
   if (!evolution) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (evolution.signature_status === "solicitada" || evolution.signature_status === "assinada") {
+    // `treatment_evolution_signatures` tem `on delete cascade` pra essa
+    // linha — excluir aqui apagaria o registro de assinatura junto,
+    // destruindo a trilha de auditoria que é o motivo do módulo existir.
+    return NextResponse.json(
+      { error: "signature_in_progress", message: "Esta evolução tem uma assinatura pendente ou concluída e não pode ser excluída." },
+      { status: 409 }
+    );
   }
 
   const { error } = await supabase.from("treatment_evolutions").delete().eq("id", params.evolutionId).eq("clinic_id", clinic.id);

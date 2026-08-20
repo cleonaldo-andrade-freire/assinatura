@@ -55,6 +55,28 @@ export async function notifyClinicSigned(
   await sendText(clinic, clinic.notify_phone, `✅ Anamnese assinada com sucesso por ${patientName}.`);
 }
 
+/** Avisa a clínica que uma evolução clínica foi assinada — best-effort,
+ * mesmo padrão de `notifyClinicSigned`. */
+export async function notifyClinicEvolutionSigned(
+  clinic: EvolutionCreds & Pick<Clinic, "notify_phone">,
+  patientName: string
+): Promise<void> {
+  if (!clinic.notify_phone) return;
+  await sendText(clinic, clinic.notify_phone, `✅ Evolução clínica assinada por ${patientName}.`);
+}
+
+/** Avisa a clínica IMEDIATAMENTE quando o paciente recusa a assinatura —
+ * o prompt original exige notificação em menos de 1 minuto, não em batch. */
+export async function notifyClinicEvolutionRefused(
+  clinic: EvolutionCreds & Pick<Clinic, "notify_phone">,
+  patientName: string,
+  reason: string | null
+): Promise<void> {
+  if (!clinic.notify_phone) return;
+  const suffix = reason ? ` Motivo informado: "${reason}"` : "";
+  await sendText(clinic, clinic.notify_phone, `⚠️ ${patientName} não reconheceu/recusou assinar a evolução clínica.${suffix}`);
+}
+
 export interface InboundMessage {
   remoteJid: string;
   phone: string; // remoteJid sem o sufixo @s.whatsapp.net
