@@ -142,6 +142,7 @@ export interface Patient {
   phone: string | null;
   notes: string | null;
   photo_storage_key: string | null;
+  birth_date: string | null;
   created_at: string;
   updated_at: string;
 }

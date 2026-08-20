@@ -12,6 +12,7 @@ const bodySchema = z.object({
     .optional()
     .refine((val) => !val || isValidCPF(val), { message: "CPF inválido" }),
   phone: z.string().min(10).optional(),
+  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   notes: z.string().optional(),
 });
 
@@ -52,6 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
       name: parsed.data.name,
       cpf: parsed.data.cpf ?? null,
       phone: parsed.data.phone ?? null,
+      birth_date: parsed.data.birth_date ?? null,
       notes: parsed.data.notes ?? null,
       updated_at: new Date().toISOString(),
     })

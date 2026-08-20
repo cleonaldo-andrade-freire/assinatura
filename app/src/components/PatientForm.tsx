@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, isValidCPF, toE164BR } from "@/lib/validation";
 import { PatientPhotoUpload } from "@/components/PatientPhotoUpload";
+import { brDateOnly } from "@/lib/date";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -12,15 +13,17 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
   const [name, setName] = useState(patient?.name ?? "");
   const [cpf, setCpf] = useState(patient?.cpf ? formatCPF(patient.cpf) : "");
   const [phone, setPhone] = useState(patient?.phone ? formatBRPhoneLocal(patient.phone) : "");
+  const [birthDate, setBirthDate] = useState(patient?.birth_date ?? "");
   const [notes, setNotes] = useState(patient?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cpfError = cpf.trim() && !isValidCPF(cpf) ? "CPF inválido." : null;
+  const birthDateError = birthDate && birthDate > brDateOnly() ? "Data de nascimento não pode ser no futuro." : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (cpfError) return;
+    if (cpfError || birthDateError) return;
     setSaving(true);
     try {
       const url = patient
@@ -33,6 +36,7 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
           name: name.trim(),
           cpf: cpf.trim() || undefined,
           phone: phone.trim() ? toE164BR(phone) : undefined,
+          birth_date: birthDate.trim() || undefined,
           notes: notes.trim() || undefined,
         }),
       });
@@ -108,6 +112,21 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
             </div>
           </div>
 
+          <div className={styles.field} style={{ maxWidth: 220 }}>
+            <label htmlFor="patientBirthDate" className={styles.label}>
+              Data de nascimento (opcional)
+            </label>
+            <input
+              id="patientBirthDate"
+              type="date"
+              className={styles.input}
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              max={brDateOnly()}
+            />
+            {birthDateError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{birthDateError}</div>}
+          </div>
+
           <div className={styles.field}>
             <label htmlFor="patientNotes" className={styles.label}>
               Observações (opcional)
@@ -122,7 +141,7 @@ export function PatientForm({ clinicId, patient, onSuccess, isModal }: { clinicI
           </div>
 
           <div className={styles.formActions}>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={saving || !!cpfError}>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={saving || !!cpfError || !!birthDateError}>
               {saving ? "Salvando…" : "Salvar"}
             </button>
           </div>

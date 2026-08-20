@@ -89,6 +89,17 @@ export function formatBRMonthLabel(monthStr: string): string {
   return `${MONTH_NAMES_PT[month - 1]} de ${year}`;
 }
 
+/** Idade em anos completos a partir de "YYYY-MM-DD" — comparação pura de
+ * string/número, sem passar por `Date` local (mesmo cuidado do resto deste
+ * arquivo: evita o dia/mês variar por fuso horário). */
+export function calculateAge(birthDateStr: string, today: string = brDateOnly()): number {
+  const [by, bm, bd] = birthDateStr.slice(0, 10).split("-").map(Number);
+  const [ty, tm, td] = today.slice(0, 10).split("-").map(Number);
+  let age = ty - by;
+  if (tm < bm || (tm === bm && td < bd)) age -= 1;
+  return Math.max(0, age);
+}
+
 export function firstOfMonth(dateStr: string): string {
   return `${dateStr.slice(0, 7)}-01`;
 }

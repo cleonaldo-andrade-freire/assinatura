@@ -3,6 +3,7 @@ import {
   addDaysToDateStr,
   addMonthsToDateStr,
   brDayRangeUtc,
+  calculateAge,
   firstOfMonth,
   firstOfNextMonth,
   formatBRMonthLabel,
@@ -85,6 +86,24 @@ describe("firstOfMonth / firstOfNextMonth", () => {
   it("primeiro dia do mês seguinte, inclusive virando o ano", () => {
     expect(firstOfNextMonth("2026-08-19")).toBe("2026-09-01");
     expect(firstOfNextMonth("2026-12-05")).toBe("2027-01-01");
+  });
+});
+
+describe("calculateAge", () => {
+  it("conta anos completos quando o aniversário já passou este ano", () => {
+    expect(calculateAge("2000-03-10", "2026-08-19")).toBe(26);
+  });
+
+  it("ainda não soma o ano corrente quando o aniversário não chegou", () => {
+    expect(calculateAge("2000-12-25", "2026-08-19")).toBe(25);
+  });
+
+  it("soma o ano no dia exato do aniversário", () => {
+    expect(calculateAge("2000-08-19", "2026-08-19")).toBe(26);
+  });
+
+  it("zero no dia do nascimento", () => {
+    expect(calculateAge("2026-08-19", "2026-08-19")).toBe(0);
   });
 });
 

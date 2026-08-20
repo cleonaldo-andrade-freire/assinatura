@@ -9,6 +9,7 @@ import { PatientRowActions } from "@/components/PatientRowActions";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewPatientTrigger } from "@/components/NewPatientTrigger";
 import { formatBRPhoneLocal } from "@/lib/validation";
+import { calculateAge } from "@/lib/date";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -87,6 +88,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
               <thead>
                 <tr>
                   <th>Nome</th>
+                  <th>Idade</th>
                   <th>CPF</th>
                   <th>WhatsApp</th>
                   <th></th>
@@ -101,6 +103,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
                         {p.name}
                       </span>
                     </td>
+                    <td data-label="Idade">{p.birth_date ? `${calculateAge(p.birth_date)} anos` : "—"}</td>
                     <td data-label="CPF">{p.cpf ?? "—"}</td>
                     <td data-label="WhatsApp">{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
                     <td>
