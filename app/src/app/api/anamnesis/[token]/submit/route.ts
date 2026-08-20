@@ -138,6 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     patient: {
       name: payload.patient_name,
       cpf: payload.patient_cpf || null,
+      phone: payload.patient_phone || anamnesis.patient_phone || null,
       birthDate: payload.birth_date || null,
       rg: payload.rg || null,
       occupation: payload.occupation || null,

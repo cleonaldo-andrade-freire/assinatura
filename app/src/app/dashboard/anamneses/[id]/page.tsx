@@ -118,10 +118,45 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
                 </svg>
               </a>
             )}
-            <AnamnesisActions clinicId={clinic.id} anamnesisId={typedAnamnesis.id} />
+            <AnamnesisActions
+              clinicId={clinic.id}
+              anamnesisId={typedAnamnesis.id}
+              hasPatientSignature={!!typedSignature}
+              dentistSignatureStatus={typedSignature?.dentist_signature_status ?? "nao_assinada"}
+            />
           </div>
         </div>
       </div>
+
+      {typedSignature?.dentist_signature_status === "assinada" && (
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.panelHeaderTitle}>Assinatura do dentista</p>
+          </div>
+          <div className={styles.panelBody}>
+            <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: "0 0 12px" }}>
+              Contra-assinatura ICP-Brasil confirmando ciência do conteúdo declarado pelo paciente.
+            </p>
+            {detailRow("Data/hora", formatBRDateTime(typedSignature.dentist_signed_at!, "medium"))}
+            {detailRow("Hash SHA-256 do PDF", <code>{typedSignature.dentist_pdf_sha256}</code>)}
+            <div style={{ marginTop: 16 }}>
+              <a
+                href={`/api/pdf/${typedSignature.id}/dentista`}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.iconActionBtn}
+                title="Baixar PDF assinado pela dentista"
+                aria-label="Baixar PDF assinado pela dentista"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </ClinicShell>
   );
 }

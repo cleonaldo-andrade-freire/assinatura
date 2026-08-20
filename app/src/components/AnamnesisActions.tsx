@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AgentCertificateSelector, useAgent } from "@/components/AgentDetector";
+import { signAnamnesisAsDentist } from "@/lib/anamnesisDentistSigningClient";
 import styles from "@/styles/shell.module.css";
 
 function TrashIcon() {
@@ -21,11 +23,25 @@ function TrashIcon() {
   );
 }
 
-export function AnamnesisActions({ clinicId, anamnesisId }: { clinicId: string; anamnesisId: string }) {
+export function AnamnesisActions({
+  clinicId,
+  anamnesisId,
+  hasPatientSignature,
+  dentistSignatureStatus,
+}: {
+  clinicId: string;
+  anamnesisId: string;
+  hasPatientSignature: boolean;
+  dentistSignatureStatus: "nao_assinada" | "assinada";
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const { signHash } = useAgent();
   const { toasts, push, dismiss } = useToasts();
+  const isLocalAgentMode = process.env.NEXT_PUBLIC_SIGNATURE_PROVIDER === "local_agent";
 
   async function handleDelete() {
     setDeleteConfirmOpen(false);
@@ -45,8 +61,34 @@ export function AnamnesisActions({ clinicId, anamnesisId }: { clinicId: string; 
     }
   }
 
+  function handleSignAsDentist() {
+    if (!isLocalAgentMode) {
+      push("Este recurso exige o Agente de Assinatura Digital local — configure em Configurações.", "error");
+      return;
+    }
+    if (!hasPatientSignature) {
+      push("O paciente ainda não assinou esta anamnese.", "error");
+      return;
+    }
+    setShowAgentSelector(true);
+  }
+
   return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {dentistSignatureStatus === "assinada" ? (
+        <span className={`${styles.statusBadge} ${styles.statusOk}`}>Assinada (dentista)</span>
+      ) : (
+        <button
+          type="button"
+          onClick={handleSignAsDentist}
+          disabled={signing || !hasPatientSignature}
+          className={`${styles.btn} ${styles.btnGhost}`}
+          title={hasPatientSignature ? "Assinar como dentista" : "O paciente ainda não assinou esta anamnese"}
+        >
+          {signing ? "Assinando…" : "Assinar (dentista)"}
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => setDeleteConfirmOpen(true)}
@@ -57,6 +99,26 @@ export function AnamnesisActions({ clinicId, anamnesisId }: { clinicId: string; 
       >
         <TrashIcon />
       </button>
+
+      <AgentCertificateSelector
+        open={showAgentSelector}
+        onOpenChange={setShowAgentSelector}
+        onCertificateSelected={async (cert) => {
+          setShowAgentSelector(false);
+          setSigning(true);
+          try {
+            const result = await signAnamnesisAsDentist(clinicId, anamnesisId, cert, signHash);
+            if (!result.ok) {
+              push(result.error, "error");
+              return;
+            }
+            push("Anamnese assinada.", "success");
+            router.refresh();
+          } finally {
+            setSigning(false);
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={deleteConfirmOpen}

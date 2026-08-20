@@ -93,6 +93,14 @@ export interface Signature {
   /** Traçado vetorial (pontos + pressão + tempo) — ver migration 052 e
    * SignatureCanvas.tsx. `null` em assinaturas feitas antes dessa migration. */
   stroke_data: Record<string, unknown> | null;
+  // Contra-assinatura ICP-Brasil da dentista sobre a anamnese — ver
+  // migration 058. Sempre posterior à assinatura do paciente acima.
+  dentist_signature_status: "nao_assinada" | "assinada";
+  dentist_signed_at: string | null;
+  dentist_pdf_storage_key: string | null;
+  dentist_pdf_sha256: string | null;
+  dentist_content_snapshot: Record<string, unknown> | null;
+  dentist_content_hash: string | null;
 }
 
 export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";

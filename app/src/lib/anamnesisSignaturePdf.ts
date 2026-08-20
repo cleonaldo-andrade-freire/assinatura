@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR } from "@/lib/pdfTextLayout";
-import { formatCPF } from "@/lib/validation";
+import { formatBRPhoneLocal, formatCPF } from "@/lib/validation";
 
 interface AnamnesisPdfData {
   clinicName: string;
@@ -8,6 +8,7 @@ interface AnamnesisPdfData {
   patient: {
     name: string;
     cpf: string | null;
+    phone: string | null;
     birthDate: string | null;
     rg: string | null;
     occupation: string | null;
@@ -21,12 +22,6 @@ interface AnamnesisPdfData {
     ip: string;
     userAgent: string;
     dataUrl: string; // The base64 signature image
-  };
-  dentistSignature?: {
-    signerName: string;
-    signerCpf: string;
-    signedAt: string;
-    provider: string;
   };
 }
 
@@ -81,12 +76,12 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   drawField("NOME COMPLETO", data.patient.name, MARGIN, y);
   y -= 40;
 
-  drawField("CPF", data.patient.cpf || "-", MARGIN, y);
+  drawField("CPF", data.patient.cpf ? formatCPF(data.patient.cpf) : "-", MARGIN, y);
   drawField("DATA DE NASCIMENTO", data.patient.birthDate ? formatDateBR(data.patient.birthDate) : "-", MARGIN + 250, y);
   y -= 40;
 
   drawField("RG", data.patient.rg || "-", MARGIN, y);
-  drawField("CELULAR", "-", MARGIN + 250, y); // Apenas um placeholder se nao vier
+  drawField("CELULAR", data.patient.phone ? formatBRPhoneLocal(data.patient.phone) : "-", MARGIN + 250, y);
   y -= 40;
 
   drawField("OCUPAÇÃO/PROFISSÃO", data.patient.occupation || "-", MARGIN, y);
@@ -161,28 +156,9 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   page.drawText(`Documento assinado eletronicamente (Assinatura Eletrônica Avançada — Lei nº 14.063/2020). IP: ${data.signature.ip}`, { x: MARGIN, y, size: 8, font: italic });
   y -= 12;
   page.drawText(`Data/Hora: ${formatDateBR(data.signature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
-  
-  // Assinatura do Dentista
-  if (data.dentistSignature) {
-    ensureSpace(120);
-    y -= 30;
-    page.drawText("Assinatura do Cirurgião-Dentista", { x: MARGIN, y, size: 12, font: bold, color: rgb(0.1, 0.5, 0.2) });
-    y -= 25;
-    page.drawLine({
-      start: { x: MARGIN, y },
-      end: { x: MARGIN + 300, y },
-      thickness: 1,
-      color: rgb(0, 0, 0)
-    });
-    y -= 15;
-    page.drawText(data.dentistSignature.signerName, { x: MARGIN, y, size: 10, font: bold });
-    y -= 15;
-    page.drawText(`CPF: ${formatCPF(data.dentistSignature.signerCpf)}`, { x: MARGIN, y, size: 9, font });
-    y -= 15;
-    page.drawText(`Assinatura Eletrônica Avançada / ICP-Brasil (${data.dentistSignature.provider})`, { x: MARGIN, y, size: 8, font: italic });
-    y -= 12;
-    page.drawText(`Data/Hora: ${formatDateBR(data.dentistSignature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
-  }
+
+  // Assinatura do Cirurgião-Dentista: PDF próprio, separado deste — ver
+  // lib/anamnesisDentistPdf.ts / lib/anamnesisDentistSignature.ts.
 
   // === TRILHA DE AUDITORIA ===
   page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -211,14 +187,5 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   }
   y -= 30;
 
-  if (data.dentistSignature) {
-    drawAuditField("Assinado por (Dentista):", `${data.dentistSignature.signerName} (CPF: ${formatCPF(data.dentistSignature.signerCpf)})`, y);
-    y -= 20;
-    drawAuditField("Data/hora (Certisign):", formatDateBR(data.dentistSignature.signedAt), y);
-    y -= 20;
-    drawAuditField("Provedor:", data.dentistSignature.provider, y);
-    y -= 30;
-  }
-  
   return await doc.save();
 }
