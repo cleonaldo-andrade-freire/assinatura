@@ -372,8 +372,6 @@ export function AnamneseClient({ token }: { token: string }) {
                 <input type="text" className={styles.input} value={uf} onChange={e => setUf(e.target.value.toUpperCase())} placeholder="SP" maxLength={2} />
               </div>
             </div>
-            </div>
-
             <div className={styles.formGroup}>
               <label className={styles.label}>Queixa Principal (Opcional)</label>
               <textarea className={`${styles.input} ${styles.textarea}`} value={mainComplaint} onChange={e => setMainComplaint(e.target.value)} placeholder="Descreva brevemente o motivo da consulta..." />
