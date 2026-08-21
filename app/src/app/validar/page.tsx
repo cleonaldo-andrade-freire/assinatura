@@ -21,7 +21,7 @@ export default function ValidarPage({ searchParams }: { searchParams: { code?: s
         </p>
         <h1>Verificar autenticidade</h1>
         <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 24 }}>
-          Digite o código de validação impresso no atestado ou na prescrição odontológica, ou aponte a câmera do
+          Digite o código de validação impresso no atestado ou no receituário odontológico, ou aponte a câmera do
           celular pro QR code no rodapé do documento.
         </p>
 

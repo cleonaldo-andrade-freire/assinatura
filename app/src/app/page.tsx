@@ -16,7 +16,7 @@ const MODULES = [
     text: "Paciente responde a anamnese em formato de conversa e assina eletronicamente antes da consulta, direto pelo celular.",
   },
   {
-    title: "Atestados e prescrições",
+    title: "Atestados e receituários",
     text: "Emita e envie por WhatsApp, prontos para o paciente baixar — com verificação pública de autenticidade.",
   },
   {
@@ -48,7 +48,7 @@ const BENEFITS = [
   },
   {
     title: "Sem papel, sem pasta",
-    text: "Anamnese, atestado, prescrição, orçamento e recibo nascem digitais e ficam guardados com segurança na nuvem.",
+    text: "Anamnese, atestado, receituário, orçamento e recibo nascem digitais e ficam guardados com segurança na nuvem.",
   },
   {
     title: "Tudo pelo WhatsApp que o paciente já usa",
@@ -105,7 +105,7 @@ const FAQ = [
   },
   {
     q: "Como funciona o período de teste?",
-    a: "3 anamneses grátis, sem pedir cartão de crédito. As demais funcionalidades (agenda, atestados, prescrições, orçamentos, tratamentos, financeiro, próteses) você já usa sem limite desde o início. Depois do teste, é só escolher um dos planos — e a anamnese também passa a ser ilimitada.",
+    a: "3 anamneses grátis, sem pedir cartão de crédito. As demais funcionalidades (agenda, atestados, receituários, orçamentos, tratamentos, financeiro, próteses) você já usa sem limite desde o início. Depois do teste, é só escolher um dos planos — e a anamnese também passa a ser ilimitada.",
   },
   {
     q: "Posso cancelar quando quiser?",
@@ -163,7 +163,7 @@ export default async function HomePage() {
             Seu consultório sem papel, tudo integrado pelo WhatsApp
           </h1>
           <p className={styles.heroSubtitle}>
-            Agenda com confirmação automática, anamnese, atestados, prescrições, orçamentos, tratamentos e
+            Agenda com confirmação automática, anamnese, atestados, receituários, orçamentos, tratamentos e
             financeiro do paciente — em um só painel, com o paciente resolvendo tudo no WhatsApp que já usa.
           </p>
           <div className={styles.heroCtas}>
@@ -249,7 +249,7 @@ export default async function HomePage() {
         <div className={styles.container}>
           <h2 className={styles.sectionTitle}>Planos</h2>
           <p className={styles.sectionSubtitle}>
-            Agenda, anamnese, atestados, prescrições, orçamentos, tratamentos, financeiro e próteses vêm inclusos em
+            Agenda, anamnese, atestados, receituários, orçamentos, tratamentos, financeiro e próteses vêm inclusos em
             qualquer plano, sem limite de uso. Teste grátis com até 3 anamneses, sem cartão de crédito. Sem contrato
             de fidelidade — cancele quando quiser.
           </p>

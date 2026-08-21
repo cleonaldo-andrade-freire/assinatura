@@ -16,7 +16,7 @@ export const PATIENT_TABS = [
   { key: "imagens", label: "Imagens" },
   { key: "anamneses", label: "Anamneses" },
   { key: "atestados", label: "Atestados" },
-  { key: "prescricoes", label: "Prescrições" },
+  { key: "prescricoes", label: "Receituários" },
 ] as const;
 
 export type PatientTabKey = (typeof PATIENT_TABS)[number]["key"];

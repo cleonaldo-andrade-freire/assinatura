@@ -4,7 +4,7 @@ import { useState } from "react";
 import { NewPrescriptionModal } from "@/components/NewPrescriptionModal";
 import type { PrescriptionTemplate } from "@/lib/database.types";
 
-/** Botão que abre o modal de "Nova prescrição" — usado na aba Prescrições da ficha do paciente. */
+/** Botão que abre o modal de "Novo receituário" — usado na aba Receituários da ficha do paciente. */
 export function NewPrescriptionTrigger({
   clinicId,
   templates,

@@ -13,7 +13,7 @@ export default async function NewPrescriptionTemplatePage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
-      title="Novo modelo de prescrição"
+      title="Novo modelo de receituário"
       role={role}
       userEmail={userEmail}
       userName={userName}

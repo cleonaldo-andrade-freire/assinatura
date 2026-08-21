@@ -51,7 +51,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title={p.patient_name}
-      subtitle={`Prescrição emitida em ${formatBRDate(p.created_at)}`}
+      subtitle={`Receituário emitido em ${formatBRDate(p.created_at)}`}
       role={role}
       userEmail={userEmail}
       userName={userName}
@@ -64,7 +64,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
     >
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Dados da prescrição</p>
+          <p className={styles.panelHeaderTitle}>Dados do receituário</p>
         </div>
         <div className={styles.panelBody}>
           {detailRow("Paciente", p.patient_name)}

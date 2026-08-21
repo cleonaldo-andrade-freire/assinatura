@@ -50,7 +50,7 @@ export function MobileTabBar() {
             type="button"
             className={styles.tabPlus}
             onClick={() => setSheetOpen(true)}
-            aria-label="Ações rápidas: novo agendamento, paciente, anamnese, atestado ou prescrição"
+            aria-label="Ações rápidas: novo agendamento, paciente, anamnese, atestado ou receituário"
           >
             <PlusIcon />
           </button>

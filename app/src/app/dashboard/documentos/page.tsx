@@ -18,7 +18,7 @@ export default async function DocumentosPage() {
   const sections = [
     { href: "/dashboard/anamneses", title: "Anamneses", description: "Enviadas, em andamento e assinadas" },
     { href: "/dashboard/atestados", title: "Atestados", description: "Emitidos pela clínica" },
-    { href: "/dashboard/prescricoes", title: "Prescrições", description: "Emitidas pela clínica" },
+    { href: "/dashboard/prescricoes", title: "Receituários", description: "Emitidos pela clínica" },
     { href: "/dashboard/evolucoes", title: "Evoluções", description: "Pendentes de assinatura da dentista" },
   ];
 
@@ -27,7 +27,7 @@ export default async function DocumentosPage() {
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title="Documentos"
-      subtitle="Anamneses, atestados e prescrições em um só lugar"
+      subtitle="Anamneses, atestados e receituários em um só lugar"
       role={role}
       userEmail={userEmail}
       userName={userName}

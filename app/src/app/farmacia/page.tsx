@@ -19,15 +19,15 @@ export default function FarmaciaPage({ searchParams }: { searchParams: { code?: 
         >
           Área da farmácia
         </p>
-        <h1>Dar baixa numa prescrição</h1>
+        <h1>Dar baixa num receituário</h1>
         <p style={{ color: "var(--ink-soft)", fontSize: 14.5, marginBottom: 24 }}>
-          Digite o código impresso na prescrição odontológica, ou aponte a câmera do celular pro QR code no rodapé
+          Digite o código impresso no receituário odontológico, ou aponte a câmera do celular pro QR code no rodapé
           do documento.
         </p>
 
         <form method="GET" action="/farmacia">
           <div className="field">
-            <label htmlFor="code">Código da prescrição</label>
+            <label htmlFor="code">Código do receituário</label>
             <input
               id="code"
               name="code"

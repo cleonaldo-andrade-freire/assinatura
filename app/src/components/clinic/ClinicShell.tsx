@@ -214,7 +214,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/agenda", label: "Agenda", icon: AgendaIcon },
   { href: "/dashboard/anamneses", label: "Anamneses", icon: AnamnesesIcon },
   { href: "/dashboard/atestados", label: "Atestados", icon: CertificateIcon },
-  { href: "/dashboard/prescricoes", label: "Prescrições", icon: PrescriptionIcon },
+  { href: "/dashboard/prescricoes", label: "Receituários", icon: PrescriptionIcon },
   { href: "/dashboard/evolucoes", label: "Evoluções", icon: EvolutionsIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },

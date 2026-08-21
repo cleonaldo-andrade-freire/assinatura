@@ -69,8 +69,8 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
-      title="Prescrições"
-      subtitle="Prescrições odontológicas emitidas pela clínica"
+      title="Receituários"
+      subtitle="Receituários odontológicos emitidos pela clínica"
       role={role}
       userEmail={userEmail}
       userName={userName}
@@ -78,7 +78,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/prescricoes/templates" className={`${styles.btn} ${styles.btnGhost}`}>
-            Modelos de prescrição
+            Modelos de receituário
           </Link>
           <NewPrescriptionTrigger
             clinicId={clinic.id}
@@ -87,7 +87,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
             className={`${styles.btn} ${styles.btnPrimary}`}
             autoOpen={searchParams.new === "1"}
           >
-            + Nova prescrição
+            + Novo receituário
           </NewPrescriptionTrigger>
         </div>
       }
@@ -105,7 +105,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
 
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Todas as prescrições</p>
+          <p className={styles.panelHeaderTitle}>Todos os receituários</p>
           <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div className={styles.searchBox}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -128,7 +128,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
 
         {prescriptions.length === 0 ? (
           <div className={styles.emptyState}>
-            {q ? `Nenhuma prescrição encontrada pra "${q}".` : "Nenhuma prescrição emitida ainda."}
+            {q ? `Nenhum receituário encontrado pra "${q}".` : "Nenhum receituário emitido ainda."}
           </div>
         ) : (
           <>
@@ -177,8 +177,8 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
               page={page}
               totalPages={totalPages}
               count={count ?? 0}
-              itemLabel="prescrição"
-              itemLabelPlural="prescrições"
+              itemLabel="receituário"
+              itemLabelPlural="receituários"
               hrefFor={pageHref}
             />
           </>

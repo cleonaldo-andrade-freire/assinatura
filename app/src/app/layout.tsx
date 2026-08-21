@@ -25,7 +25,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "DentalAgil",
-  description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, prescrições e orçamentos.",
+  description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, receituários e orçamentos.",
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

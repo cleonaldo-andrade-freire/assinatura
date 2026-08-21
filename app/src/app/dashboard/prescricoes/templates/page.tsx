@@ -44,7 +44,7 @@ export default async function PrescriptionTemplatesPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
-      title="Modelos de prescrição"
+      title="Modelos de receituário"
       subtitle="Medicamentos e orientações reaproveitáveis com dados do paciente mesclados automaticamente"
       role={role}
       userEmail={userEmail}
@@ -53,7 +53,7 @@ export default async function PrescriptionTemplatesPage({
       actions={
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard/prescricoes" className={`${styles.btn} ${styles.btnGhost}`}>
-            ← Prescrições
+            ← Receituários
           </Link>
           <Link href="/dashboard/prescricoes/templates/new" className={`${styles.btn} ${styles.btnPrimary}`}>
             + Novo modelo

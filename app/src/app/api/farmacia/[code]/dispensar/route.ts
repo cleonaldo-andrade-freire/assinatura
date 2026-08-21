@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     await sendText(
       clinic as Clinic,
       (clinic as Clinic).notify_phone!,
-      `💊 Prescrição de ${lookup.prescription.patient_name} — "${drugName}" foi dispensado na farmácia CNPJ ${formatCNPJ(parsed.data.cnpj)} (CRF ${parsed.data.crf.trim()}).`
+      `💊 Receituário de ${lookup.prescription.patient_name} — "${drugName}" foi dispensado na farmácia CNPJ ${formatCNPJ(parsed.data.cnpj)} (CRF ${parsed.data.crf.trim()}).`
     );
   }
 

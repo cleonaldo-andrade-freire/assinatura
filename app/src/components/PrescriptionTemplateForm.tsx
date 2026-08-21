@@ -48,7 +48,7 @@ export function PrescriptionTemplateForm({
     setError(null);
     if (items.some((i) => i.control_type === "controlado_especial")) {
       setError(
-        "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."
+        "Tem item marcado como controlado especial — este sistema não emite esse tipo de receituário. Troque o tipo de controle ou remova o item."
       );
       return;
     }
@@ -71,7 +71,7 @@ export function PrescriptionTemplateForm({
         setError(
           data.message ||
             (data.error === "controlado_especial_nao_suportado"
-              ? "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição."
+              ? "Tem item marcado como controlado especial — este sistema não emite esse tipo de receituário."
               : null) ||
             "Falha ao salvar o modelo."
         );
@@ -138,7 +138,7 @@ export function PrescriptionTemplateForm({
             />
             <p className={styles.hint}>
               Os placeholders acima são substituídos automaticamente pelos dados do formulário ao selecionar este
-              modelo na emissão da prescrição.
+              modelo na emissão do receituário.
             </p>
           </div>
 

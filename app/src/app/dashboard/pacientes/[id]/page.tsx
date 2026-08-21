@@ -547,12 +547,12 @@ export default async function EditPatientPage({
           patientPhone={patient.phone}
           className={`${styles.btn} ${styles.btnPrimary}`}
         >
-          + Nova prescrição
+          + Novo receituário
         </NewPrescriptionTrigger>
       </div>
       {prescriptions.length === 0 ? (
         <div className={styles.emptyState}>
-          Nenhuma prescrição emitida pra este paciente ainda — só aparecem aqui as emitidas buscando ou cadastrando
+          Nenhum receituário emitido pra este paciente ainda — só aparecem aqui os emitidos buscando ou cadastrando
           pelo nome dele.
         </div>
       ) : (
@@ -587,7 +587,8 @@ export default async function EditPatientPage({
             page={prescriptionsPage}
             totalPages={prescriptionsTotalPages}
             count={prescriptionsCount ?? 0}
-            itemLabel="prescrição"
+            itemLabel="receituário"
+            itemLabelPlural="receituários"
             hrefFor={(p) => pageHref(`/dashboard/pacientes/${patient.id}`, { rxPage: p })}
           />
         </>

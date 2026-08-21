@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "DentalAgil",
     short_name: "DentalAgil",
-    description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, prescrições e orçamentos.",
+    description: "O consultório odontológico sem papel, tudo pelo WhatsApp: agenda, anamnese, atestados, receituários e orçamentos.",
     // "/" e não "/dashboard": pacientes também podem instalar o atalho a
     // partir do link de assinatura recebido no WhatsApp — mandar todo mundo
     // pro painel da clínica deixava esse caso num beco sem saída (redirect

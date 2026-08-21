@@ -89,10 +89,10 @@ export function PrescriptionActions({
       const res = await fetch(`/api/clinics/${clinicId}/prescriptions/${prescriptionId}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        push(data?.message || data?.error || "Falha ao excluir a prescrição.");
+        push(data?.message || data?.error || "Falha ao excluir o receituário.");
         return;
       }
-      push("Prescrição excluída.", "success");
+      push("Receituário excluído.", "success");
       router.push("/dashboard/prescricoes");
       router.refresh();
     } finally {
@@ -209,15 +209,15 @@ export function PrescriptionActions({
         onClick={() => setDeleteConfirmOpen(true)}
         disabled={deleting}
         className={styles.iconActionBtn}
-        title={deleting ? "Excluindo…" : "Excluir prescrição"}
-        aria-label="Excluir prescrição"
+        title={deleting ? "Excluindo…" : "Excluir receituário"}
+        aria-label="Excluir receituário"
       >
         <TrashIcon />
       </button>
 
       <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Excluir prescrição"
+        title="Excluir receituário"
         message="Remove o registro e o PDF definitivamente — essa ação não pode ser desfeita."
         confirmLabel="Sim, excluir"
         cancelLabel="Cancelar"

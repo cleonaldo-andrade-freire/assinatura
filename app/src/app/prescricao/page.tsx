@@ -45,7 +45,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
         <div className="card" style={{ textAlign: "center" }}>
           <h1>Documento em processamento</h1>
           <p style={{ color: "var(--ink-soft)" }}>
-            Sua prescrição ainda está sendo preparada. Atualize esta página em alguns instantes.
+            Seu receituário ainda está sendo preparado. Atualize esta página em alguns instantes.
           </p>
         </div>
       ) : (
@@ -70,7 +70,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
 
           <div className="card">
             <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-              Prescrição odontológica
+              Receituário odontológico
             </p>
             <h1>Documento assinado</h1>
             <p style={{ fontSize: 15, marginBottom: 18 }}>
@@ -110,7 +110,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
           <div className="card" style={{ textAlign: "center", padding: "20px 4px" }}>
             <a
               href={`/api/prescriptions/${p.token}/pdf`}
-              download={`prescricao-${p.patient_name}.pdf`}
+              download={`receituario-${p.patient_name}.pdf`}
               className="btn-primary"
               style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none" }}
             >
@@ -118,7 +118,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
                 <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
               </svg>
-              Baixar prescrição em PDF
+              Baixar receituário em PDF
             </a>
           </div>
         </>

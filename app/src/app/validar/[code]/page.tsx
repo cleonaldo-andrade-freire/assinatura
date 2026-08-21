@@ -54,7 +54,7 @@ async function ValidationResult({
       <div className="card" style={{ textAlign: "center" }}>
         <h1>Código não encontrado</h1>
         <p style={{ color: "var(--ink-soft)" }}>
-          Confira se digitou o código certo. Ele fica impresso no rodapé do atestado ou da prescrição, junto do QR
+          Confira se digitou o código certo. Ele fica impresso no rodapé do atestado ou do receituário, junto do QR
           code.
         </p>
       </div>
@@ -106,7 +106,7 @@ async function ValidationResult({
 
       <div className="card">
         <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-          {result.documentType === "atestado" ? "Atestado odontológico" : "Prescrição odontológica"}
+          {result.documentType === "atestado" ? "Atestado odontológico" : "Receituário odontológico"}
         </p>
         <h1>Autenticidade confirmada</h1>
         <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>

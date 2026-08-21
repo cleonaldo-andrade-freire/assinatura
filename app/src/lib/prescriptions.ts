@@ -286,7 +286,7 @@ async function finishPrescriptionSignature(
     const sent = await sendText(
       clinic,
       finalPrescription.patient_phone,
-      `💊 Sua prescrição odontológica já está disponível: ${link}`
+      `💊 Seu receituário odontológico já está disponível: ${link}`
     );
     if (sent) {
       await supabase

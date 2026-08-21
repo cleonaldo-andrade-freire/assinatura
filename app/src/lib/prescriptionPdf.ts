@@ -60,7 +60,7 @@ export async function buildPrescriptionPdf(
     }
   }
 
-  page.drawText("Prescrição Odontológica", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText("Receituário Odontológico", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
   y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo);
 

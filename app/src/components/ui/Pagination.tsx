@@ -5,7 +5,7 @@ interface PaginationProps {
   totalPages: number;
   count: number;
   itemLabel: string;
-  /** Só precisa quando o plural não é simplesmente `itemLabel + "s"` (ex.: "prescrição" → "prescrições"). */
+  /** Só precisa quando o plural não é simplesmente `itemLabel + "s"` (ex.: "receituário" → "receituários"). */
   itemLabelPlural?: string;
   hrefFor: (page: number) => string;
 }

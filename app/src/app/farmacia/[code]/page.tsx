@@ -50,11 +50,11 @@ async function FarmaciaResult({
   if (!lookup.found) {
     return (
       <div className="card" style={{ textAlign: "center" }}>
-        <h1>{lookup.reason === "revoked" ? "Prescrição revogada" : "Código não encontrado"}</h1>
+        <h1>{lookup.reason === "revoked" ? "Receituário revogado" : "Código não encontrado"}</h1>
         <p style={{ color: "var(--ink-soft)" }}>
           {lookup.reason === "revoked"
-            ? "Esta prescrição foi revogada pela clínica e não pode mais ser dispensada."
-            : "Confira se digitou o código certo. Ele fica impresso no rodapé da prescrição, junto do QR code."}
+            ? "Este receituário foi revogado pela clínica e não pode mais ser dispensado."
+            : "Confira se digitou o código certo. Ele fica impresso no rodapé do receituário, junto do QR code."}
         </p>
       </div>
     );

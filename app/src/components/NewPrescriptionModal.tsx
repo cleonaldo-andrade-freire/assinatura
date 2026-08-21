@@ -8,7 +8,7 @@ import type { Prescription, PrescriptionTemplate } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import shellStyles from "@/styles/shell.module.css";
 
-/** Diálogo de "Nova prescrição" — usado pelo botão da aba Prescrições na ficha do
+/** Diálogo de "Novo receituário" — usado pelo botão da aba Receituários na ficha do
  * paciente, com o paciente já pré-preenchido (mesmo padrão do NewAppointmentModal). */
 export function NewPrescriptionModal({
   open,
@@ -57,13 +57,13 @@ export function NewPrescriptionModal({
     <div className={uiStyles.overlay} onClick={onClose}>
       <div className={`${uiStyles.dialog} ${uiStyles.dialogWide}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14, flexShrink: 0 }}>
-          <h3 className={uiStyles.dialogTitle}>Nova prescrição</h3>
+          <h3 className={uiStyles.dialogTitle}>Novo receituário</h3>
         </div>
 
         {!dentistConfigured ? (
           <div>
             <p style={{ margin: "0 0 14px", fontSize: 14 }}>
-              Antes de emitir a primeira prescrição, cadastre o nome e o CRO do dentista responsável em Configurações.
+              Antes de emitir o primeiro receituário, cadastre o nome e o CRO do dentista responsável em Configurações.
             </p>
             <Link href="/dashboard/configuracoes" className={`${shellStyles.btn} ${shellStyles.btnPrimary}`} onClick={onClose}>
               Ir para Configurações

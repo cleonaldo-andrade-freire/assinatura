@@ -10,7 +10,7 @@ const ACTIONS = [
   { href: "/dashboard/pacientes?new=1", label: "Novo paciente", icon: PatientPlusIcon },
   { href: "/dashboard/anamneses?new=1", label: "Enviar anamnese", icon: AnamnesisSendIcon },
   { href: "/dashboard/atestados?new=1", label: "Novo atestado", icon: CertificateIcon },
-  { href: "/dashboard/prescricoes?new=1", label: "Nova prescrição", icon: PrescriptionIcon },
+  { href: "/dashboard/prescricoes?new=1", label: "Novo receituário", icon: PrescriptionIcon },
 ];
 
 /**

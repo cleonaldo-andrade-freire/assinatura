@@ -58,8 +58,8 @@ export function PrescriptionTemplateRowActions({ clinicId, templateId }: { clini
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Excluir modelo de prescrição"
-        message="Isso remove o modelo. Prescrições já emitidas com ele não são afetadas."
+        title="Excluir modelo de receituário"
+        message="Isso remove o modelo. Receituários já emitidos com ele não são afetados."
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         danger

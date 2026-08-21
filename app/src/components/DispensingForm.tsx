@@ -58,7 +58,7 @@ export function DispensingForm({
     <>
       <div className="card">
         <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-          Prescrição odontológica
+          Receituário odontológico
         </p>
         <h1>{prescription.patient_name}</h1>
         <p style={{ color: "var(--ink-soft)", fontSize: 14 }}>
