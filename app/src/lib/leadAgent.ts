@@ -23,6 +23,11 @@ import {
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/** A partir dessa hora, um caso urgente nunca é agendado pelo bot sozinho —
+ * só por ligação direta com a clínica (a equipe decide o encaixe manualmente
+ * no fim do dia). Mais cedo que AGENDA_END_HOUR de propósito. */
+const URGENT_BOOKING_CUTOFF_HOUR = 18;
+
 function buildSystemPrompt(clinic: Clinic): string {
   const now = new Date();
   const nowIso = now.toISOString();
@@ -37,7 +42,8 @@ Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de
 1. Pergunte o nome se não souber. Assim que o paciente informar o nome, chame a ferramenta registrarNome imediatamente (antes de continuar as perguntas). Entenda o motivo do contato. O telefone já é conhecido (é o número desta própria conversa) — nunca peça o telefone ao paciente.
 2. Se o paciente relatar dor, pergunte (uma por vez): A dor é contínua ou com estímulo? Há inchaço? Houve trauma recente?
 3. Se houver inchaço, trauma ou dor aguda contínua, chame imediatamente a ferramenta alertarUrgencia. Depois:
-   - Se a clínica estiver ABERTA: diga que a equipe já foi avisada e a doutora responde em instantes.
+   - Se a clínica estiver ABERTA e for antes das ${URGENT_BOOKING_CUTOFF_HOUR}h: diga que a equipe já foi avisada e a doutora responde em instantes.
+   - Se for ${URGENT_BOOKING_CUTOFF_HOUR}h ou mais tarde (mesmo com a clínica ainda ABERTA): NUNCA tente agendar você mesma (não chame agendarPaciente) — diga que a equipe já foi avisada, mas que casos urgentes nesse horário precisam de uma ligação direta pra clínica encaixar o atendimento, e peça pro paciente ligar (chamada de voz) aqui mesmo pelo WhatsApp.
    - Se a clínica estiver FECHADA: diga que a clínica está fechada agora, mas que o caso já foi marcado com prioridade máxima e a doutora entra em contato assim que abrir, às ${AGENDA_START_HOUR}h; se a dor estiver insuportável, oriente a buscar um pronto-socorro.
 4. Se for caso eletivo (limpeza, dor leve, avaliação):
    - Se a clínica estiver ABERTA: chame consultarDisponibilidade e ofereça até duas opções de horário. Se o paciente pedir um horário específico, passe-o em horario_preferido e confie SOMENTE no campo disponivel_no_horario_pedido pra saber se está livre — nunca conclua que não tem vaga só porque o horário pedido não apareceu na lista de sugestões. Após o paciente escolher, chame agendarPaciente.
@@ -53,6 +59,13 @@ Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de
  */
 function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): ToolSet {
   const professionalName = clinic.dentist_name || clinic.name;
+  // Fechada sobre as duas tools abaixo: alertarUrgencia marca true assim que
+  // roda, mesmo dentro do mesmo turno (o `lead.status` do banco só reflete
+  // isso na próxima chamada) — é o que permite agendarPaciente barrar um
+  // agendamento urgente tarde da noite mesmo quando as duas tools são
+  // chamadas na mesma mensagem. Regra de negócio explícita: depois das
+  // URGENT_BOOKING_CUTOFF_HOUR, urgência nunca é agendada pelo bot sozinho.
+  let leadIsUrgent = lead.status === "urgent";
 
   return {
     consultarDisponibilidade: tool({
@@ -134,6 +147,13 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
         horario: z.string().regex(TIME_REGEX, "use o formato HH:mm"),
       }),
       execute: async ({ nome, data, horario }) => {
+        if (leadIsUrgent && brHour(new Date()) >= URGENT_BOOKING_CUTOFF_HOUR) {
+          return {
+            sucesso: false,
+            motivo: `Depois das ${URGENT_BOOKING_CUTOFF_HOUR}h, caso urgente não é agendado automaticamente — oriente o paciente a ligar (chamada de voz) aqui mesmo pelo WhatsApp pra clínica encaixar o atendimento.`,
+          };
+        }
+
         const telefone = lead.patient_phone;
         const scheduledAt = new Date(`${data}T${horario}:00-03:00`);
         if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() < Date.now()) {
@@ -198,6 +218,7 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
         resumo_clinico: z.string().min(1),
       }),
       execute: async ({ resumo_clinico }) => {
+        leadIsUrgent = true;
         await supabase
           .from("leads")
           .update({ status: "urgent", clinical_summary: resumo_clinico, updated_at: new Date().toISOString() })
