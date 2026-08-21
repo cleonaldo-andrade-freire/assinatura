@@ -17,8 +17,9 @@ import { TrashIcon, UndoIcon } from "@/components/expenses/icons";
 import styles from "@/styles/shell.module.css";
 import ex from "./expenses.module.css";
 
+// Sem o prefixo "R$" (mesmo ajuste feito nos KPIs do Dashboard) — contexto já deixa a moeda óbvia.
 function formatMoney(value: number): string {
-  return `R$ ${formatMoneyDisplay(value)}`;
+  return formatMoneyDisplay(value);
 }
 
 export function ExpensesPanel({
@@ -194,24 +195,26 @@ export function ExpensesPanel({
 
   return (
     <div>
-      <div className={ex.totals}>
-        <div className={`${ex.totalCard} ${ex.totalCardDue}`}>
-          <p className={ex.totalCardLabel}>A pagar</p>
-          <p className={ex.totalCardValue}>{formatMoney(totalDue)}</p>
+      <div className={`${styles.statGrid} ${styles.statGridDashboard}`}>
+        <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+          <div className={styles.statLabel}>A pagar</div>
+          <div className={styles.statValue} style={{ color: "var(--danger)" }}>
+            {formatMoney(totalDue)}
+          </div>
         </div>
         <a
           href={overdueHref}
-          className={`${ex.totalCard} ${ex.totalCardDue}`}
+          className={`${styles.statCard} ${styles.statCardDashboard}`}
           style={{ textDecoration: "none", outline: overdueActive ? "2px solid var(--danger)" : "none" }}
         >
-          <p className={ex.totalCardLabel}>Vencidas</p>
-          <p className={ex.totalCardValue}>
+          <div className={styles.statLabel}>Vencidas</div>
+          <div className={styles.statValue} style={{ color: "var(--danger)" }}>
             {overdueCount} · {formatMoney(overdueTotal)}
-          </p>
+          </div>
         </a>
-        <div className={`${ex.totalCard} ${ex.totalCardPaid}`}>
-          <p className={ex.totalCardLabel}>Pago em {monthLabel}</p>
-          <p className={ex.totalCardValue}>
+        <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+          <div className={styles.statLabel}>Pago em {monthLabel}</div>
+          <div className={styles.statValue}>
             {formatMoney(totalPaidThisMonth)}
             {momDeltaPct != null && (
               <span style={{ fontSize: 12, fontWeight: 700, marginLeft: 6, color: momDeltaPct > 0 ? "var(--danger)" : "var(--brand-deep)" }}>
@@ -219,11 +222,11 @@ export function ExpensesPanel({
                 {Math.abs(momDeltaPct)}%
               </span>
             )}
-          </p>
+          </div>
         </div>
-        <div className={ex.totalCard}>
-          <p className={ex.totalCardLabel}>Custo fixo mensal</p>
-          <p className={ex.totalCardValue}>{formatMoney(fixedMonthlyCost)}</p>
+        <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+          <div className={styles.statLabel}>Custo fixo mensal</div>
+          <div className={styles.statValue}>{formatMoney(fixedMonthlyCost)}</div>
         </div>
       </div>
 
