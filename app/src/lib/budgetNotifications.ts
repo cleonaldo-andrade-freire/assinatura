@@ -13,7 +13,10 @@ import type { Budget, BudgetItem, Clinic } from "@/lib/database.types";
  */
 export async function issueBudgetPdf(supabase: SupabaseClient, clinic: Clinic, budget: Budget, items: BudgetItem[]): Promise<Budget> {
   const logo = await loadClinicLogoForPdf(clinic.logo_url);
-  const pdfBytes = await buildBudgetPdf(budget, items, clinic.name, logo);
+  const dentist = clinic.dentist_name && clinic.dentist_cro && clinic.dentist_cro_uf
+    ? { name: clinic.dentist_name, cro: clinic.dentist_cro, croUf: clinic.dentist_cro_uf }
+    : null;
+  const pdfBytes = await buildBudgetPdf(budget, items, clinic, logo, dentist);
   const sha256 = crypto.createHash("sha256").update(Buffer.from(pdfBytes)).digest("hex");
   const pdfStorageKey = await saveBudgetPdf(clinic.id, budget.id, pdfBytes);
 

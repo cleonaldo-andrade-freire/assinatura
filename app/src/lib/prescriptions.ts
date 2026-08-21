@@ -55,7 +55,7 @@ export async function issuePrescription(
   if (unsigned) {
     const pdfBytes = await buildPrescriptionPdf(
       { ...(prescription as Prescription), validation_code: validationCode },
-      (clinic as Clinic).name,
+      clinic as Clinic,
       logo,
       validationUrl,
       { unsigned: true }
@@ -88,7 +88,7 @@ export async function issuePrescription(
 
   const pdfBytes = await buildPrescriptionPdf(
     { ...(prescription as Prescription), validation_code: validationCode },
-    (clinic as Clinic).name,
+    clinic as Clinic,
     logo,
     validationUrl
   );

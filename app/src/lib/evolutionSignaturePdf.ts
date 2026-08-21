@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, formatDateBR, wrapText } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import { formatTreatmentsLines } from "@/lib/treatments";
@@ -13,7 +13,7 @@ const BOTTOM_LIMIT = 100;
 
 interface EvolutionSnapshot {
   schema: "evolucao/v1";
-  clinic: { name: string; logoUrl: string | null };
+  clinic: { name: string; logoUrl: string | null; address?: string | null; cnpj?: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
   treatments: { name: string; toothRegion: string | null }[];
@@ -83,8 +83,11 @@ export async function buildEvolutionSignedPdf(
 
   page.drawText("Evolução Clínica", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
-  page.drawText(snapshot.clinic.name, { x: MARGIN, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
-  y -= 28;
+  y = drawClinicLetterhead(page, MARGIN, y, font, {
+    name: snapshot.clinic.name,
+    clinic_address: snapshot.clinic.address,
+    cnpj: snapshot.clinic.cnpj,
+  });
 
   function field(label: string, value: string) {
     ensureSpace(16);

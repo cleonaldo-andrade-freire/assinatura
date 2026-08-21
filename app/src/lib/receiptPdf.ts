@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { wrapText } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, wrapText, type LetterheadClinic, type LetterheadDentist } from "@/lib/pdfTextLayout";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDate } from "@/lib/date";
 import type { Receipt, TreatmentDebit } from "@/lib/database.types";
@@ -26,7 +26,13 @@ function formatMoney(value: number): string {
  * data pura — precisa converter pro fuso de Brasília, não só fatiar a
  * string.
  */
-export async function buildReceiptPdf(receipt: Receipt, debits: TreatmentDebit[], clinicName: string, logo: LogoImage | null): Promise<Uint8Array> {
+export async function buildReceiptPdf(
+  receipt: Receipt,
+  debits: TreatmentDebit[],
+  clinicInfo: LetterheadClinic,
+  logo: LogoImage | null,
+  dentist?: LetterheadDentist | null
+): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -54,8 +60,7 @@ export async function buildReceiptPdf(receipt: Receipt, debits: TreatmentDebit[]
 
   page.drawText("Recibo de Pagamento", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
-  page.drawText(clinicName, { x: MARGIN, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
-  y -= 28;
+  y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo, dentist);
 
   function field(label: string, value: string) {
     ensureSpace(16);

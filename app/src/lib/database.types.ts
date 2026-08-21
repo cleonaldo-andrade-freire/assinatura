@@ -34,6 +34,7 @@ export interface Clinic {
   dentist_phone: string | null;
   dentist_email: string | null;
   clinic_address: string | null;
+  cnpj: string | null;
   psc_access_token?: string | null;
   psc_refresh_token?: string | null;
   psc_certificate_alias?: string | null;

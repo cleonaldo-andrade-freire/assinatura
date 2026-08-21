@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isValidCPF } from "@/lib/validation";
+import { isValidCNPJ, isValidCPF } from "@/lib/validation";
 
 const bodySchema = z.object({
   dentist_name: z.string().min(1),
@@ -12,6 +12,7 @@ const bodySchema = z.object({
   dentist_phone: z.string().min(10).optional(),
   dentist_email: z.string().email().optional(),
   clinic_address: z.string().optional(),
+  cnpj: z.string().refine(isValidCNPJ, "CNPJ inválido").optional(),
 });
 
 /** A própria clínica cadastra/atualiza o perfil do responsável técnico e o endereço de atendimento. */
@@ -37,6 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
       dentist_phone: parsed.data.dentist_phone ?? null,
       dentist_email: parsed.data.dentist_email ?? null,
       clinic_address: parsed.data.clinic_address ?? null,
+      cnpj: parsed.data.cnpj ?? null,
     })
     .eq("id", clinic.id);
 

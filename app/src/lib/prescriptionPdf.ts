@@ -1,5 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { formatDateBR, reasonToWords, wrapReasonWords, wrapText } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, formatDateBR, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
 import type { Prescription } from "@/lib/database.types";
@@ -24,7 +24,7 @@ interface LogoImage {
  */
 export async function buildPrescriptionPdf(
   prescription: Prescription,
-  clinicName: string,
+  clinicInfo: LetterheadClinic,
   logo: LogoImage | null,
   validationUrl: string,
   options?: { unsigned?: boolean }
@@ -62,8 +62,7 @@ export async function buildPrescriptionPdf(
 
   page.drawText("Prescrição Odontológica", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
-  page.drawText(clinicName, { x: MARGIN, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
-  y -= 28;
+  y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo);
 
   function field(label: string, value: string) {
     ensureSpace(16);

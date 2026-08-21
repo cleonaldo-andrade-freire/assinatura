@@ -25,7 +25,7 @@ function onlyDigits(v: string | null | undefined): string {
 
 export interface EvolutionSnapshot {
   schema: "evolucao/v1";
-  clinic: { name: string; logoUrl: string | null };
+  clinic: { name: string; logoUrl: string | null; address?: string | null; cnpj?: string | null };
   dentist: { name: string; cro: string; croUf: string };
   patient: { name: string; cpf: string | null };
   /** Todos os tratamentos cobertos por esta evolução — pode ser mais de um
@@ -58,7 +58,7 @@ export async function buildEvolutionSnapshot(
 
   return {
     schema: "evolucao/v1",
-    clinic: { name: clinic.name, logoUrl: clinic.logo_url },
+    clinic: { name: clinic.name, logoUrl: clinic.logo_url, address: clinic.clinic_address, cnpj: clinic.cnpj },
     dentist: { name: clinic.dentist_name!, cro: clinic.dentist_cro!, croUf: clinic.dentist_cro_uf! },
     patient: { name: patient.name, cpf: patient.cpf ?? null },
     treatments: treatments.length > 0 ? treatments : [{ name: "Tratamento", toothRegion: null }],

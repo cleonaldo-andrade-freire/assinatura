@@ -1,7 +1,59 @@
-import type { PDFFont } from "pdf-lib";
+import type { PDFFont, PDFPage } from "pdf-lib";
+import { rgb } from "pdf-lib";
 import { resolveReasonSegments } from "@/lib/documentReason";
+import { formatCNPJ } from "@/lib/validation";
 
 /** Utilitários de layout de texto compartilhados entre `certificatePdf.ts` e `prescriptionPdf.ts`. */
+
+export interface LetterheadClinic {
+  name: string;
+  clinic_address?: string | null;
+  cnpj?: string | null;
+}
+
+export interface LetterheadDentist {
+  name: string;
+  cro: string;
+  croUf: string;
+}
+
+/**
+ * Cabeçalho compartilhado por todo PDF gerado pelo sistema — nome da clínica
+ * (já existia em todo gerador) + endereço/CNPJ quando preenchidos em
+ * Configurações, opcionalmente + responsável técnico (nome/CRO) pra
+ * documentos que não mostram isso em nenhum outro lugar do corpo (orçamento,
+ * recibo, anamnese). Documentos que já têm um campo "Dentista responsável:"
+ * no corpo (atestado, prescrição, evolução) não recebem `dentist` aqui, pra
+ * não duplicar a mesma informação duas vezes na mesma página.
+ * Retorna o `y` já descontado, pronto pro próximo elemento do documento.
+ */
+export function drawClinicLetterhead(
+  page: PDFPage,
+  x: number,
+  y: number,
+  font: PDFFont,
+  clinic: LetterheadClinic,
+  dentist?: LetterheadDentist | null
+): number {
+  page.drawText(clinic.name, { x, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
+  y -= 14;
+
+  const identityParts = [
+    clinic.clinic_address?.trim() || null,
+    clinic.cnpj?.trim() ? `CNPJ ${formatCNPJ(clinic.cnpj)}` : null,
+  ].filter((p): p is string => !!p);
+  if (identityParts.length > 0) {
+    page.drawText(identityParts.join(" — "), { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
+    y -= 12;
+  }
+
+  if (dentist?.name) {
+    page.drawText(`${dentist.name} — CRO ${dentist.cro}/${dentist.croUf}`, { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
+    y -= 12;
+  }
+
+  return y - 14;
+}
 
 export function formatDateBR(iso: string): string {
   const [year, month, day] = iso.slice(0, 10).split("-");

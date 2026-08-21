@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, formatDateBR, wrapText, type LetterheadClinic, type LetterheadDentist } from "@/lib/pdfTextLayout";
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
@@ -22,8 +22,9 @@ function formatMoney(value: number): string {
 export async function buildBudgetPdf(
   budget: Budget,
   items: BudgetItem[],
-  clinicName: string,
-  logo: LogoImage | null
+  clinicInfo: LetterheadClinic,
+  logo: LogoImage | null,
+  dentist?: LetterheadDentist | null
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -52,8 +53,7 @@ export async function buildBudgetPdf(
 
   page.drawText("Orçamento Odontológico", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
-  page.drawText(clinicName, { x: MARGIN, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
-  y -= 28;
+  y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo, dentist);
 
   function field(label: string, value: string) {
     ensureSpace(16);

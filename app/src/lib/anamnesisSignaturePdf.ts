@@ -1,10 +1,13 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { formatDateBR } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, formatDateBR, type LetterheadDentist } from "@/lib/pdfTextLayout";
 import { formatBRPhoneLocal, formatCPF } from "@/lib/validation";
 
 interface AnamnesisPdfData {
   clinicName: string;
   clinicLogoUrl: string | null;
+  clinicAddress?: string | null;
+  cnpj?: string | null;
+  dentist?: LetterheadDentist | null;
   patient: {
     name: string;
     cpf: string | null;
@@ -54,8 +57,15 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   });
   
   y -= 20;
-  page.drawText(data.clinicName, { x: MARGIN, y, size: 12, font });
-  y -= 40;
+  y = drawClinicLetterhead(
+    page,
+    MARGIN,
+    y,
+    font,
+    { name: data.clinicName, clinic_address: data.clinicAddress, cnpj: data.cnpj },
+    data.dentist
+  );
+  y -= 12;
 
   // Seção 1
   page.drawText("01. IDENTIFICAÇÃO DO PACIENTE", { x: MARGIN, y, size: 12, font: bold });

@@ -57,7 +57,7 @@ export async function issueCertificate(
   if (unsigned) {
     const pdfBytes = await buildCertificatePdf(
       { ...(certificate as Certificate), validation_code: validationCode },
-      (clinic as Clinic).name,
+      clinic as Clinic,
       logo,
       validationUrl,
       { unsigned: true }
@@ -90,7 +90,7 @@ export async function issueCertificate(
 
   const pdfBytes = await buildCertificatePdf(
     { ...(certificate as Certificate), validation_code: validationCode },
-    (clinic as Clinic).name,
+    clinic as Clinic,
     logo,
     validationUrl
   );

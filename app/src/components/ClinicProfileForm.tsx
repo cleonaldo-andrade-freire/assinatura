@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
+import { formatBRPhoneLocal, formatCNPJ, formatCPF, toE164BR } from "@/lib/validation";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -15,6 +15,7 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
   const [phone, setPhone] = useState(clinic.dentist_phone ? formatBRPhoneLocal(clinic.dentist_phone) : "");
   const [email, setEmail] = useState(clinic.dentist_email ?? "");
   const [address, setAddress] = useState(clinic.clinic_address ?? "");
+  const [cnpj, setCnpj] = useState(clinic.cnpj ? formatCNPJ(clinic.cnpj) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -36,6 +37,7 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
           dentist_phone: phone.trim() ? toE164BR(phone) : undefined,
           dentist_email: email.trim() || undefined,
           clinic_address: address.trim() || undefined,
+          cnpj: cnpj.trim() ? cnpj.replace(/\D/g, "") : undefined,
         }),
       });
       if (!res.ok) {
@@ -165,18 +167,38 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
               />
             </div>
           </div>
-          <div className={styles.field}>
-            <label htmlFor="clinicAddress" className={styles.label}>
-              Endereço de atendimento (opcional)
-            </label>
-            <textarea
-              id="clinicAddress"
-              className={styles.input}
-              rows={2}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Rua, número, bairro, cidade — UF"
-            />
+          <div className={styles.formRow}>
+            <div className={styles.field}>
+              <label htmlFor="clinicAddress" className={styles.label}>
+                Endereço de atendimento (opcional)
+              </label>
+              <textarea
+                id="clinicAddress"
+                className={styles.input}
+                rows={2}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Rua, número, bairro, cidade — UF"
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="clinicCnpj" className={styles.label}>
+                CNPJ da clínica (opcional)
+              </label>
+              <input
+                id="clinicCnpj"
+                type="text"
+                inputMode="numeric"
+                className={styles.input}
+                value={cnpj}
+                onChange={(e) => setCnpj(formatCNPJ(e.target.value))}
+                placeholder="00.000.000/0000-00"
+                maxLength={18}
+              />
+              <p className={styles.hint} style={{ marginTop: 4 }}>
+                Aparece no cabeçalho dos documentos gerados quando preenchido.
+              </p>
+            </div>
           </div>
           <div className={styles.formActions}>
             <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={saving}>

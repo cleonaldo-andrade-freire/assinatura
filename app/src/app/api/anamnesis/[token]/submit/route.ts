@@ -155,7 +155,15 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   }
 
   // 6. Busca dados da clínica para o PDF
-  const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", anamnesis.clinic_id).single();
+  const { data: clinic } = await supabase
+    .from("clinics")
+    .select("name, logo_url, clinic_address, cnpj, dentist_name, dentist_cro, dentist_cro_uf")
+    .eq("id", anamnesis.clinic_id)
+    .single();
+  const dentist =
+    clinic?.dentist_name && clinic.dentist_cro && clinic.dentist_cro_uf
+      ? { name: clinic.dentist_name, cro: clinic.dentist_cro, croUf: clinic.dentist_cro_uf }
+      : null;
 
   // Termo de Adesão Eletrônica: não bloqueia a assinatura da anamnese — a
   // aceitação do termo acontece depois, num momento separado (mesmo texto/
@@ -166,6 +174,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const pdfBytes = await buildAnamnesisSignedPdf({
     clinicName: clinic?.name || "Clínica",
     clinicLogoUrl: clinic?.logo_url || null,
+    clinicAddress: clinic?.clinic_address || null,
+    cnpj: clinic?.cnpj || null,
+    dentist,
     patient: {
       name: payload.patient_name,
       cpf: payload.patient_cpf || null,
