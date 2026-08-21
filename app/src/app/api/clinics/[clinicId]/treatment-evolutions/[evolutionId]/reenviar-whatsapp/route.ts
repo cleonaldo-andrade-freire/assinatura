@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendText } from "@/lib/evolution";
 import { formatValidationCode } from "@/lib/validationCode";
 
@@ -9,7 +9,11 @@ import { formatValidationCode } from "@/lib/validationCode";
  * evolução já assinado — mesmo texto/link que `finishAndNotify` (ver
  * evolutionDentistSignature.ts) manda automaticamente quando a dentista
  * contra-assina, só que sob demanda (ex.: a mensagem automática falhou, ou o
- * paciente pediu de novo).
+ * paciente pediu de novo). Usa o client admin (não o de sessão) pra ler
+ * `treatment_evolution_signatures` — essa tabela não tem RLS/policy (ver
+ * migration 052), mesmo padrão já usado em
+ * `api/evolucao-assinatura/[token]/pdf/route.ts`. O acesso continua
+ * protegido pela checagem de sessão logo acima + o filtro por clinic_id.
  */
 export async function POST(_req: NextRequest, { params }: { params: { clinicId: string; evolutionId: string } }) {
   const clinic = await getCurrentClinic();
@@ -17,7 +21,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data: evolution } = await supabase
     .from("treatment_evolutions")
     .select("id, patient_id, signature_status, dentist_signature_status")

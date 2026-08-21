@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readPdf } from "@/lib/pdfStorage";
 import { readEvolutionDentistPdf } from "@/lib/evolutionDentistPdfStorage";
 
@@ -8,7 +8,12 @@ import { readEvolutionDentistPdf } from "@/lib/evolutionDentistPdfStorage";
  * Download autenticado do PDF da evolução já assinada — mesma lógica de
  * `api/validar-evolucao/[code]/pdf` (arquivo mesclado quando a dentista já
  * contra-assinou, senão só o da paciente), só que pela sessão da clínica em
- * vez de um código de validação público.
+ * vez de um código de validação público. Usa o client admin (não o de sessão)
+ * pra ler `treatment_evolution_signatures` — essa tabela não tem RLS/policy
+ * (ver migration 052), mesmo padrão já usado em
+ * `api/evolucao-assinatura/[token]/pdf/route.ts`. O acesso continua
+ * protegido pela checagem de sessão logo acima + o filtro por clinic_id nas
+ * queries.
  */
 export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; evolutionId: string } }) {
   const clinic = await getCurrentClinic();
@@ -16,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data: evolution } = await supabase
     .from("treatment_evolutions")
     .select("id, signature_status, dentist_signature_status, dentist_pdf_storage_key")
