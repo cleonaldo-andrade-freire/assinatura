@@ -23,6 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     const messages: Record<string, string> = {
       not_found: "Evolução não encontrada.",
       already_signed: "Esta evolução já foi assinada pela dentista.",
+      patient_not_signed: "O paciente ainda não assinou esta evolução — a contra-assinatura só é possível depois disso.",
       clinic_not_found: "Clínica não encontrada.",
       dentist_not_configured: "Cadastre o nome e o CRO do dentista responsável em Configurações antes de assinar.",
       patient_not_found: "Paciente não encontrado.",

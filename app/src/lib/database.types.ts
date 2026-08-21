@@ -102,6 +102,9 @@ export interface Signature {
   dentist_pdf_sha256: string | null;
   dentist_content_snapshot: Record<string, unknown> | null;
   dentist_content_hash: string | null;
+  // Ver migration 060 — código de validação pública (portal /validar-anamnese),
+  // null em assinaturas feitas antes dessa migration.
+  verification_code: string | null;
 }
 
 export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";

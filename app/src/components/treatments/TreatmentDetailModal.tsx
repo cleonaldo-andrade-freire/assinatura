@@ -14,7 +14,7 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
 import { formatBRDate, formatBRTime } from "@/lib/date";
 import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
-import { formatTreatmentsLabel } from "@/lib/treatments";
+import { formatTreatmentsLines } from "@/lib/treatments";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -22,6 +22,70 @@ import tp from "./treatments.module.css";
 
 const CUSTOM_TREATMENT_VALUE = "__custom__";
 const EVOLUTION_TRUNCATE_LENGTH = 260;
+
+function SignIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path
+        d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M21 11.5a8.5 8.5 0 01-12.36 7.56L3 21l2.02-5.4A8.5 8.5 0 1121 11.5z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4L18.5 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /** Evolução como devolvida por GET .../treatments/{id}/evolutions — inclui
  * os outros tratamentos que compartilham essa mesma evolução (finalizados
@@ -469,17 +533,38 @@ export function TreatmentDetailModal({
                               <span className={tp.evolutionDate}>
                                 {formatBRDate(`${e.evolution_date}T12:00:00-03:00`)} · {formatBRTime(e.created_at)}
                               </span>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 {e.dentist_signature_status === "assinada" ? (
-                                  <span className={`${styles.statusBadge} ${styles.statusOk}`}>Assinada (dentista)</span>
-                                ) : (
+                                  <span
+                                    className={styles.iconActionBtn}
+                                    style={{ color: "var(--brand-deep)", cursor: "default" }}
+                                    title="Assinada pela dentista"
+                                    aria-label="Assinada pela dentista"
+                                  >
+                                    <SignIcon />
+                                  </span>
+                                ) : e.signature_status === "assinada" ? (
                                   <button
                                     type="button"
                                     onClick={() => handleSignAsDentist(e.id)}
-                                    style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                                    className={styles.iconActionBtn}
+                                    title="Assinar como dentista"
+                                    aria-label="Assinar como dentista"
                                   >
-                                    Assinar
+                                    <SignIcon />
                                   </button>
+                                ) : (
+                                  // Contra-assinatura da dentista só é possível depois que o
+                                  // paciente já assinou — só assim dá pra mesclar as duas
+                                  // assinaturas num único PDF (ver evolutionDentistSignature.ts).
+                                  <span
+                                    className={styles.iconActionBtn}
+                                    style={{ color: "var(--ink-faint)", cursor: "not-allowed", opacity: 0.5 }}
+                                    title="Aguardando o paciente assinar"
+                                    aria-label="Aguardando o paciente assinar"
+                                  >
+                                    <SignIcon />
+                                  </span>
                                 )}
                                 {e.signature_status !== "nao_solicitada" && (
                                   <span
@@ -490,6 +575,7 @@ export function TreatmentDetailModal({
                                         ? styles.statusDanger
                                         : styles.statusWarn
                                     }`}
+                                    title={e.signature_status === "recusada" ? `Motivo: ${e.signature_refused_reason || "não informado"}` : undefined}
                                   >
                                     {
                                       { solicitada: "Assinatura pendente", assinada: "Assinada", recusada: "Recusada", expirada: "Link expirado" }[
@@ -498,14 +584,21 @@ export function TreatmentDetailModal({
                                     }
                                   </span>
                                 )}
+                                {e.signature_status === "recusada" && e.signature_refused_reason && (
+                                  <span style={{ fontSize: 12, color: "var(--ink-soft)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.signature_refused_reason}>
+                                    "{e.signature_refused_reason}"
+                                  </span>
+                                )}
                                 {(e.signature_status === "nao_solicitada" || e.signature_status === "recusada" || e.signature_status === "expirada") && (
                                   <button
                                     type="button"
                                     disabled={requestingSignatureId === e.id}
                                     onClick={() => handleRequestSignature(e.id)}
-                                    style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                                    className={styles.iconActionBtn}
+                                    title={requestingSignatureId === e.id ? "Enviando…" : "Solicitar assinatura por WhatsApp"}
+                                    aria-label="Solicitar assinatura por WhatsApp"
                                   >
-                                    {requestingSignatureId === e.id ? "Enviando…" : "Solicitar assinatura"}
+                                    <WhatsAppIcon />
                                   </button>
                                 )}
                                 {e.signature_status !== "solicitada" && e.signature_status !== "assinada" && (
@@ -513,26 +606,36 @@ export function TreatmentDetailModal({
                                     <button
                                       type="button"
                                       onClick={() => openEditEvolution(e)}
-                                      style={{ border: "none", background: "none", color: "var(--brand)", cursor: "pointer", fontSize: 12 }}
+                                      className={styles.iconActionBtn}
+                                      title="Editar evolução"
+                                      aria-label="Editar evolução"
                                     >
-                                      Editar
+                                      <EditIcon />
                                     </button>
                                     <button
                                       type="button"
                                       disabled={deletingEvolutionId === e.id}
                                       onClick={() => setConfirmDeleteEvolutionId(e.id)}
-                                      style={{ border: "none", background: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12 }}
+                                      className={styles.iconActionBtn}
+                                      style={{ color: "var(--danger)" }}
+                                      title="Excluir evolução"
+                                      aria-label="Excluir evolução"
                                     >
-                                      Excluir
+                                      <TrashIcon />
                                     </button>
                                   </>
                                 )}
                               </div>
                             </div>
                             {e.linked_treatments.length > 1 && (
-                              <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 6px" }}>
-                                Também: {formatTreatmentsLabel(e.linked_treatments.filter((t) => t.id !== treatment!.id).map((t) => ({ name: t.treatment_name, toothRegion: t.tooth_region })))}
-                              </p>
+                              <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 6px" }}>
+                                <span>Também:</span>
+                                {formatTreatmentsLines(e.linked_treatments.filter((t) => t.id !== treatment!.id).map((t) => ({ name: t.treatment_name, toothRegion: t.tooth_region }))).map(
+                                  (line, i) => (
+                                    <div key={i}>{line}</div>
+                                  )
+                                )}
+                              </div>
                             )}
                             <p className={tp.evolutionText}>
                               {displayText}

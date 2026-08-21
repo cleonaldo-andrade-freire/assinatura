@@ -141,11 +141,12 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
       {typedSignature?.dentist_signature_status === "assinada" && (
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
-            <p className={styles.panelHeaderTitle}>Assinatura do dentista</p>
+            <p className={styles.panelHeaderTitle}>Documento final (paciente + dentista)</p>
           </div>
           <div className={styles.panelBody}>
             <p style={{ color: "var(--ink-soft)", fontSize: 13.5, margin: "0 0 12px" }}>
-              Contra-assinatura ICP-Brasil confirmando ciência do conteúdo declarado pelo paciente.
+              Contra-assinatura ICP-Brasil da dentista, aplicada sobre o mesmo PDF que a paciente já assinou —
+              um único arquivo com as duas assinaturas.
             </p>
             {detailRow("Data/hora", formatBRDateTime(typedSignature.dentist_signed_at!, "medium"))}
             {detailRow("Hash SHA-256 do PDF", <code>{typedSignature.dentist_pdf_sha256}</code>)}
@@ -155,8 +156,8 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
                 target="_blank"
                 rel="noreferrer"
                 className={styles.iconActionBtn}
-                title="Baixar PDF assinado pela dentista"
-                aria-label="Baixar PDF assinado pela dentista"
+                title="Baixar PDF completo (paciente + dentista)"
+                aria-label="Baixar PDF completo (paciente + dentista)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />

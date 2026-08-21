@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requestEvolutionSignature } from "@/lib/evolutionSignature";
 
 const bodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1),
@@ -65,6 +66,17 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       await supabase.from("treatment_evolution_treatments").insert(
         finalized.map((t) => ({ treatment_evolution_id: evolution.id, treatment_id: t.id }))
       );
+
+      // Já dispara o pedido de assinatura ao paciente por WhatsApp — a
+      // contra-assinatura da dentista só é possível depois disso (ordem
+      // invertida em relação ao antigo "dentista assina primeiro", ver
+      // evolutionDentistSignature.ts). Sem isso, a evolução ficaria parada
+      // em signature_status="nao_solicitada" até alguém clicar manualmente
+      // em "Solicitar assinatura".
+      const sent = await requestEvolutionSignature(clinic.id, evolution.id);
+      if (!sent.ok) {
+        console.error(`Não foi possível solicitar assinatura automaticamente ao finalizar (evolução ${evolution.id}):`, sent.error);
+      }
     }
   } catch (err) {
     console.error("Falha ao registrar evolução ao finalizar tratamento:", err);

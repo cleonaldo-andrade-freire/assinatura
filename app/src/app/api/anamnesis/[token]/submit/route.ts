@@ -6,7 +6,9 @@ import { isValidToken } from "@/lib/validation";
 import { savePdf } from "@/lib/pdfStorage";
 import { notifyClinicSigned } from "@/lib/evolution"; // Pode ser ajustado para anamnese
 // Importe a função de geração de PDF depois que criarmos
-import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf"; 
+import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf";
+import { clinicHasConfiguredConsentTerm, hashConsentText, patientHasActiveConsent, recordConsentAcceptance } from "@/lib/electronicConsent";
+import { ensureUniqueAnamnesisSignatureCode } from "@/lib/validationCode";
 
 const answerSchema = z.object({
   question: z.string(),
@@ -47,6 +49,7 @@ const bodySchema = z.object({
   address: z.string().optional().nullable(),
   answers: z.array(answerSchema),
   signature: signatureSchema,
+  consent_accepted: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
@@ -104,8 +107,10 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "update_anamnesis_failed" }, { status: 500 });
   }
 
-  // 5. Enriquecimento do Paciente (Patients)
-  // Busca o paciente pelo cpf ou telefone para atualizar
+  // 5. Enriquecimento do Paciente (Patients) — acha ou cria (find-or-create,
+  // não só update): sem isso, uma anamnese de paciente que nunca existiu no
+  // sistema não deixava nenhum registro em `patients`, e o aceite do Termo
+  // de Adesão (passo 6b abaixo) precisa de um patient_id pra existir.
   let patientQuery = supabase.from("patients").select("id").eq("clinic_id", anamnesis.clinic_id);
   if (payload.patient_cpf) {
     patientQuery = patientQuery.eq("cpf", payload.patient_cpf);
@@ -114,8 +119,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   }
   const { data: patientMatches } = await patientQuery;
 
+  let patientId: string | null = null;
   if (patientMatches && patientMatches.length > 0) {
-    const patientId = patientMatches[0].id;
+    patientId = patientMatches[0].id;
     await supabase.from("patients").update({
       name: payload.patient_name,
       cpf: payload.patient_cpf,
@@ -126,10 +132,61 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       address: payload.address,
       updated_at: new Date().toISOString()
     }).eq("id", patientId);
+  } else {
+    const { data: newPatient, error: createError } = await supabase
+      .from("patients")
+      .insert({
+        clinic_id: anamnesis.clinic_id,
+        name: payload.patient_name,
+        cpf: payload.patient_cpf,
+        phone: payload.patient_phone || anamnesis.patient_phone,
+        birth_date: payload.birth_date,
+        rg: payload.rg,
+        occupation: payload.occupation,
+        address: payload.address,
+      })
+      .select("id")
+      .single();
+    if (createError) {
+      console.error("Falha ao criar paciente a partir da anamnese:", createError);
+    } else {
+      patientId = newPatient.id;
+    }
   }
 
-  // 6. Busca dados da clínica para o PDF
-  const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", anamnesis.clinic_id).single();
+  // 6. Busca dados da clínica para o PDF e pro Termo de Adesão
+  const { data: clinic } = await supabase
+    .from("clinics")
+    .select("name, logo_url, consent_term_text, consent_term_version")
+    .eq("id", anamnesis.clinic_id)
+    .single();
+
+  // 6b. Termo de Adesão Eletrônica — mesma exigência já aplicada à
+  // assinatura de evolução clínica (lib/electronicConsent.ts). Só passa a
+  // valer quando a clínica configurou o texto em Configurações; enquanto
+  // não configurar, comportamento idêntico ao de antes desta mudança.
+  if (clinic && clinicHasConfiguredConsentTerm(clinic) && patientId) {
+    const alreadyConsented = await patientHasActiveConsent(supabase, patientId);
+    if (!alreadyConsented) {
+      if (!payload.consent_accepted) {
+        return NextResponse.json({ error: "consent_required" }, { status: 400 });
+      }
+      try {
+        await recordConsentAcceptance(supabase, {
+          clinicId: anamnesis.clinic_id,
+          patientId,
+          termVersion: clinic.consent_term_version!,
+          termTextHash: hashConsentText(clinic.consent_term_text!),
+          phoneE164: payload.patient_phone || anamnesis.patient_phone || "",
+          ip,
+          userAgent,
+        });
+      } catch (err) {
+        console.error("Falha ao registrar aceite do Termo de Adesão na anamnese:", err);
+        return NextResponse.json({ error: "consent_record_failed" }, { status: 500 });
+      }
+    }
+  }
 
   // 7. Geração do PDF no backend
   const pdfBytes = await buildAnamnesisSignedPdf({
@@ -160,6 +217,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   
   // 8. Salvar PDF no Storage
   const pdfStorageKey = await savePdf(anamnesis.clinic_id, anamnesis.id, pdfBuffer);
+  const verificationCode = await ensureUniqueAnamnesisSignatureCode(supabase);
 
   // 9. Registrar Assinatura
   const { data: signatureData, error: signatureError } = await supabase
@@ -176,6 +234,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       sha256,
       pdf_storage_key: pdfStorageKey,
       stroke_data: payload.signature.strokeData as any,
+      verification_code: verificationCode,
     })
     .select("id")
     .single();

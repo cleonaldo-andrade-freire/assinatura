@@ -51,3 +51,13 @@ export async function ensureUniqueEvolutionSignatureCode(supabase: SupabaseClien
   }
   throw new Error("Não foi possível gerar um código de verificação único depois de várias tentativas.");
 }
+
+/** Mesma ideia, pro código de validação pública da anamnese (`signatures.verification_code`, migration 060). */
+export async function ensureUniqueAnamnesisSignatureCode(supabase: SupabaseClient): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = randomCode();
+    const { data } = await supabase.from("signatures").select("id").eq("verification_code", candidate).maybeSingle();
+    if (!data) return candidate;
+  }
+  throw new Error("Não foi possível gerar um código de verificação único depois de várias tentativas.");
+}

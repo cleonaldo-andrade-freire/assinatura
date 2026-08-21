@@ -1,0 +1,11 @@
+-- Código de verificação público pra anamnese, mesmo padrão de
+-- treatment_evolution_signatures.verification_code (migration 052) — usado
+-- pelo portal público /validar-anamnese/[code] que passa a existir junto
+-- com a mesclagem do PDF da paciente + contra-assinatura da dentista num
+-- único arquivo (ver lib/anamnesisDentistSignature.ts).
+--
+-- Nullable (não `not null`): assinaturas já existentes antes desta migration
+-- continuam válidas sem código — simplesmente não ganham um link de
+-- validação pública retroativo. Só assinaturas novas (a partir de agora)
+-- recebem o código no momento em que a paciente assina.
+alter table signatures add column verification_code text unique;

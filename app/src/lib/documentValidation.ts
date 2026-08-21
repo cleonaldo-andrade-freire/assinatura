@@ -64,6 +64,9 @@ export interface EvolutionValidationResult {
   signedAt?: string;
   sha256?: string;
   chainIntact?: boolean;
+  /** true quando a dentista já contra-assinou — nesse caso `sha256` aponta
+   * pro arquivo final (paciente + dentista), não só o da paciente. */
+  dentistSigned?: boolean;
 }
 
 /** Mesma ideia de `lookupDocumentValidation`, mas pro código impresso no
@@ -83,7 +86,7 @@ export async function lookupEvolutionValidation(supabase: SupabaseClient, rawCod
 
   const { data: evolution } = await supabase
     .from("treatment_evolutions")
-    .select("clinic_id, content_snapshot")
+    .select("clinic_id, content_snapshot, dentist_signature_status, dentist_pdf_sha256")
     .eq("id", signature.treatment_evolution_id)
     .maybeSingle();
   if (!evolution) return { found: false };
@@ -98,6 +101,11 @@ export async function lookupEvolutionValidation(supabase: SupabaseClient, rawCod
 
   const chainCheck = await verifySignatureChain(supabase, "treatment_evolution", signature.treatment_evolution_id);
 
+  // O arquivo final é o que a dentista contra-assinou (paciente + dentista
+  // no mesmo PDF) quando existir; senão, ainda só o da paciente sozinha —
+  // ver evolutionDentistSignature.ts.
+  const hasDentistSignature = evolution.dentist_signature_status === "assinada";
+
   return {
     found: true,
     clinicName: clinic?.name,
@@ -108,7 +116,56 @@ export async function lookupEvolutionValidation(supabase: SupabaseClient, rawCod
     treatmentName: snapshot?.treatments ? formatTreatmentsLabel(snapshot.treatments) : undefined,
     evolutionDate: snapshot?.evolutionDate,
     signedAt: signature.signed_at_server,
-    sha256: signature.sha256,
+    sha256: hasDentistSignature ? evolution.dentist_pdf_sha256 : signature.sha256,
     chainIntact: chainCheck.ok,
+    dentistSigned: hasDentistSignature,
+  };
+}
+
+export interface AnamnesisValidationResult {
+  found: boolean;
+  clinicName?: string;
+  dentistName?: string | null;
+  dentistCro?: string | null;
+  dentistCroUf?: string | null;
+  patientName?: string;
+  signedAt?: string;
+  sha256?: string | null;
+  dentistSigned?: boolean;
+}
+
+/** Mesma ideia de `lookupEvolutionValidation`, mas pro código de validação
+ * pública da anamnese (portal — ver `app/validar-anamnese/[code]/page.tsx`).
+ * Sem cadeia de eventos de auditoria pra conferir aqui (a anamnese não usa
+ * `document_signature_events` hoje) — só o hash do arquivo. */
+export async function lookupAnamnesisValidation(supabase: SupabaseClient, rawCode: string): Promise<AnamnesisValidationResult> {
+  const code = normalizeValidationCode(rawCode);
+  if (!code) return { found: false };
+
+  const { data: signature } = await supabase.from("signatures").select("*").eq("verification_code", code).maybeSingle();
+  if (!signature) return { found: false };
+
+  const { data: anamnesis } = await supabase
+    .from("anamneses")
+    .select("clinic_id, patient_name")
+    .eq("id", signature.anamnesis_id)
+    .maybeSingle();
+  if (!anamnesis) return { found: false };
+
+  const { data: clinic } = await supabase.from("clinics").select("name").eq("id", anamnesis.clinic_id).maybeSingle();
+
+  const dentistSigned = signature.dentist_signature_status === "assinada";
+  const snapshot = signature.dentist_content_snapshot as { dentist: { name: string; cro: string; croUf: string } } | null;
+
+  return {
+    found: true,
+    clinicName: clinic?.name,
+    dentistName: dentistSigned ? snapshot?.dentist.name ?? null : null,
+    dentistCro: dentistSigned ? snapshot?.dentist.cro ?? null : null,
+    dentistCroUf: dentistSigned ? snapshot?.dentist.croUf ?? null : null,
+    patientName: anamnesis.patient_name,
+    signedAt: dentistSigned ? signature.dentist_signed_at : signature.signed_at_server,
+    sha256: dentistSigned ? signature.dentist_pdf_sha256 : signature.sha256,
+    dentistSigned,
   };
 }

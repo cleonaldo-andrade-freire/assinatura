@@ -15,11 +15,15 @@ export default async function EvolucoesPendentesPage() {
   const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
+  // Só entram aqui evoluções que o paciente já assinou — a contra-assinatura
+  // da dentista só é possível depois disso, pra poder mesclar as duas
+  // assinaturas num único PDF (ver evolutionDentistSignature.ts).
   const { data: evolutions } = await supabase
     .from("treatment_evolutions")
     .select("id, treatment_id, patient_id, evolution_date, text, created_at, signature_status, dentist_signature_status")
     .eq("clinic_id", clinic.id)
     .eq("dentist_signature_status", "nao_assinada")
+    .eq("signature_status", "assinada")
     .order("evolution_date", { ascending: false })
     .limit(200);
 
