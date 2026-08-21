@@ -12,6 +12,9 @@ interface MedicationSuggestion {
   name: string;
   presentation: string | null;
   default_dosage: string | null;
+  /** Só preenchido pra sugestões vindas da base da Anvisa (ver anvisa_medicamentos) — a lista curada não tem esses campos. */
+  principio_ativo: string | null;
+  classe_terapeutica: string | null;
 }
 
 const emptyItem: PrescriptionItem = {
@@ -214,8 +217,17 @@ export function PrescriptionItemsEditor({
                             fontSize: 13.5,
                           }}
                         >
-                          {s.name}
-                          {s.presentation && <span style={{ color: "var(--ink-soft)" }}> — {s.presentation}</span>}
+                          <span style={{ display: "block" }}>
+                            {s.name}
+                            {s.presentation && <span style={{ color: "var(--ink-soft)" }}> — {s.presentation}</span>}
+                          </span>
+                          {(s.principio_ativo || s.classe_terapeutica) && (
+                            <span style={{ display: "block", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 1 }}>
+                              {s.principio_ativo}
+                              {s.principio_ativo && s.classe_terapeutica && " • "}
+                              {s.classe_terapeutica}
+                            </span>
+                          )}
                         </button>
                       </li>
                     ))}

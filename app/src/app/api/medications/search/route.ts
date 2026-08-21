@@ -39,19 +39,26 @@ export async function GET(req: NextRequest) {
   ]);
 
   const seenNames = new Set<string>();
-  const medications: { id: string; name: string; presentation: string | null; default_dosage: string | null }[] = [];
+  const medications: {
+    id: string;
+    name: string;
+    presentation: string | null;
+    default_dosage: string | null;
+    principio_ativo: string | null;
+    classe_terapeutica: string | null;
+  }[] = [];
   for (const row of [...(byName.data ?? []), ...(byPresentation.data ?? [])]) {
     const key = row.name.trim().toUpperCase();
     if (seenNames.has(key)) continue;
     seenNames.add(key);
-    medications.push(row);
+    medications.push({ ...row, principio_ativo: null, classe_terapeutica: null });
     if (medications.length >= LIMIT) break;
   }
 
   if (medications.length < LIMIT) {
     const { data: anvisaRows } = await supabase
       .from("anvisa_medicamentos")
-      .select("id, nome_produto")
+      .select("id, nome_produto, principio_ativo, classe_terapeutica")
       .ilike("nome_produto", `%${q}%`)
       .order("nome_produto", { ascending: true })
       .limit(LIMIT - medications.length + seenNames.size); // margem pra sobrar após dedupe
@@ -60,7 +67,14 @@ export async function GET(req: NextRequest) {
       const key = row.nome_produto.trim().toUpperCase();
       if (seenNames.has(key)) continue;
       seenNames.add(key);
-      medications.push({ id: `anvisa:${row.id}`, name: row.nome_produto, presentation: null, default_dosage: null });
+      medications.push({
+        id: `anvisa:${row.id}`,
+        name: row.nome_produto,
+        presentation: null,
+        default_dosage: null,
+        principio_ativo: row.principio_ativo,
+        classe_terapeutica: row.classe_terapeutica,
+      });
       if (medications.length >= LIMIT) break;
     }
   }

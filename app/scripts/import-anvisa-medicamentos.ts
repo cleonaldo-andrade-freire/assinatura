@@ -1,4 +1,5 @@
 import "dotenv/config";
+import https from "node:https";
 import { createClient } from "@supabase/supabase-js";
 import { parse } from "csv-parse/sync";
 
@@ -30,11 +31,37 @@ interface AnvisaRow {
   PRINCIPIO_ATIVO?: string;
 }
 
+/**
+ * `fetch` global do Node valida o certificado contra a lista embutida dele —
+ * em redes com antivírus/proxy corporativo fazendo inspeção de HTTPS (comum
+ * no Windows), o certificado chega re-assinado por uma CA que o Windows/
+ * navegador confia mas o Node não, e o fetch falha com
+ * UNABLE_TO_VERIFY_LEAF_SIGNATURE mesmo a conexão sendo legítima. Usa
+ * `https` nativo com verificação desativada só pra este download pontual de
+ * dado público (CSV aberto do governo) — não afeta a verificação de TLS da
+ * conexão com o Supabase logo depois, que continua pelo `fetch`/client normal.
+ */
+function downloadCsv(url: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const agent = new https.Agent({ rejectUnauthorized: false });
+    https
+      .get(url, { agent }, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`Falha ao baixar CSV da Anvisa: HTTP ${res.statusCode}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+        res.on("error", reject);
+      })
+      .on("error", reject);
+  });
+}
+
 async function main() {
   console.log("Baixando CSV da Anvisa...");
-  const res = await fetch(CSV_URL);
-  if (!res.ok) throw new Error(`Falha ao baixar CSV da Anvisa: HTTP ${res.status}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
+  const buffer = await downloadCsv(CSV_URL);
   const text = buffer.toString("latin1");
 
   const rows = parse(text, {
