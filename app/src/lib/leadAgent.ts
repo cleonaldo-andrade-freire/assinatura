@@ -28,7 +28,15 @@ const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
  * no fim do dia). Mais cedo que AGENDA_END_HOUR de propósito. */
 const URGENT_BOOKING_CUTOFF_HOUR = 18;
 
-function buildSystemPrompt(clinic: Clinic): string {
+/** Marca o início do bloco de contexto dinâmico injetado na última mensagem
+ * (ver buildContextNote) — precisa ser reconhecível o bastante pro modelo
+ * saber que aquele trecho não veio do paciente. */
+const CONTEXT_NOTE_MARKER = "[CONTEXTO ATUAL]";
+
+/** Data/hora reais + status da clínica — muda a cada chamada, por isso fica
+ * de fora do prompt de sistema (que precisa ser estático pro cache de prompt
+ * funcionar) e é injetado só na mensagem mais recente. */
+function buildContextNote(): string {
   const now = new Date();
   const nowIso = now.toISOString();
   const hoje = brDateOnly();
@@ -37,8 +45,20 @@ function buildSystemPrompt(clinic: Clinic): string {
   const isHorarioComercial = brHour(now) >= AGENDA_START_HOUR && brHour(now) < AGENDA_END_HOUR;
   const statusClinica = isHorarioComercial ? "ABERTA" : "FECHADA no momento";
 
+  return `${CONTEXT_NOTE_MARKER} Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de Brasília) — a clínica está ${statusClinica} (horário de atendimento: ${AGENDA_START_HOUR}h às ${AGENDA_END_HOUR}h). [/CONTEXTO ATUAL]`;
+}
+
+/**
+ * 100% estático por clínica (nunca muda entre chamadas pro mesmo `clinic.id`)
+ * — é o que permite o cache de prompt da Anthropic reaproveitar esse bloco
+ * grande (persona + regras + descrição das tools) em vez de recomputar/
+ * repagar ele inteiro a cada mensagem. A data/hora reais (que mudam a cada
+ * chamada e antes ficavam aqui, quebrando o cache) agora entram só na última
+ * mensagem, via CONTEXT_NOTE_MARKER — ver buildContextNote/runLeadTriageAgent.
+ */
+function buildSystemPrompt(clinic: Clinic): string {
   return `Você é a assistente de triagem da clínica odontológica ${clinic.name}. Responda de forma humana, concisa e com empatia. Nunca faça diagnósticos ou prescreva remédios.
-Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de Brasília) — a clínica está ${statusClinica} (horário de atendimento: ${AGENDA_START_HOUR}h às ${AGENDA_END_HOUR}h). Use SEMPRE essa data/hora real como referência ao interpretar "hoje", "amanhã" ou qualquer data relativa que o paciente mencionar — nunca chute ou assuma outra data, e sempre passe a data no formato AAAA-MM-DD pras ferramentas.
+A mensagem mais recente do paciente pode vir precedida de um bloco "${CONTEXT_NOTE_MARKER} ..." — isso é informação do sistema (data/hora reais e se a clínica está aberta), não foi o paciente que escreveu. Use SEMPRE essa data/hora real como referência ao interpretar "hoje", "amanhã" ou qualquer data relativa que o paciente mencionar — nunca chute ou assuma outra data, e sempre passe a data no formato AAAA-MM-DD pras ferramentas. Sem esse bloco (mensagens mais antigas no histórico), ignore — vale só o mais recente.
 1. Pergunte o nome se não souber. Assim que o paciente informar o nome, chame a ferramenta registrarNome imediatamente (antes de continuar as perguntas). Entenda o motivo do contato. O telefone já é conhecido (é o número desta própria conversa) — nunca peça o telefone ao paciente.
 2. Se o paciente relatar dor, pergunte (uma por vez): A dor é contínua ou com estímulo? Há inchaço? Houve trauma recente?
 3. Se houver inchaço, trauma ou dor aguda contínua, chame imediatamente a ferramenta alertarUrgencia. Depois:
@@ -279,12 +299,23 @@ export async function runLeadTriageAgent(supabase: SupabaseClient, clinic: Clini
     content: m.content,
   }));
 
+  // Injeta a data/hora reais só na mensagem mais recente (sempre a do
+  // paciente que disparou esta chamada) — ver buildContextNote/CONTEXT_NOTE_MARKER.
+  // Mantém o prompt de sistema 100% estático entre chamadas, permitindo o
+  // cache de prompt da Anthropic reaproveitar o bloco grande (persona +
+  // regras + tools) em vez de pagar ele inteiro de novo a cada mensagem.
+  const lastMessage = messages.at(-1);
+  if (lastMessage) {
+    lastMessage.content = `${buildContextNote()}\n${lastMessage.content}`;
+  }
+
   const result = await generateText({
     model: anthropic("claude-haiku-4-5"),
     system: buildSystemPrompt(clinic),
     messages,
     stopWhen: stepCountIs(6),
     tools: buildLeadTools(supabase, clinic, lead),
+    providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
   });
 
   let replyText = result.text.trim() || "Recebi sua mensagem, já te respondo!";
