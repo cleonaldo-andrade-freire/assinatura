@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatCPF, isValidCPF } from "@/lib/validation";
-import { formatTreatmentsLabel } from "@/lib/treatments";
+import { formatTreatmentsLines } from "@/lib/treatments";
 import { SignatureMark } from "@/components/SignatureMark";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
 import richTextStyles from "@/components/ui/RichTextEditor.module.css";
@@ -329,7 +329,11 @@ export function EvolucaoAssinaturaClient() {
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{doc.snapshot.treatments.length > 1 ? "Tratamentos" : "Tratamento"}</dt>
-                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatTreatmentsLabel(doc.snapshot.treatments)}</dd>
+                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>
+                    {formatTreatmentsLines(doc.snapshot.treatments).map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </dd>
                 </div>
                 <div>
                   <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Data</dt>

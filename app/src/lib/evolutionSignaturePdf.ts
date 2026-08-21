@@ -3,7 +3,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { formatDateBR, wrapText } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { formatBRPhoneLocal } from "@/lib/validation";
-import { formatTreatmentsLabel } from "@/lib/treatments";
+import { formatTreatmentsLines } from "@/lib/treatments";
 import type { SignatureStrokeData } from "@/components/SignatureCanvas";
 
 const MARGIN = 48;
@@ -94,11 +94,22 @@ export async function buildEvolutionSignedPdf(
     y -= 16;
   }
 
+  function fieldLines(label: string, lines: string[]) {
+    ensureSpace(16);
+    page.drawText(label, { x: MARGIN, y, size: 11, font: bold, color: rgb(0.08, 0.08, 0.08) });
+    const labelWidth = bold.widthOfTextAtSize(`${label} `, 11);
+    for (const line of lines) {
+      ensureSpace(16);
+      page.drawText(line, { x: MARGIN + labelWidth, y, size: 11, font, color: rgb(0.08, 0.08, 0.08) });
+      y -= 16;
+    }
+  }
+
   field("Paciente:", snapshot.patient.name);
   if (snapshot.patient.cpf) field("CPF:", snapshot.patient.cpf);
   field("Dentista responsável:", `${snapshot.dentist.name} — CRO ${snapshot.dentist.cro}/${snapshot.dentist.croUf}`);
   field("Data do atendimento:", formatDateBR(snapshot.evolutionDate));
-  field(snapshot.treatments.length > 1 ? "Tratamentos:" : "Tratamento:", formatTreatmentsLabel(snapshot.treatments));
+  fieldLines(snapshot.treatments.length > 1 ? "Tratamentos:" : "Tratamento:", formatTreatmentsLines(snapshot.treatments));
 
   ensureSpace(20);
   y -= 6;
