@@ -49,7 +49,8 @@ Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de
    - Se a clínica estiver ABERTA: chame consultarDisponibilidade e ofereça até duas opções de horário. Se o paciente pedir um horário específico, passe-o em horario_preferido e confie SOMENTE no campo disponivel_no_horario_pedido pra saber se está livre — nunca conclua que não tem vaga só porque o horário pedido não apareceu na lista de sugestões. Após o paciente escolher, chame agendarPaciente.
    - Se a clínica estiver FECHADA: não consulte horários agora — avise com simpatia que o agendamento continua assim que a clínica abrir, às ${AGENDA_START_HOUR}h, e chame marcarRetornoParaAmanha.
 5. NUNCA diga ao paciente que não há vaga/horário disponível, em nenhuma hipótese, nem sugira "tente outro dia" por conta própria. Se consultarDisponibilidade não retornar horários livres (em qualquer data), peça para ele ligar (chamada de voz) aqui mesmo pelo WhatsApp, pra clínica encontrar um encaixe.
-6. NUNCA diga que um agendamento foi criado/confirmado sem ter chamado agendarPaciente e recebido sucesso:true de volta. Se vier sucesso:false, explique o motivo ao paciente (nunca finja que deu certo) e ofereça outro horário ou peça pra ligar.`;
+6. Se o paciente pedir ou insistir num horário FORA do expediente (antes das ${AGENDA_START_HOUR}h ou às/depois das ${AGENDA_END_HOUR}h, de qualquer dia), NUNCA tente agendar nesse horário (agendarPaciente recusa mesmo assim) e não fique só oferecendo outro dia — peça diretamente pra ele ligar (chamada de voz) aqui mesmo pelo WhatsApp e falar com o atendimento, que eles veem se dá pra abrir uma exceção.
+7. NUNCA diga que um agendamento foi criado/confirmado sem ter chamado agendarPaciente e recebido sucesso:true de volta. Se vier sucesso:false, explique o motivo ao paciente (nunca finja que deu certo) e ofereça outro horário ou peça pra ligar.`;
 }
 
 /**
@@ -147,6 +148,14 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
         horario: z.string().regex(TIME_REGEX, "use o formato HH:mm"),
       }),
       execute: async ({ nome, data, horario }) => {
+        const horarioHour = Number(horario.slice(0, 2));
+        if (horarioHour < AGENDA_START_HOUR || horarioHour >= AGENDA_END_HOUR) {
+          return {
+            sucesso: false,
+            motivo: `Fora do horário de atendimento (${AGENDA_START_HOUR}h às ${AGENDA_END_HOUR}h) — nunca agende nesse horário. Oriente o paciente a ligar (chamada de voz) aqui mesmo pelo WhatsApp e falar com o atendimento.`,
+          };
+        }
+
         if (leadIsUrgent && brHour(new Date()) >= URGENT_BOOKING_CUTOFF_HOUR) {
           return {
             sucesso: false,
@@ -206,6 +215,16 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
           .from("leads")
           .update({ status: "scheduled", patient_name: nome, updated_at: new Date().toISOString() })
           .eq("id", lead.id);
+
+        // Best-effort — mesmo padrão de alertarUrgencia: uma falha de WhatsApp
+        // não pode travar a confirmação ao paciente, que já foi salva.
+        if (clinic.notify_phone) {
+          await sendText(
+            clinic,
+            clinic.notify_phone,
+            `📅 Agendamento automático via WhatsApp: ${nome} (${telefone}) — ${formatBRWeekday(scheduledAt.toISOString(), "long")}, ${data.split("-").reverse().join("/")} às ${horario}.`
+          );
+        }
 
         return { sucesso: true };
       },
