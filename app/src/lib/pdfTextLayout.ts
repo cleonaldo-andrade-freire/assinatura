@@ -27,6 +27,11 @@ export interface LetterheadDentist {
  * não duplicar a mesma informação duas vezes na mesma página.
  * Retorna o `y` já descontado, pronto pro próximo elemento do documento.
  */
+/** Mesmo PAGE_WIDTH/MARGIN usados em todo PDF gerado pelo sistema — usado só
+ * como largura de referência pra quebrar linha aqui dentro, sem precisar
+ * mudar a assinatura de `drawClinicLetterhead` em todos os call sites. */
+const DEFAULT_LETTERHEAD_MAX_WIDTH = 595.28 - 48 * 2;
+
 export function drawClinicLetterhead(
   page: PDFPage,
   x: number,
@@ -38,21 +43,33 @@ export function drawClinicLetterhead(
   page.drawText(clinic.name, { x, y, size: 10.5, font, color: rgb(0.35, 0.35, 0.35) });
   y -= 14;
 
-  const identityParts = [
-    clinic.clinic_address?.trim() || null,
-    clinic.cnpj?.trim() ? `CNPJ ${formatCNPJ(clinic.cnpj)}` : null,
-  ].filter((p): p is string => !!p);
-  if (identityParts.length > 0) {
-    page.drawText(identityParts.join(" — "), { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
-    y -= 12;
+  // O campo de endereço é uma textarea em Configurações — pode vir com
+  // quebras de linha de verdade. `page.drawText` não quebra "\n" sozinho (o
+  // texto todo saía desenhado na mesma linha, sobrepondo o próximo elemento
+  // do PDF), por isso quebra aqui manualmente: por linha digitada e, dentro
+  // de cada uma, por largura, descontando `y` a cada linha renderizada.
+  if (clinic.clinic_address?.trim()) {
+    for (const rawLine of clinic.clinic_address.split(/\r?\n/)) {
+      const trimmed = rawLine.trim();
+      if (!trimmed) continue;
+      for (const line of wrapText(trimmed, font, 8.5, DEFAULT_LETTERHEAD_MAX_WIDTH)) {
+        page.drawText(line, { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
+        y -= 11;
+      }
+    }
+  }
+
+  if (clinic.cnpj?.trim()) {
+    page.drawText(`CNPJ ${formatCNPJ(clinic.cnpj)}`, { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
+    y -= 11;
   }
 
   if (dentist?.name) {
     page.drawText(`${dentist.name} — CRO ${dentist.cro}/${dentist.croUf}`, { x, y, size: 8.5, font, color: rgb(0.5, 0.5, 0.5) });
-    y -= 12;
+    y -= 11;
   }
 
-  return y - 14;
+  return y - 12;
 }
 
 export function formatDateBR(iso: string): string {
