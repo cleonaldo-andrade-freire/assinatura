@@ -15,15 +15,29 @@ export function isValidCPF(raw: string): boolean {
   return d2 === parseInt(cpf.charAt(10), 10);
 }
 
+/**
+ * Aceita tanto o CNPJ numérico tradicional quanto o novo CNPJ alfanumérico
+ * (Instrução Normativa RFB nº 2.229/2024, em vigor desde 31/07/2026): as 12
+ * primeiras posições podem ser letra maiúscula (A-Z, sem acento) ou dígito;
+ * os 2 dígitos verificadores finais continuam sempre numéricos. O valor de
+ * cada caractere no cálculo do módulo 11 é o código ASCII menos 48 — dígito
+ * '0'-'9' vale 0-9 (igual ao CNPJ antigo, sem diferença nesse caso), letra
+ * 'A'-'Z' vale 17-42.
+ */
 export function isValidCNPJ(raw: string): boolean {
-  const cnpj = raw.replace(/\D/g, "");
-  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const cnpj = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (cnpj.length !== 14 || /^(.)\1{13}$/.test(cnpj)) return false;
+  if (!/^\d{2}$/.test(cnpj.slice(12))) return false;
+
+  function charValue(c: string): number {
+    return c.charCodeAt(0) - 48;
+  }
 
   function checkDigit(base: string): number {
     let pos = base.length - 7;
     let sum = 0;
     for (let i = base.length; i >= 1; i--) {
-      sum += parseInt(base.charAt(base.length - i), 10) * pos--;
+      sum += charValue(base.charAt(base.length - i)) * pos--;
       if (pos < 2) pos = 9;
     }
     const result = sum % 11;
@@ -37,11 +51,11 @@ export function isValidCNPJ(raw: string): boolean {
   return d2 === parseInt(cnpj.charAt(13), 10);
 }
 
-/** Aceita CPF (11 dígitos) ou CNPJ (14 dígitos), validando o algoritmo certo pra cada um. */
+/** Aceita CPF (11 dígitos) ou CNPJ (14 caracteres, numérico ou alfanumérico), validando o algoritmo certo pra cada um. */
 export function isValidCpfCnpj(raw: string): boolean {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 11) return isValidCPF(raw);
-  if (digits.length === 14) return isValidCNPJ(raw);
+  const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (cleaned.length === 11) return isValidCPF(raw);
+  if (cleaned.length === 14) return isValidCNPJ(raw);
   return false;
 }
 
@@ -53,13 +67,24 @@ export function formatCPF(raw: string): string {
   return v;
 }
 
+/**
+ * Máscara do CNPJ — aceita letra (maiúscula, A-Z) ou dígito nas 12 primeiras
+ * posições (novo CNPJ alfanumérico, em vigor desde 31/07/2026) e força só
+ * dígito nas 2 posições finais (verificadores, sempre numéricos mesmo no
+ * formato novo). Por isso a máscara conta POSIÇÃO de caractere, não mais só
+ * dígito como no CPF.
+ */
 export function formatCNPJ(raw: string): string {
-  let v = raw.replace(/\D/g, "").slice(0, 14);
-  if (v.length > 12) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
-  else if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
-  else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
-  else if (v.length > 2) v = v.replace(/(\d{2})(\d{1,3})/, "$1.$2");
-  return v;
+  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
+  const base = clean.slice(0, 12);
+  const checkDigits = clean.slice(12).replace(/\D/g, "");
+
+  let v = base;
+  if (v.length > 8) v = v.replace(/^(.{2})(.{3})(.{3})(.+)$/, "$1.$2.$3/$4");
+  else if (v.length > 5) v = v.replace(/^(.{2})(.{3})(.+)$/, "$1.$2.$3");
+  else if (v.length > 2) v = v.replace(/^(.{2})(.+)$/, "$1.$2");
+
+  return checkDigits ? `${v}-${checkDigits}` : v;
 }
 
 /**

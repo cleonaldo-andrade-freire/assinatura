@@ -37,7 +37,7 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
           dentist_phone: phone.trim() ? toE164BR(phone) : undefined,
           dentist_email: email.trim() || undefined,
           clinic_address: address.trim() || undefined,
-          cnpj: cnpj.trim() ? cnpj.replace(/\D/g, "") : undefined,
+          cnpj: cnpj.trim() ? cnpj.toUpperCase().replace(/[^A-Z0-9]/g, "") : undefined,
         }),
       });
       if (!res.ok) {
@@ -188,7 +188,6 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
               <input
                 id="clinicCnpj"
                 type="text"
-                inputMode="numeric"
                 className={styles.input}
                 value={cnpj}
                 onChange={(e) => setCnpj(formatCNPJ(e.target.value))}
@@ -196,7 +195,8 @@ export function ClinicProfileForm({ clinicId, clinic }: { clinicId: string; clin
                 maxLength={18}
               />
               <p className={styles.hint} style={{ marginTop: 4 }}>
-                Aparece no cabeçalho dos documentos gerados quando preenchido.
+                Aparece no cabeçalho dos documentos gerados quando preenchido. Aceita o novo CNPJ alfanumérico (com
+                letras nas 12 primeiras posições).
               </p>
             </div>
           </div>

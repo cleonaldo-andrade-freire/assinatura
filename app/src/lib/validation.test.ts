@@ -85,6 +85,23 @@ describe("isValidCNPJ", () => {
     expect(isValidCNPJ("123")).toBe(false);
     expect(isValidCNPJ("")).toBe(false);
   });
+
+  it("aceita o novo CNPJ alfanumérico (letras nas 12 primeiras posições)", () => {
+    // Caso de referência (Instrução Normativa RFB nº 2.229/2024, em vigor
+    // desde 31/07/2026): base "AB12CD34EFGH" com dígitos verificadores "83",
+    // calculados via valor de caractere = código ASCII - 48.
+    expect(isValidCNPJ("AB12CD34EFGH83")).toBe(true);
+    expect(isValidCNPJ("AB.12C.D34/EFGH-83")).toBe(true);
+    expect(isValidCNPJ("ab.12c.d34/efgh-83")).toBe(true);
+  });
+
+  it("rejeita CNPJ alfanumérico com dígito verificador errado", () => {
+    expect(isValidCNPJ("AB12CD34EFGH84")).toBe(false);
+  });
+
+  it("rejeita letra nas 2 posições finais (verificadores são sempre numéricos)", () => {
+    expect(isValidCNPJ("AB12CD34EFGHA3")).toBe(false);
+  });
 });
 
 describe("formatCNPJ", () => {
@@ -94,6 +111,10 @@ describe("formatCNPJ", () => {
     expect(formatCNPJ("11222333")).toBe("11.222.333");
     expect(formatCNPJ("112223330001")).toBe("11.222.333/0001");
     expect(formatCNPJ("11222333000181")).toBe("11.222.333/0001-81");
+  });
+
+  it("aceita letras nas 12 primeiras posições (CNPJ alfanumérico)", () => {
+    expect(formatCNPJ("ab12cd34efgh83")).toBe("AB.12C.D34/EFGH-83");
   });
 });
 
