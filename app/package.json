@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:seed": "tsx scripts/seed.ts",
-    "upload:agent-installer": "tsx scripts/upload-agent-installer.ts"
+    "upload:agent-installer": "tsx scripts/upload-agent-installer.ts",
+    "import:anvisa-medicamentos": "tsx scripts/import-anvisa-medicamentos.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.40",
@@ -40,6 +41,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "@types/sanitize-html": "^2.16.1",
+    "csv-parse": "^7.0.2",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.15",
