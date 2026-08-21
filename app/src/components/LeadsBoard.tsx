@@ -1,20 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { LEAD_STATUSES, LEAD_STATUS_LABEL } from "@/lib/leads";
-import { formatBRDateTime } from "@/lib/date";
+import { formatBRTime, formatBRWeekday } from "@/lib/date";
 import type { Lead, LeadMessage, LeadStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
+import chat from "@/components/leads.module.css";
 
-const ROLE_LABEL: Record<LeadMessage["role"], string> = {
-  patient: "Paciente",
+const SENDER_LABEL: Record<Exclude<LeadMessage["role"], "patient">, string> = {
   bot: "Assistente",
   staff: "Recepção",
 };
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: "owner" | "staff"; leads: Lead[] }) {
   const router = useRouter();
@@ -186,6 +201,26 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
   );
 }
 
+const STATUS_BADGE_CLASS: Record<LeadStatus, string> = {
+  bot_active: styles.statusInfo,
+  waiting_reply: styles.statusWarn,
+  urgent: styles.statusDanger,
+  scheduled: styles.statusOk,
+};
+
+/** "Hoje", "Ontem", ou o dia da semana + data — mesma lógica de agrupar por
+ * dia que um app de mensagens de verdade usa pra separador entre grupos. */
+function dayLabel(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (sameDay(date, today)) return "Hoje";
+  if (sameDay(date, yesterday)) return "Ontem";
+  return formatBRWeekday(iso, "long");
+}
+
 function LeadDetailModal({
   clinicId,
   lead,
@@ -201,6 +236,7 @@ function LeadDetailModal({
 }) {
   const [messages, setMessages] = useState<LeadMessage[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const threadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +254,12 @@ function LeadDetailModal({
     };
   }, [clinicId, lead.id]);
 
+  // Abre a thread já rolada pro final — igual a qualquer app de mensagens,
+  // ninguém quer começar lendo do topo de uma conversa longa.
+  useEffect(() => {
+    if (!loading) threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
+  }, [loading, messages]);
+
   return (
     <div
       style={{
@@ -231,57 +273,60 @@ function LeadDetailModal({
       }}
       onClick={onClose}
     >
-      <div
-        className={styles.panel}
-        style={{ width: "min(520px, 92vw)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.panelHeaderTitle}>{lead.patient_name || "Sem nome ainda"}</p>
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)" }}>{lead.patient_phone}</p>
+      <div className={`${styles.panel} ${chat.chatModal}`} onClick={(e) => e.stopPropagation()}>
+        <div className={chat.chatHeader}>
+          <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={38} tone="brand" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className={chat.chatHeaderName}>{lead.patient_name || "Sem nome ainda"}</div>
+            <div className={chat.chatHeaderPhone}>{lead.patient_phone}</div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {role === "owner" && (
-              <button type="button" className={styles.iconActionBtn} onClick={onRequestDelete} title="Excluir lead">
-                Excluir
-              </button>
-            )}
-            <button type="button" className={styles.iconActionBtn} onClick={onClose} title="Fechar">
-              ✕
+          <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[lead.status]}`}>{LEAD_STATUS_LABEL[lead.status]}</span>
+          {role === "owner" && (
+            <button type="button" className={styles.iconActionBtn} onClick={onRequestDelete} title="Excluir lead" aria-label="Excluir lead">
+              <TrashIcon />
             </button>
-          </div>
+          )}
+          <button type="button" className={styles.iconActionBtn} onClick={onClose} title="Fechar" aria-label="Fechar">
+            ✕
+          </button>
         </div>
 
-        <div style={{ overflowY: "auto", padding: "12px 4px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-          {loading && <p style={{ color: "var(--ink-faint)", fontSize: 13 }}>Carregando…</p>}
-          {!loading && messages?.length === 0 && <p style={{ color: "var(--ink-faint)", fontSize: 13 }}>Sem mensagens ainda.</p>}
-          {messages?.map((m) => (
-            <div key={m.id} style={{ alignSelf: m.role === "patient" ? "flex-start" : "flex-end", maxWidth: "80%" }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--ink-faint)",
-                  marginBottom: 2,
-                  textAlign: m.role === "patient" ? "left" : "right",
-                }}
-              >
-                {ROLE_LABEL[m.role]} · {formatBRDateTime(m.created_at)}
+        <div ref={threadRef} className={chat.chatThread}>
+          {loading && <p className={chat.chatEmpty}>Carregando…</p>}
+          {!loading && messages?.length === 0 && <p className={chat.chatEmpty}>Sem mensagens ainda.</p>}
+          {messages?.map((m, i) => {
+            const previous = messages[i - 1];
+            const showDayDivider = !previous || dayLabel(previous.created_at) !== dayLabel(m.created_at);
+            const outgoing = m.role !== "patient";
+            return (
+              <div key={m.id}>
+                {showDayDivider && (
+                  <div style={{ textAlign: "center", margin: "4px 0 10px" }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--ink-soft)",
+                        background: "var(--surface)",
+                        borderRadius: 999,
+                        padding: "3px 10px",
+                        boxShadow: "var(--shadow-sm)",
+                      }}
+                    >
+                      {dayLabel(m.created_at)}
+                    </span>
+                  </div>
+                )}
+                <div className={`${chat.bubbleRow} ${outgoing ? chat.bubbleRowOutgoing : chat.bubbleRowIncoming}`}>
+                  {outgoing && <span className={chat.bubbleSender}>{SENDER_LABEL[m.role as "bot" | "staff"]}</span>}
+                  <div className={`${chat.bubble} ${outgoing ? chat.bubbleOutgoing : chat.bubbleIncoming}`}>
+                    {m.content}
+                    <span className={chat.bubbleTime}>{formatBRTime(m.created_at)}</span>
+                  </div>
+                </div>
               </div>
-              <div
-                style={{
-                  background: m.role === "patient" ? "var(--surface-sunken)" : "var(--brand-tint)",
-                  color: m.role === "patient" ? "var(--ink)" : "var(--brand-deep)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "8px 12px",
-                  fontSize: 13.5,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {m.content}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
