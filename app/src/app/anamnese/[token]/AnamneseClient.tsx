@@ -145,7 +145,7 @@ export function AnamneseClient({ token }: { token: string }) {
     if (step === "identificacao") {
       if (!name.trim()) return setFormError("Nome é obrigatório.");
       if (cpf && !isValidCPF(cpf)) return setFormError("CPF inválido. Verifique se a numeração está correta.");
-      
+
       // Se não houver perguntas, pula a etapa de saúde direto pra assinatura
       if (questions.length === 0) {
         setStep("assinatura");
@@ -238,9 +238,6 @@ export function AnamneseClient({ token }: { token: string }) {
           err = JSON.parse(rawText);
         } catch {
           // corpo não é JSON — sobra só o texto bruto mesmo
-        }
-        if (err?.error === "consent_required") {
-          throw new Error("É preciso ler e aceitar o Termo de Adesão Eletrônica antes de assinar.");
         }
         const detail = err?.message || err?.error?.message || (rawText ? rawText.slice(0, 300) : null);
         throw new Error(`Falha ao salvar (HTTP ${res.status}${detail ? `: ${detail}` : ""})`);
@@ -475,8 +472,8 @@ export function AnamneseClient({ token }: { token: string }) {
             <h2 className={styles.cardTitle}>Assinatura Digital</h2>
             
             <div className={styles.termsText}>
-              Eu, <strong>{name || "Paciente"}</strong>, inscrito(a) no CPF <strong>{cpf || "___.___.___-__"}</strong>, 
-              declaro que as informações aqui prestadas são verdadeiras e me comprometo a informar 
+              Eu, <strong>{name || "Paciente"}</strong>, inscrito(a) no CPF <strong>{cpf || "___.___.___-__"}</strong>,
+              declaro que as informações aqui prestadas são verdadeiras e me comprometo a informar
               qualquer alteração no meu estado de saúde em consultas futuras.
             </div>
 
@@ -504,7 +501,9 @@ export function AnamneseClient({ token }: { token: string }) {
 
             <div className={styles.buttonRow}>
               <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={handleBack}>Voltar</button>
-              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSubmit}>Finalizar e Assinar</button>
+              <button className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSubmit}>
+                Finalizar e Assinar
+              </button>
             </div>
           </div>
         )}

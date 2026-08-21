@@ -7,7 +7,6 @@ import { savePdf } from "@/lib/pdfStorage";
 import { notifyClinicSigned } from "@/lib/evolution"; // Pode ser ajustado para anamnese
 // Importe a função de geração de PDF depois que criarmos
 import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf";
-import { clinicHasConfiguredConsentTerm, hashConsentText, patientHasActiveConsent, recordConsentAcceptance } from "@/lib/electronicConsent";
 import { ensureUniqueAnamnesisSignatureCode } from "@/lib/validationCode";
 
 const answerSchema = z.object({
@@ -49,7 +48,6 @@ const bodySchema = z.object({
   address: z.string().optional().nullable(),
   answers: z.array(answerSchema),
   signature: signatureSchema,
-  consent_accepted: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
@@ -156,39 +154,13 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     }
   }
 
-  // 6. Busca dados da clínica para o PDF e pro Termo de Adesão
-  const { data: clinic } = await supabase
-    .from("clinics")
-    .select("name, logo_url, consent_term_text, consent_term_version")
-    .eq("id", anamnesis.clinic_id)
-    .single();
+  // 6. Busca dados da clínica para o PDF
+  const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", anamnesis.clinic_id).single();
 
-  // 6b. Termo de Adesão Eletrônica — mesma exigência já aplicada à
-  // assinatura de evolução clínica (lib/electronicConsent.ts). Só passa a
-  // valer quando a clínica configurou o texto em Configurações; enquanto
-  // não configurar, comportamento idêntico ao de antes desta mudança.
-  if (clinic && clinicHasConfiguredConsentTerm(clinic) && patientId) {
-    const alreadyConsented = await patientHasActiveConsent(supabase, patientId);
-    if (!alreadyConsented) {
-      if (!payload.consent_accepted) {
-        return NextResponse.json({ error: "consent_required" }, { status: 400 });
-      }
-      try {
-        await recordConsentAcceptance(supabase, {
-          clinicId: anamnesis.clinic_id,
-          patientId,
-          termVersion: clinic.consent_term_version!,
-          termTextHash: hashConsentText(clinic.consent_term_text!),
-          phoneE164: payload.patient_phone || anamnesis.patient_phone || "",
-          ip,
-          userAgent,
-        });
-      } catch (err) {
-        console.error("Falha ao registrar aceite do Termo de Adesão na anamnese:", err);
-        return NextResponse.json({ error: "consent_record_failed", message: err instanceof Error ? err.message : String(err) }, { status: 500 });
-      }
-    }
-  }
+  // Termo de Adesão Eletrônica: não bloqueia a assinatura da anamnese — a
+  // aceitação do termo acontece depois, num momento separado (mesmo texto/
+  // mecanismo de lib/electronicConsent.ts, já usado na assinatura de
+  // evolução clínica, só que não encadeado aqui).
 
   // 7. Geração do PDF no backend
   const pdfBytes = await buildAnamnesisSignedPdf({
