@@ -104,7 +104,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     .eq("id", anamnesis.id);
 
   if (updateError) {
-    return NextResponse.json({ error: "update_anamnesis_failed" }, { status: 500 });
+    console.error("Falha ao atualizar a anamnese no submit:", updateError);
+    return NextResponse.json({ error: "update_anamnesis_failed", message: updateError.message }, { status: 500 });
   }
 
   // 5. Enriquecimento do Paciente (Patients) — acha ou cria (find-or-create,
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
         });
       } catch (err) {
         console.error("Falha ao registrar aceite do Termo de Adesão na anamnese:", err);
-        return NextResponse.json({ error: "consent_record_failed" }, { status: 500 });
+        return NextResponse.json({ error: "consent_record_failed", message: err instanceof Error ? err.message : String(err) }, { status: 500 });
       }
     }
   }
@@ -214,10 +215,20 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const pdfBuffer = Buffer.from(pdfBytes);
   const sha256 = crypto.createHash("sha256").update(pdfBuffer).digest("hex");
-  
-  // 8. Salvar PDF no Storage
-  const pdfStorageKey = await savePdf(anamnesis.clinic_id, anamnesis.id, pdfBuffer);
-  const verificationCode = await ensureUniqueAnamnesisSignatureCode(supabase);
+
+  // 8. Salvar PDF no Storage — envolvido em try/catch porque savePdf/
+  // ensureUniqueAnamnesisSignatureCode lançam exceção (não devolvem
+  // {error}), o que sem isso vira uma resposta 500 genérica do Next.js
+  // (não JSON), quebrando o `res.json()` do cliente.
+  let pdfStorageKey: string;
+  let verificationCode: string;
+  try {
+    pdfStorageKey = await savePdf(anamnesis.clinic_id, anamnesis.id, pdfBuffer);
+    verificationCode = await ensureUniqueAnamnesisSignatureCode(supabase);
+  } catch (err) {
+    console.error("Falha ao salvar o PDF/gerar código de verificação da anamnese:", err);
+    return NextResponse.json({ error: "pdf_save_failed", message: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
 
   // 9. Registrar Assinatura
   const { data: signatureData, error: signatureError } = await supabase
@@ -240,7 +251,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     .single();
 
   if (signatureError) {
-    return NextResponse.json({ error: "signature_failed" }, { status: 500 });
+    console.error("Falha ao gravar a assinatura da anamnese:", signatureError);
+    return NextResponse.json({ error: "signature_failed", message: signatureError.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, signature_id: signatureData.id });
