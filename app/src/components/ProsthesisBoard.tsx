@@ -115,7 +115,7 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
         </label>
       </div>
 
-      <div className={styles.prosthesisBoard}>
+      <div className={styles.kanbanBoard}>
         {visibleStages.map((stage) => {
           const items = byStage.get(stage) ?? [];
           const isHiddenRealizado = stage === "realizado" && !showRealizado;
@@ -123,7 +123,7 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
           return (
             <div
               key={stage}
-              className={styles.prosthesisColumn}
+              className={styles.kanbanColumn}
               onDragOver={
                 !moving && draggingId
                   ? (e) => {
@@ -148,12 +148,12 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
                 outline: dragOverStage === stage ? "2px dashed var(--brand)" : undefined,
               }}
             >
-              <div className={styles.prosthesisColumnHeader}>
+              <div className={styles.kanbanColumnHeader}>
                 <span>{PROSTHESIS_STAGE_LABEL[stage]}</span>
-                <span className={styles.prosthesisColumnCount}>{items.length}</span>
+                <span className={styles.kanbanColumnCount}>{items.length}</span>
               </div>
 
-              <div className={styles.prosthesisColumnBody}>
+              <div className={styles.kanbanColumnBody}>
                 {displayItems.map((o) => (
                   <Link
                     key={o.id}
@@ -168,28 +168,28 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
                       setDraggingId(null);
                       setDragOverStage(null);
                     }}
-                    className={styles.prosthesisCard}
+                    className={styles.kanbanCard}
                     style={{ cursor: moving ? "default" : "grab" }}
                   >
                     <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                       <PatientAvatar clinicId={clinicId} patientId={o.patient_id} name={o.patient_name} size={28} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className={styles.prosthesisCardTitle}>{o.description}</div>
-                        <div className={styles.prosthesisCardPatient}>{o.patient_name}</div>
+                        <div className={styles.kanbanCardTitle}>{o.description}</div>
+                        <div className={styles.kanbanCardSubtitle}>{o.patient_name}</div>
                       </div>
                     </div>
-                    <div className={styles.prosthesisCardMeta}>
+                    <div className={styles.kanbanCardMeta}>
                       {o.expected_delivery_date && <span>Previsão {formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`)}</span>}
                       <span>{daysInStage(o.stage_since)}d neste estágio</span>
                     </div>
                   </Link>
                 ))}
                 {isHiddenRealizado && items.length > 0 ? (
-                  <p className={styles.prosthesisEmptyColumn}>
+                  <p className={styles.kanbanEmptyColumn}>
                     {items.length} oculto{items.length > 1 ? "s" : ""} — marque "Mostrar realizados" pra ver
                   </p>
                 ) : (
-                  displayItems.length === 0 && <p className={styles.prosthesisEmptyColumn}>Nada por aqui</p>
+                  displayItems.length === 0 && <p className={styles.kanbanEmptyColumn}>Nada por aqui</p>
                 )}
               </div>
             </div>

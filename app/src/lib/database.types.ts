@@ -46,6 +46,7 @@ export interface Clinic {
   consent_term_text: string | null;
   consent_term_version: string | null;
   consent_term_updated_at: string | null;
+  lead_bot_enabled: boolean;
   created_at: string;
 }
 
@@ -698,5 +699,29 @@ export interface PatientImage {
   content_type: string;
   size_bytes: number;
   description: string | null;
+  created_at: string;
+}
+
+export type LeadStatus = "bot_active" | "urgent" | "waiting_reply" | "scheduled";
+
+export interface Lead {
+  id: string;
+  clinic_id: string;
+  patient_phone: string;
+  patient_name: string | null;
+  status: LeadStatus;
+  clinical_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LeadMessageRole = "patient" | "bot" | "staff";
+
+export interface LeadMessage {
+  id: string;
+  lead_id: string;
+  clinic_id: string;
+  role: LeadMessageRole;
+  content: string;
   created_at: string;
 }

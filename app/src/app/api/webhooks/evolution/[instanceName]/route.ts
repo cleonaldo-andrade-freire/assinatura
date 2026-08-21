@@ -6,6 +6,8 @@ import { createAnamnesis } from "@/lib/anamnesis";
 import { brPhoneVariants } from "@/lib/validation";
 import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
+import { findOrCreateOpenLead, appendLeadMessage } from "@/lib/leads";
+import { runLeadTriageAgent } from "@/lib/leadAgent";
 import type { Conversation, Question } from "@/lib/database.types";
 
 /**
@@ -73,9 +75,36 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       return NextResponse.json({ ok: true });
     }
 
+    // Nenhuma anamnese em andamento, nenhum agendamento pendente — número
+    // desconhecido (ou fora do fluxo já mapeado). É aqui que o Mini-CRM entra:
+    // a triagem por IA assume a conversa, a menos que a clínica tenha
+    // desligado o bot em `lead_bot_enabled`.
+    if (!clinic.lead_bot_enabled) {
+      console.log(
+        `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: lead_bot_enabled=false para o telefone ${inbound.phone}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    const lead = await findOrCreateOpenLead(supabase, clinic.id, inbound.phone);
+    await appendLeadMessage(supabase, {
+      leadId: lead.id,
+      clinicId: clinic.id,
+      role: "patient",
+      content: inbound.text,
+    });
+
     console.log(
-      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: nenhuma conversa ativa nem agendamento pendente para o telefone ${inbound.phone}`
+      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} acionando triagem por IA`
     );
+
+    try {
+      const replyText = await runLeadTriageAgent(supabase, clinic, lead);
+      await sendText(clinic, inbound.phone, replyText);
+    } catch (err) {
+      console.error("Falha no agente de triagem de leads:", err);
+    }
+
     return NextResponse.json({ ok: true });
   }
 

@@ -13,6 +13,7 @@
     "upload:agent-installer": "tsx scripts/upload-agent-installer.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.40",
     "@signpdf/placeholder-pdf-lib": "^3.3.0",
     "@signpdf/placeholder-plain": "^3.3.0",
     "@signpdf/signpdf": "^3.3.0",
@@ -20,6 +21,7 @@
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
     "@types/qrcode": "^1.5.6",
+    "ai": "^7.0.71",
     "jspdf": "^2.5.2",
     "next": "^14.2.15",
     "node-forge": "^1.4.0",
@@ -30,7 +32,7 @@
     "react-dom": "^18.3.1",
     "react-quill-new": "^3.8.3",
     "sanitize-html": "^2.17.7",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.16.10",

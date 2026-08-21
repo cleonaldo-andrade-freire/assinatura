@@ -138,6 +138,20 @@ function ProsthesisIcon() {
   );
 }
 
+function LeadsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 5.5h18l-7 8v6l-4 2v-8l-7-8z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ExpensesIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -204,6 +218,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/evolucoes", label: "Evoluções", icon: EvolutionsIcon },
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
+  { href: "/dashboard/leads", label: "Leads", icon: LeadsIcon },
   { href: "/dashboard/despesas", label: "Despesas", icon: ExpensesIcon },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
@@ -214,6 +229,7 @@ const STAFF_ALLOWED_HREFS = new Set([
   "/dashboard/agenda",
   "/dashboard/pacientes",
   "/dashboard/proteses",
+  "/dashboard/leads",
 ]);
 
 const ROLE_LABELS: Record<"owner" | "staff", string> = {

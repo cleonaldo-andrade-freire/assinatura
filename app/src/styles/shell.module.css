@@ -1638,9 +1638,9 @@
   }
 }
 
-/* ============================== Prótese (Kanban) ============================== */
+/* ============================== Kanban genérico (Próteses, Leads) ============================== */
 
-.prosthesisBoard {
+.kanbanBoard {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(240px, 1fr);
@@ -1649,7 +1649,7 @@
   padding-bottom: 4px;
 }
 
-.prosthesisColumn {
+.kanbanColumn {
   background: var(--surface-sunken);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -1658,7 +1658,7 @@
   transition: background 0.1s ease;
 }
 
-.prosthesisColumnHeader {
+.kanbanColumnHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1668,7 +1668,7 @@
   color: var(--brand-deep);
 }
 
-.prosthesisColumnCount {
+.kanbanColumnCount {
   background: var(--surface);
   border-radius: 999px;
   padding: 1px 8px;
@@ -1676,13 +1676,13 @@
   color: var(--ink-faint);
 }
 
-.prosthesisColumnBody {
+.kanbanColumnBody {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.prosthesisEmptyColumn {
+.kanbanEmptyColumn {
   font-size: 12px;
   color: var(--ink-faint);
   text-align: center;
@@ -1690,8 +1690,10 @@
   margin: 0;
 }
 
-.prosthesisCard {
+.kanbanCard {
   display: block;
+  width: 100%;
+  text-align: left;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1699,22 +1701,30 @@
   text-decoration: none;
   color: inherit;
   box-shadow: var(--shadow-sm);
+  font: inherit;
 }
 
-.prosthesisCardTitle {
+/* Card em destaque (ex.: lead urgente) — nunca só a cor, o rótulo do card já
+   diz "Urgente" por extenso, isso é reforço visual. */
+.kanbanCardUrgent {
+  background: var(--danger-tint);
+  border-color: var(--danger);
+}
+
+.kanbanCardTitle {
   font-size: 13px;
   font-weight: 700;
   color: var(--ink);
   margin-bottom: 3px;
 }
 
-.prosthesisCardPatient {
+.kanbanCardSubtitle {
   font-size: 12.5px;
   color: var(--ink-soft);
   margin-bottom: 6px;
 }
 
-.prosthesisCardMeta {
+.kanbanCardMeta {
   display: flex;
   flex-direction: column;
   gap: 2px;
