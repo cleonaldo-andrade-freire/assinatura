@@ -6,7 +6,7 @@ import type { Appointment, Clinic, Lead, LeadMessage } from "@/lib/database.type
 import { sendText } from "@/lib/evolution";
 import { appendLeadMessage } from "@/lib/leads";
 import { upsertPatientFromContact } from "@/lib/patients";
-import { formatBRTime } from "@/lib/date";
+import { brDateOnly, brHour, formatBRTime, formatBRWeekday } from "@/lib/date";
 import {
   AGENDA_END_HOUR,
   AGENDA_START_HOUR,
@@ -24,12 +24,25 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function buildSystemPrompt(clinic: Clinic): string {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const hoje = brDateOnly();
+  const diaSemana = formatBRWeekday(nowIso, "long");
+  const horaAtual = formatBRTime(nowIso);
+  const isHorarioComercial = brHour(now) >= AGENDA_START_HOUR && brHour(now) < AGENDA_END_HOUR;
+  const statusClinica = isHorarioComercial ? "ABERTA" : "FECHADA no momento";
+
   return `Você é a assistente de triagem da clínica odontológica ${clinic.name}. Responda de forma humana, concisa e com empatia. Nunca faça diagnósticos ou prescreva remédios.
-1. Pergunte o nome se não souber. Entenda o motivo do contato.
+Hoje é ${diaSemana}, ${hoje} (AAAA-MM-DD), agora são ${horaAtual} (horário de Brasília) — a clínica está ${statusClinica} (horário de atendimento: ${AGENDA_START_HOUR}h às ${AGENDA_END_HOUR}h). Use SEMPRE essa data/hora real como referência ao interpretar "hoje", "amanhã" ou qualquer data relativa que o paciente mencionar — nunca chute ou assuma outra data, e sempre passe a data no formato AAAA-MM-DD pras ferramentas.
+1. Pergunte o nome se não souber. Assim que o paciente informar o nome, chame a ferramenta registrarNome imediatamente (antes de continuar as perguntas). Entenda o motivo do contato.
 2. Se o paciente relatar dor, pergunte (uma por vez): A dor é contínua ou com estímulo? Há inchaço? Houve trauma recente?
-3. Se houver inchaço, trauma ou dor aguda contínua, chame imediatamente a ferramenta alertarUrgencia e encerre as perguntas informando que a doutora assumirá.
-4. Se for caso eletivo (limpeza, dor leve, avaliação), chame consultarDisponibilidade, ofereça duas opções e, após a escolha, chame agendarPaciente.
-5. O horário de funcionamento é das ${AGENDA_START_HOUR}h às ${AGENDA_END_HOUR}h. Se o contato ocorrer fora desse horário, avise isso educadamente antes de seguir com a triagem.`;
+3. Se houver inchaço, trauma ou dor aguda contínua, chame imediatamente a ferramenta alertarUrgencia. Depois:
+   - Se a clínica estiver ABERTA: diga que a equipe já foi avisada e a doutora responde em instantes.
+   - Se a clínica estiver FECHADA: diga que a clínica está fechada agora, mas que o caso já foi marcado com prioridade máxima e a doutora entra em contato assim que abrir, às ${AGENDA_START_HOUR}h; se a dor estiver insuportável, oriente a buscar um pronto-socorro.
+4. Se for caso eletivo (limpeza, dor leve, avaliação):
+   - Se a clínica estiver ABERTA: chame consultarDisponibilidade e ofereça até duas opções de horário; após o paciente escolher, chame agendarPaciente.
+   - Se a clínica estiver FECHADA: não consulte horários agora — avise com simpatia que o agendamento continua assim que a clínica abrir, às ${AGENDA_START_HOUR}h, e chame marcarRetornoParaAmanha.
+5. NUNCA diga ao paciente que não há vaga/horário disponível, em nenhuma hipótese, nem sugira "tente outro dia" por conta própria. Se consultarDisponibilidade não retornar horários livres (em qualquer data), peça para ele ligar (chamada de voz) aqui mesmo pelo WhatsApp, pra clínica encontrar um encaixe.`;
 }
 
 /**
@@ -69,9 +82,35 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
           .slice(0, 3);
 
         if (free.length === 0) {
-          return { horarios: [], mensagem: "Nenhum horário livre nesse dia — sugira outra data ao paciente." };
+          return {
+            horarios: [],
+            mensagem:
+              "Nenhum horário livre nesse dia. NUNCA diga ao paciente que não há vaga ou disponibilidade — em vez disso, peça para ele ligar (chamada de voz) aqui mesmo pelo WhatsApp, que a clínica encontra um encaixe.",
+          };
         }
         return { horarios: free.map((s) => formatBRTime(s)) };
+      },
+    }),
+
+    registrarNome: tool({
+      description:
+        "Salva o nome do paciente no lead assim que ele for informado, mesmo antes de agendar ou de haver urgência — assim a equipe já vê o nome certo no painel de leads em vez de 'Sem nome ainda'.",
+      inputSchema: z.object({
+        nome: z.string().min(1),
+      }),
+      execute: async ({ nome }) => {
+        await supabase.from("leads").update({ patient_name: nome, updated_at: new Date().toISOString() }).eq("id", lead.id);
+        return { salvo: true };
+      },
+    }),
+
+    marcarRetornoParaAmanha: tool({
+      description:
+        "Marca o lead pra retomar assim que a clínica abrir, quando o contato eletivo aconteceu com a clínica fechada — o bot não consulta horários agora; a equipe vê o lead na coluna 'Aguardando resposta' do Kanban ao abrir e retoma manualmente.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        await supabase.from("leads").update({ status: "waiting_reply", updated_at: new Date().toISOString() }).eq("id", lead.id);
+        return { registrado: true };
       },
     }),
 

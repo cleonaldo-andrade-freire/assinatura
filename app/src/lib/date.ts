@@ -28,6 +28,13 @@ export function brDateOnly(d: Date = new Date()): string {
   return d.toLocaleDateString("en-CA", { timeZone: BR_TIMEZONE });
 }
 
+/** Hora atual (0-23) no fuso do Brasil — usado pra decidir se a clínica está dentro do horário de atendimento. */
+export function brHour(d: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: BR_TIMEZONE, hour: "numeric", hour12: false }).formatToParts(d);
+  // Alguns runtimes ICU devolvem "24" pra meia-noite em vez de "00" com hour12:false — normaliza com % 24.
+  return Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
+}
+
 export function addDaysToDateStr(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));

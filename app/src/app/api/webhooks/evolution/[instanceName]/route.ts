@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseInboundMessage, sendText } from "@/lib/evolution";
 import { advanceConversation, formatQuestionPrompt } from "@/lib/conversationEngine";
@@ -8,7 +9,12 @@ import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmen
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import { findOrCreateOpenLead, appendLeadMessage } from "@/lib/leads";
 import { runLeadTriageAgent } from "@/lib/leadAgent";
-import type { Conversation, Question } from "@/lib/database.types";
+import type { Clinic, Conversation, LeadMessage, Question } from "@/lib/database.types";
+
+/** Janela dentro da qual um `fromMe` com o mesmo texto de uma mensagem 'bot'
+ * recém-gravada é tratado como eco da própria resposta do bot, não como
+ * handoff manual — ver `handleOutboundEcho`. */
+const BOT_ECHO_WINDOW_MS = 30_000;
 
 /**
  * Recebe eventos MESSAGES_UPSERT da Evolution API. Configure isso no "Set Webhook"
@@ -20,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   const payload = await req.json().catch(() => null);
   const inbound = parseInboundMessage(payload);
 
-  if (!inbound || inbound.fromMe || !inbound.text) {
+  if (!inbound || !inbound.text) {
     console.log(
       `[evolution-webhook] instance=${params.instanceName} ignorado: inbound=${
         inbound ? JSON.stringify({ fromMe: inbound.fromMe, hasText: !!inbound.text }) : "não parseou o payload"
@@ -38,6 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .maybeSingle();
   if (!clinic) {
     console.log(`[evolution-webhook] instance=${params.instanceName} ignorado: nenhuma clínica com esse evolution_instance_name`);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (inbound.fromMe) {
+    await handleOutboundEcho(supabase, clinic, inbound.phone, inbound.text);
     return NextResponse.json({ ok: true });
   }
 
@@ -93,6 +104,16 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       role: "patient",
       content: inbound.text,
     });
+
+    // Handoff em andamento (dentista assumiu manualmente ou contato eletivo
+    // adiado pra abertura, ver handleOutboundEcho/marcarRetornoParaAmanha) —
+    // bot fica calado até a equipe mover o lead de volta pro Kanban.
+    if (lead.status === "waiting_reply") {
+      console.log(
+        `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} em waiting_reply — bot não responde`
+      );
+      return NextResponse.json({ ok: true });
+    }
 
     console.log(
       `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} acionando triagem por IA`
@@ -162,4 +183,44 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * A Evolution API ecoa no webhook tanto as mensagens enviadas por ela mesma
+ * (via `sendText`, quando o bot responde) quanto as digitadas manualmente no
+ * aparelho pareado — as duas chegam com `fromMe: true`, sem nenhum campo que
+ * diferencie uma da outra. Comparar com o que o próprio bot acabou de gravar
+ * em `lead_messages` (role 'bot') é a única forma de não confundir as duas:
+ * se bater texto e estiver dentro da janela, é eco do bot (ignora); senão, é
+ * a dentista respondendo de verdade pelo WhatsApp dela — handoff real, grava
+ * como 'staff' e pausa o bot (`waiting_reply`) até a equipe reabrir o lead.
+ */
+async function handleOutboundEcho(supabase: SupabaseClient, clinic: Clinic, phone: string, text: string): Promise<void> {
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("clinic_id", clinic.id)
+    .in("patient_phone", brPhoneVariants(phone))
+    .neq("status", "scheduled")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!lead) return; // não é um lead em triagem aberta — nada a fazer aqui
+
+  const { data: recentBotMessages } = await supabase
+    .from("lead_messages")
+    .select("content, created_at")
+    .eq("lead_id", lead.id)
+    .eq("role", "bot")
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  const isBotEcho = ((recentBotMessages as Pick<LeadMessage, "content" | "created_at">[]) ?? []).some(
+    (m) => m.content === text && Date.now() - new Date(m.created_at).getTime() < BOT_ECHO_WINDOW_MS
+  );
+  if (isBotEcho) return;
+
+  await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "staff", content: text });
+  await supabase.from("leads").update({ status: "waiting_reply", updated_at: new Date().toISOString() }).eq("id", lead.id);
+  console.log(`[evolution-webhook] clinic=${clinic.id} lead=${lead.id} handoff manual detectado — bot pausado (waiting_reply)`);
 }
