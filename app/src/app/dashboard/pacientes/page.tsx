@@ -8,7 +8,7 @@ import { ClickableRow } from "@/components/ui/ClickableRow";
 import { PatientRowActions } from "@/components/PatientRowActions";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewPatientTrigger } from "@/components/NewPatientTrigger";
-import { formatBRPhoneLocal } from "@/lib/validation";
+import { formatBRPhoneLocal, formatCPF } from "@/lib/validation";
 import { calculateAge } from "@/lib/date";
 import type { Patient } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -104,7 +104,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
                       </span>
                     </td>
                     <td data-label="Idade">{p.birth_date ? `${calculateAge(p.birth_date)} anos` : "—"}</td>
-                    <td data-label="CPF">{p.cpf ?? "—"}</td>
+                    <td data-label="CPF">{p.cpf ? formatCPF(p.cpf) : "—"}</td>
                     <td data-label="WhatsApp">{p.phone ? formatBRPhoneLocal(p.phone) : "—"}</td>
                     <td>
                       <PatientRowActions clinicId={clinic.id} patientId={p.id} />
