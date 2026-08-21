@@ -38,6 +38,15 @@ function SignIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function WhatsAppIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -147,6 +156,7 @@ export function TreatmentDetailModal({
   const [confirmDeleteEvolutionId, setConfirmDeleteEvolutionId] = useState<string | null>(null);
   const [deletingEvolutionId, setDeletingEvolutionId] = useState<string | null>(null);
   const [requestingSignatureId, setRequestingSignatureId] = useState<string | null>(null);
+  const [resendingWhatsappId, setResendingWhatsappId] = useState<string | null>(null);
   const [showAgentSelector, setShowAgentSelector] = useState(false);
   const [signingEvolutionId, setSigningEvolutionId] = useState<string | null>(null);
   const { signHash } = useAgent();
@@ -306,6 +316,21 @@ export function TreatmentDetailModal({
       push("Solicitação enviada por WhatsApp ao paciente.", "success");
     } finally {
       setRequestingSignatureId(null);
+    }
+  }
+
+  async function handleResendWhatsapp(id: string) {
+    setResendingWhatsappId(id);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/treatment-evolutions/${id}/reenviar-whatsapp`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || "Falha ao enviar pelo WhatsApp. Tenta de novo.", "error");
+        return;
+      }
+      push("Documento reenviado por WhatsApp ao paciente.", "success");
+    } finally {
+      setResendingWhatsappId(null);
     }
   }
 
@@ -600,6 +625,30 @@ export function TreatmentDetailModal({
                                   >
                                     <WhatsAppIcon />
                                   </button>
+                                )}
+                                {e.signature_status === "assinada" && (
+                                  <>
+                                    <a
+                                      href={`/api/clinics/${clinicId}/treatment-evolutions/${e.id}/pdf`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.iconActionBtn}
+                                      title="Baixar PDF"
+                                      aria-label="Baixar PDF"
+                                    >
+                                      <DownloadIcon />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      disabled={resendingWhatsappId === e.id}
+                                      onClick={() => handleResendWhatsapp(e.id)}
+                                      className={styles.iconActionBtn}
+                                      title={resendingWhatsappId === e.id ? "Enviando…" : "Enviar pro WhatsApp do paciente"}
+                                      aria-label="Enviar pro WhatsApp do paciente"
+                                    >
+                                      <WhatsAppIcon />
+                                    </button>
+                                  </>
                                 )}
                                 {e.signature_status !== "solicitada" && e.signature_status !== "assinada" && (
                                   <>
