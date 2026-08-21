@@ -227,8 +227,23 @@ export function AnamneseClient({ token }: { token: string }) {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Falha ao salvar");
+        // Corpo de erro pode vir do nosso próprio código ({error, message}) ou,
+        // se a requisição nem chegar a rodar nossa rota (ex.: limite de tamanho
+        // de corpo da função serverless da Vercel), num formato bem diferente
+        // (ex.: {error: {code, message}} aninhado) — por isso o parsing tenta
+        // vários formatos, sem simplesmente assumir o nosso e cair no genérico.
+        const rawText = await res.text();
+        let err: any = null;
+        try {
+          err = JSON.parse(rawText);
+        } catch {
+          // corpo não é JSON — sobra só o texto bruto mesmo
+        }
+        if (err?.error === "consent_required") {
+          throw new Error("É preciso ler e aceitar o Termo de Adesão Eletrônica antes de assinar.");
+        }
+        const detail = err?.message || err?.error?.message || (rawText ? rawText.slice(0, 300) : null);
+        throw new Error(`Falha ao salvar (HTTP ${res.status}${detail ? `: ${detail}` : ""})`);
       }
 
       setStep("success");
