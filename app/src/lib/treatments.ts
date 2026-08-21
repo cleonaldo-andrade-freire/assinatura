@@ -76,3 +76,11 @@ export function buildFinalizationText(treatments: Pick<Treatment, "treatment_nam
 export function formatTreatmentsLabel(treatments: { name: string; toothRegion: string | null }[]): string {
   return treatments.map((t) => (t.toothRegion ? `${t.toothRegion} — ${t.name}` : t.name)).join("; ");
 }
+
+/** Mesmo conteúdo de `formatTreatmentsLabel`, mas uma linha por tratamento
+ * — usado onde o grupo precisa ficar legível empilhado (card de evolução,
+ * revisão antes de assinar, PDF), em vez de um parágrafo só separado por
+ * ponto e vírgula. */
+export function formatTreatmentsLines(treatments: { name: string; toothRegion: string | null }[]): string[] {
+  return treatments.map((t) => (t.toothRegion ? `${t.toothRegion} — ${t.name}` : t.name));
+}
