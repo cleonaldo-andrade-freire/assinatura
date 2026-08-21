@@ -16,7 +16,7 @@ import styles from "@/styles/shell.module.css";
 
 const ERROR_MESSAGES: Record<string, string> = {
   controlado_especial_nao_suportado:
-    "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição.",
+    "Tem item marcado como controlado especial — este sistema não emite esse tipo de receituário.",
   dentist_not_configured: "Cadastre o responsável técnico em Configurações antes de emitir.",
 };
 
@@ -32,7 +32,7 @@ export function NewPrescriptionForm({
 }: {
   clinicId: string;
   templates: PrescriptionTemplate[];
-  /** Pré-preenche o paciente (ex.: botão "Nova prescrição" na ficha do paciente) — pula a busca. */
+  /** Pré-preenche o paciente (ex.: botão "Novo receituário" na ficha do paciente) — pula a busca. */
   initialPatientId?: string | null;
   initialPatientName?: string;
   initialPatientCpf?: string | null;
@@ -53,6 +53,8 @@ export function NewPrescriptionForm({
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const { signHash } = useAgent();
   const [showAgentSelector, setShowAgentSelector] = useState(false);
@@ -85,6 +87,7 @@ export function NewPrescriptionForm({
 
   function handleSelectTemplate(id: string) {
     setTemplateId(id);
+    setTemplateSaved(false);
     const template = templates.find((t) => t.id === id);
     if (!template) return;
     // Carrega os itens e o texto do modelo com os placeholders intactos — a
@@ -94,6 +97,38 @@ export function NewPrescriptionForm({
       setItems(template.items.map((i) => ({ ...i })));
     }
     setNotes(template.notes_template ?? "");
+  }
+
+  /** Atualiza o modelo selecionado com os itens/orientações atuais da tela —
+   * pedido explícito: escolher um modelo com 1 medicamento, adicionar mais 1
+   * e poder atualizar o modelo sem sair pra tela de modelos separada. */
+  async function handleUpdateTemplate() {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+    setSavingTemplate(true);
+    setTemplateSaved(false);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/prescription-templates/${templateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: template.name,
+          items: items
+            .filter((i) => i.drug_name.trim())
+            .map((i) => ({ ...i, dosage: i.dosage.trim(), instructions: i.instructions.trim() })),
+          notes_template: notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.message || "Falha ao atualizar o modelo.");
+        return;
+      }
+      setTemplateSaved(true);
+      router.refresh();
+    } finally {
+      setSavingTemplate(false);
+    }
   }
 
   function goToCreated(prescription: Prescription) {
@@ -116,7 +151,7 @@ export function NewPrescriptionForm({
     }
     if (items.some((i) => i.control_type === "controlado_especial")) {
       setError(
-        "Tem item marcado como controlado especial — este sistema não emite esse tipo de prescrição. Troque o tipo de controle ou remova o item."
+        "Tem item marcado como controlado especial — este sistema não emite esse tipo de receituário. Troque o tipo de controle ou remova o item."
       );
       return;
     }
@@ -161,7 +196,7 @@ export function NewPrescriptionForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || ERROR_MESSAGES[data.error] || "Falha ao emitir a prescrição.");
+        setError(data.message || ERROR_MESSAGES[data.error] || "Falha ao emitir o receituário.");
         return;
       }
 
@@ -208,11 +243,11 @@ export function NewPrescriptionForm({
         disabled={sending}
         title={mobileV2 ? "Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador." : undefined}
       >
-        {sending ? "Emitindo…" : mobileV2 ? "Emitir prescrição (sem assinatura digital)" : "Emitir prescrição"}
+        {sending ? "Emitindo…" : mobileV2 ? "Emitir receituário (sem assinatura digital)" : "Emitir receituário"}
       </button>
       {mobileV2 && (
         <p className={styles.hint} style={{ marginTop: 8 }}>
-          O celular não assina digitalmente. Esta prescrição sai pronta pra imprimir, com espaço pra assinatura e
+          O celular não assina digitalmente. Este receituário sai pronto pra imprimir, com espaço pra assinatura e
           carimbo — a versão assinada digitalmente pode ser gerada depois, no computador, sobre o mesmo registro.
         </p>
       )}
@@ -224,7 +259,7 @@ export function NewPrescriptionForm({
       {templates.length > 0 && (
         <div className={styles.field}>
           <label htmlFor="templateId" className={styles.label}>
-            Modelo de prescrição (opcional)
+            Modelo de receituário (opcional)
           </label>
           <select id="templateId" className={styles.select} value={templateId} onChange={(e) => handleSelectTemplate(e.target.value)}>
             <option value="">Escrever do zero</option>
@@ -234,6 +269,20 @@ export function NewPrescriptionForm({
               </option>
             ))}
           </select>
+          {templateId && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+              <button
+                type="button"
+                onClick={handleUpdateTemplate}
+                disabled={savingTemplate}
+                className={`${styles.btn} ${styles.btnGhost}`}
+                style={{ padding: "5px 10px", fontSize: 12.5 }}
+              >
+                {savingTemplate ? "Atualizando…" : "↻ Atualizar modelo com os itens atuais"}
+              </button>
+              {templateSaved && <span style={{ fontSize: 12.5, color: "var(--brand)" }}>Modelo atualizado ✓</span>}
+            </div>
+          )}
         </div>
       )}
 
@@ -245,12 +294,18 @@ export function NewPrescriptionForm({
           setPatientId(null);
         }}
         onSelect={pickPatientSuggestion}
-        hint={bare ? undefined : "Busca no cadastro de pacientes da clínica — se não encontrar, um cadastro novo é criado automaticamente ao emitir a prescrição."}
+        hint={bare ? undefined : "Busca no cadastro de pacientes da clínica — se não encontrar, um cadastro novo é criado automaticamente ao emitir o receituário."}
       />
 
       <div className={styles.field}>
         <label className={styles.label}>Medicamentos</label>
-        <PrescriptionItemsEditor items={items} onChange={setItems} />
+        <PrescriptionItemsEditor
+          items={items}
+          onChange={(next) => {
+            setItems(next);
+            setTemplateSaved(false);
+          }}
+        />
       </div>
 
       <div className={styles.field}>
@@ -262,7 +317,10 @@ export function NewPrescriptionForm({
           className={styles.input}
           rows={bare ? 2 : 3}
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => {
+            setNotes(e.target.value);
+            setTemplateSaved(false);
+          }}
           placeholder="Ex.: retornar em caso de reação adversa…"
         />
       </div>
