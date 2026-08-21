@@ -14,6 +14,11 @@ interface ConfirmDialogProps {
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Sobrescreve o z-index padrão do overlay (200) — necessário quando o
+   * diálogo pode ser aberto por cima de outro modal já aberto (ex.: excluir
+   * um lead de dentro do modal de conversa), senão o overlay padrão fica
+   * atrás do z-index do modal pai. Mesmo padrão de TreatmentFormModal. */
+  zIndex?: number;
 }
 
 export function ConfirmDialog({
@@ -26,6 +31,7 @@ export function ConfirmDialog({
   loading,
   onConfirm,
   onCancel,
+  zIndex,
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!open) return;
@@ -39,7 +45,7 @@ export function ConfirmDialog({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className={styles.overlay} onClick={onCancel}>
+    <div className={styles.overlay} style={zIndex ? { zIndex } : undefined} onClick={onCancel}>
       <div className={styles.dialog} role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h3 className={styles.dialogTitle}>{title}</h3>
         <p className={styles.dialogMessage}>{message}</p>

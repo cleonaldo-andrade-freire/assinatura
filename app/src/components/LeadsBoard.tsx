@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { PatientAvatar } from "@/components/PatientAvatar";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { LEAD_STATUSES, LEAD_STATUS_LABEL } from "@/lib/leads";
 import { formatBRTime, formatBRWeekday } from "@/lib/date";
 import type { Lead, LeadMessage, LeadStatus } from "@/lib/database.types";
@@ -43,6 +44,38 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
 
   const [localLeads, setLocalLeads] = useState(leads);
   useEffect(() => setLocalLeads(leads), [leads]);
+
+  // Mantém o board sozinho em dia (mesmo padrão de AgendaRealtimeRefresh:
+  // postgres_changes + polling de segurança a cada 30s) e avisa com um toast
+  // quando um lead vira "urgente" — silencioso demais e a equipe só percebe
+  // se estiver de olho na aba; um toast em toda mensagem de bot vira ruído
+  // que a equipe aprende a ignorar, por isso só a entrada em urgente alerta.
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`leads-${clinicId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leads", filter: `clinic_id=eq.${clinicId}` },
+        (payload) => {
+          const newRow = payload.new as Partial<Lead> | undefined;
+          const oldRow = payload.old as Partial<Lead> | undefined;
+          const tornouUrgente = newRow?.status === "urgent" && oldRow?.status !== "urgent";
+          if (tornouUrgente) {
+            push(`🚨 Lead urgente: ${newRow?.patient_name || newRow?.patient_phone || "paciente"}`, "error");
+          }
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    const fallbackInterval = setInterval(() => router.refresh(), 30_000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(fallbackInterval);
+    };
+  }, [clinicId, push, router]);
 
   const byStatus = useMemo(() => {
     const map = new Map<LeadStatus, Lead[]>();
@@ -194,6 +227,7 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDeleteId(null)}
+        zIndex={1100}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />
