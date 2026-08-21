@@ -13,6 +13,10 @@ const bodySchema = z.object({
   patient_name: z.string().min(1),
   patient_phone: z.string().min(8),
   template_id: z.string().uuid(),
+  // Presente só quando o nome veio de uma seleção da busca de pacientes
+  // (paciente já cadastrado) — nesse caso pulamos upsertPatientFromContact
+  // abaixo, ver comentário perto da chamada.
+  patient_id: z.string().uuid().optional(),
 });
 
 /**
@@ -83,7 +87,16 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 
-  await upsertPatientFromContact(adminClient, clinic.id, input.patient_name, phone);
+  // Paciente já foi selecionado da busca (cadastro existente) — não
+  // recadastra. RLS de `sessionClient` já garante que o id pertence a esta
+  // clínica; se não pertencer, a query simplesmente não acha nada e cai no
+  // upsert normal (mesmo comportamento de digitar nome+telefone do zero).
+  const isExistingPatient = input.patient_id
+    ? !!(await sessionClient.from("patients").select("id").eq("id", input.patient_id).eq("clinic_id", clinic.id).maybeSingle()).data
+    : false;
+  if (!isExistingPatient) {
+    await upsertPatientFromContact(adminClient, clinic.id, input.patient_name, phone);
+  }
 
   // Envia o link pelo WhatsApp
   const link = `${process.env.NEXT_PUBLIC_APP_URL}/anamnese/${anamnesis.token}`;

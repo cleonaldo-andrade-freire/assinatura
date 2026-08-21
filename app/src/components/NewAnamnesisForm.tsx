@@ -31,6 +31,12 @@ export function NewAnamnesisForm({
   const router = useRouter();
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
   const [patientPhone, setPatientPhone] = useState(initialPatientPhone ? formatBRPhoneLocal(initialPatientPhone) : "");
+  // Só preenchido quando o nome veio de uma seleção da busca (paciente já
+  // cadastrado) — nesse caso a rota não precisa (re)cadastrar o paciente.
+  // Qualquer edição manual do nome/telefone depois invalida a seleção,
+  // porque não há mais garantia de que o texto ainda corresponde a esse
+  // cadastro (ver onChangeName/onChange do telefone abaixo).
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [billingBlocked, setBillingBlocked] = useState(false);
@@ -64,6 +70,7 @@ export function NewAnamnesisForm({
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientName(s.name);
     if (s.phone) setPatientPhone(formatBRPhoneLocal(s.phone));
+    setSelectedPatientId(s.id);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,6 +86,7 @@ export function NewAnamnesisForm({
           patient_name: patientName,
           patient_phone: toE164BR(patientPhone),
           template_id: templateId,
+          patient_id: selectedPatientId ?? undefined,
         }),
       });
       const data = await res.json();
@@ -103,6 +111,7 @@ export function NewAnamnesisForm({
         setSent(true);
         setPatientName("");
         setPatientPhone("");
+        setSelectedPatientId(null);
       }
       router.refresh();
     } finally {
@@ -156,7 +165,10 @@ export function NewAnamnesisForm({
       <PatientSearchField
         clinicId={clinicId}
         name={patientName}
-        onChangeName={setPatientName}
+        onChangeName={(v) => {
+          setPatientName(v);
+          setSelectedPatientId(null);
+        }}
         onSelect={pickPatientSuggestion}
         hint="Busca no cadastro de pacientes da clínica — selecionar preenche o WhatsApp também."
       />
@@ -188,7 +200,10 @@ export function NewAnamnesisForm({
             style={{ borderRadius: "0 var(--radius-sm) var(--radius-sm) 0" }}
             placeholder="(79) 99999-9999"
             value={patientPhone}
-            onChange={(e) => setPatientPhone(formatBRPhoneLocal(e.target.value))}
+            onChange={(e) => {
+              setPatientPhone(formatBRPhoneLocal(e.target.value));
+              setSelectedPatientId(null);
+            }}
             required
           />
         </div>
