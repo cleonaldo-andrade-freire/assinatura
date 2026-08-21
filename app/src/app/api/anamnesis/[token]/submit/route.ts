@@ -78,13 +78,14 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     .maybeSingle();
 
   if (existingSignature) {
-    return NextResponse.json({ error: "already_signed" }, { status: 409 });
+    return NextResponse.json({ error: "already_signed", message: "Esta anamnese já foi assinada anteriormente." }, { status: 409 });
   }
 
   // 3. Valida o payload
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "invalid_body", details: parsed.error.flatten() }, { status: 400 });
+    console.error("Payload inválido no submit da anamnese:", parsed.error.flatten());
+    return NextResponse.json({ error: "invalid_body", message: "Dados do formulário inválidos.", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const payload = parsed.data;
