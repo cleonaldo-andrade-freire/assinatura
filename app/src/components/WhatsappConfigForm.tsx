@@ -8,7 +8,13 @@ import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
 
 type FormState = Pick<
   Clinic,
-  "whatsapp_number" | "evolution_instance_name" | "evolution_base_url" | "evolution_api_key" | "notify_phone"
+  | "whatsapp_number"
+  | "evolution_instance_name"
+  | "evolution_base_url"
+  | "evolution_api_key"
+  | "notify_phone"
+  | "lead_bot_enabled"
+  | "lead_bot_trigger_phrase"
 >;
 
 const phonePrefixStyle: React.CSSProperties = {
@@ -32,7 +38,9 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
     evolution_base_url: clinic.evolution_base_url ?? "",
     evolution_api_key: clinic.evolution_api_key ?? "",
     notify_phone: formatBRPhoneLocal(clinic.notify_phone ?? ""),
+    lead_bot_trigger_phrase: clinic.lead_bot_trigger_phrase ?? "",
   });
+  const [leadBotEnabled, setLeadBotEnabled] = useState(clinic.lead_bot_enabled);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +63,7 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
           ...form,
           whatsapp_number: form.whatsapp_number ? toE164BR(form.whatsapp_number) : "",
           notify_phone: form.notify_phone ? toE164BR(form.notify_phone) : "",
+          lead_bot_enabled: leadBotEnabled,
         }),
       });
       if (!res.ok) {
@@ -157,6 +166,31 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
           </button>
         </div>
         <span className={styles.hint}>Usada só pra avisar a clínica no WhatsApp quando uma anamnese é assinada</span>
+      </div>
+
+      <div className={styles.field}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
+          <input type="checkbox" checked={leadBotEnabled} onChange={(e) => setLeadBotEnabled(e.target.checked)} />
+          Mini-CRM (triagem por IA) ativo pra números desconhecidos
+        </label>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="lead_bot_trigger_phrase">
+          Frase-gatilho da landing page (opcional)
+        </label>
+        <input
+          id="lead_bot_trigger_phrase"
+          className={styles.input}
+          placeholder='Ex.: "emergência odontológica" — vazio aceita qualquer mensagem desconhecida'
+          value={form.lead_bot_trigger_phrase}
+          onChange={(e) => set("lead_bot_trigger_phrase", e.target.value)}
+        />
+        <span className={styles.hint}>
+          Se a clínica tem uma landing page com botão de WhatsApp de mensagem pré-preenchida, cole aqui um trecho
+          dessa mensagem — só uma mensagem nova que contenha esse trecho abre lead (spam/propaganda no mesmo número
+          deixa de virar lead). Deixe vazio pra manter o comportamento atual (qualquer número desconhecido abre lead).
+        </span>
       </div>
 
       <div className={styles.formActions} style={{ display: "flex", alignItems: "center", gap: 12 }}>

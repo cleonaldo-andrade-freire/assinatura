@@ -1,0 +1,11 @@
+-- Mini-CRM de leads — filtro de "mensagem de contato genuíno" por clínica.
+--
+-- Hoje QUALQUER mensagem de um número desconhecido (sem anamnese/agendamento
+-- em andamento) abre um lead novo e aciona o agente de IA. Isso inclui spam/
+-- propaganda que caem no mesmo número. Clínicas com uma landing page própria
+-- que usa um botão de WhatsApp com mensagem pré-preenchida (ex.: "Olá Dra. X!
+-- Estou com uma emergência odontológica...") podem configurar esse texto
+-- aqui — nesse caso, só uma mensagem NOVA que contenha esse trecho (comparação
+-- normalizada, sem acento/maiúsculas) abre lead novo. Null (padrão) mantém o
+-- comportamento atual: qualquer mensagem desconhecida abre lead.
+alter table clinics add column lead_bot_trigger_phrase text;

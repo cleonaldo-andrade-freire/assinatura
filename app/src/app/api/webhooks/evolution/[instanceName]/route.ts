@@ -7,7 +7,7 @@ import { createAnamnesis } from "@/lib/anamnesis";
 import { brPhoneVariants } from "@/lib/validation";
 import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
-import { findOrCreateOpenLead, appendLeadMessage } from "@/lib/leads";
+import { findOpenLead, findOrCreateOpenLead, appendLeadMessage, matchesLeadBotTrigger } from "@/lib/leads";
 import { runLeadTriageAgent } from "@/lib/leadAgent";
 import type { Clinic, Conversation, LeadMessage, Question } from "@/lib/database.types";
 
@@ -97,7 +97,18 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       return NextResponse.json({ ok: true });
     }
 
-    const lead = await findOrCreateOpenLead(supabase, clinic.id, inbound.phone);
+    // Só cria lead NOVO se a mensagem "parecer" um contato genuíno — ver
+    // matchesLeadBotTrigger. Uma conversa já aberta (findOpenLead encontra
+    // algo) segue normal, o gate só protege a criação do primeiro contato.
+    const existingLead = await findOpenLead(supabase, clinic.id, inbound.phone);
+    if (!existingLead && !matchesLeadBotTrigger(clinic.lead_bot_trigger_phrase, inbound.text)) {
+      console.log(
+        `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: mensagem não bate com lead_bot_trigger_phrase para ${inbound.phone}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    const lead = existingLead ?? (await findOrCreateOpenLead(supabase, clinic.id, inbound.phone));
     await appendLeadMessage(supabase, {
       leadId: lead.id,
       clinicId: clinic.id,

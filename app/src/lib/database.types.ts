@@ -47,6 +47,7 @@ export interface Clinic {
   consent_term_version: string | null;
   consent_term_updated_at: string | null;
   lead_bot_enabled: boolean;
+  lead_bot_trigger_phrase: string | null;
   created_at: string;
 }
 
