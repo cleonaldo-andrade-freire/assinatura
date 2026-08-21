@@ -16,6 +16,7 @@ Painel multi-clínica + API para consultório odontológico, tudo integrado pelo
 | Financeiro do paciente | Débitos (a receber/recebido), recibos em PDF | dentro da ficha do paciente (aba Débitos) | owner + staff |
 | Despesas | Contas fixas/variáveis da clínica, recorrentes, categorias, exportação CSV | `/dashboard/despesas` | só owner |
 | Próteses | Quadro kanban por estágio (pedido → instalação), notificação de mudança de estágio por WhatsApp | `/dashboard/proteses` | owner + staff |
+| Leads | Mini-CRM de triagem por IA no WhatsApp — kanban por status, thread completa por lead | `/dashboard/leads` | owner + staff |
 | Configurações | Perfil da clínica/dentista responsável, logo, WhatsApp, plano/assinatura, download do agente local de assinatura | `/dashboard/configuracoes` | só owner |
 | Equipe | Convidar/remover membros da equipe, definir papel (owner/staff) | `/dashboard/configuracoes/equipe` | só owner |
 | Meu perfil | Nome e foto de exibição do próprio usuário logado (mostrados na sidebar) | `/dashboard/perfil` | owner + staff, cada um só o próprio |
@@ -28,7 +29,7 @@ Cada usuário da clínica tem um papel em `profiles.role`: **owner** (dentista/d
 
 - **Convite**: owner convida em `/dashboard/configuracoes/equipe` (e-mail + papel) → `POST /api/clinics/[clinicId]/staff/invite` chama `supabase.auth.admin.inviteUserByEmail`, guardando `clinic_id`/`role` em `raw_user_meta_data` do convite. O e-mail leva a `/aceitar-convite`, onde a pessoa define a própria senha. O registro em `profiles` **não** é criado pelo app — a trigger `handle_staff_invite_confirmed()` (`supabase/048_staff_invite_trigger.sql`) cria automaticamente assim que o convite é confirmado (`auth.users.confirmed_at` passa de null pra preenchido).
 - **Remover acesso**: "Revogar" em `/dashboard/configuracoes/equipe` (`DELETE /api/clinics/[clinicId]/staff/[userId]`) apaga só o registro em `profiles` — a conta em `auth.users` continua existindo (órfã, sem clínica), não é possível remover a si mesmo.
-- **O que staff vê**: menu lateral (`ClinicShell.tsx` → `STAFF_ALLOWED_HREFS`) só mostra Dashboard, Agenda, Pacientes e Próteses. Dentro da ficha do paciente (`lib/patientTabs.ts` → `STAFF_ALLOWED_TAB_KEYS`), só Agendamentos, Tratamentos e Débitos. Todo o resto (Anamneses, Atestados, Prescrições, Despesas, Configurações e suas subpáginas, Orçamentos, Imagens) é bloqueado **em duas camadas**: o link some do menu/aba **e** a página faz `redirect("/dashboard")` no servidor pra quem tentar acessar direto pela URL — só esconder o link não bastava, os dados dessas seções nem chegam a ser consultados no banco pra um staff (as queries ficam atrás de `if (role === "owner")`, não só o componente visual).
+- **O que staff vê**: menu lateral (`ClinicShell.tsx` → `STAFF_ALLOWED_HREFS`) só mostra Dashboard, Agenda, Pacientes, Próteses e Leads. Dentro da ficha do paciente (`lib/patientTabs.ts` → `STAFF_ALLOWED_TAB_KEYS`), só Agendamentos, Tratamentos e Débitos. Todo o resto (Anamneses, Atestados, Prescrições, Despesas, Configurações e suas subpáginas, Orçamentos, Imagens) é bloqueado **em duas camadas**: o link some do menu/aba **e** a página faz `redirect("/dashboard")` no servidor pra quem tentar acessar direto pela URL — só esconder o link não bastava, os dados dessas seções nem chegam a ser consultados no banco pra um staff (as queries ficam atrás de `if (role === "owner")`, não só o componente visual).
 - **Meu perfil** (`/dashboard/perfil`) é a única página "estilo Configurações" liberada pra staff — cada usuário edita só o próprio nome/foto (`profiles.name`/`profiles.avatar_url`, migração `049_profile_name_avatar.sql`), mostrados na sidebar.
 
 ## Configurando o Supabase (uma vez)
@@ -90,6 +91,14 @@ A resposta traz um `token` — abra `http://localhost:3000/assinatura?token=<tok
 1. **Motor de conversa próprio (padrão, inclusive já em uso pela ER Odontologia)**: a clínica cadastra os modelos de anamnese em `/dashboard/templates` e conecta o próprio WhatsApp sozinha em `/dashboard/configuracoes` (seção WhatsApp, componente `ConnectWhatsApp` — QR Code, self-service, usa `EVOLUTION_ADMIN_BASE_URL`/`EVOLUTION_ADMIN_API_KEY`). Sem Typebot. Uma anamnese em andamento pode ser cancelada a qualquer momento na seção "Em andamento" do `/dashboard` (marca como `abandoned`, não apaga o histórico).
 2. **Typebot (fluxo legado)**: uma instância do Typebot montada manualmente, com o bloco de Webhook final chamando `POST /api/clinics/{clinicId}/anamnesis` com o header `X-Api-Key`. Continua funcionando pra qualquer clínica que ainda esteja configurada assim, mas não é o caminho recomendado pra clínicas novas.
 
+## Mini-CRM de leads (triagem por IA no WhatsApp)
+
+Quando uma mensagem chega no webhook da Evolution API (`/api/webhooks/evolution/[instanceName]`) e não corresponde a nenhuma anamnese em andamento nem a um agendamento pendente — hoje só ignorada e logada — um agente de IA (Vercel AI SDK + `@ai-sdk/anthropic`, modelo `claude-haiku-4-5`, `lib/leadAgent.ts`) assume a conversa, a menos que a clínica tenha desligado o recurso (`clinics.lead_bot_enabled`, default `true`, sem UI própria hoje — só via banco/admin).
+
+- **Tools do agente**, todas operando sobre as tabelas reais da clínica (não dados fictícios): `consultarDisponibilidade` (consulta horários livres em `appointments` pro dentista responsável, reaproveitando `buildDaySlotTimes`/`buildContinuationMap` de `lib/appointments.ts`), `agendarPaciente` (cria o agendamento de verdade, com a mesma checagem de conflito de horário que a agenda manual usa) e `alertarUrgencia` (marca o lead como urgente e avisa `clinics.notify_phone`, pra recepção assumir na hora).
+- **Modelo de dados** (`leads`/`lead_messages`, migration `059_lead_triage.sql`): um lead por telefone em triagem aberta (`status != 'scheduled'`); todo o histórico da conversa (paciente/bot/recepção) fica em `lead_messages`, usado tanto pro Kanban mostrar a thread completa quanto pra dar contexto multi-turn ao agente a cada nova mensagem.
+- Exige `ANTHROPIC_API_KEY` configurada (ver `.env.example`) — sem ela, a chamada ao agente falha (best-effort: loga o erro, não derruba o webhook, mas o paciente não recebe resposta do bot).
+
 ## Planos, trial e cobrança de excedente
 
 Os planos são **dado editável**, não constante no código: tabela `plans` (nome, preço, limite de anamneses, diferenciais, ordem de exibição, destaque "mais popular", ativo/inativo, preço de excedente — ver migrations `008_plans_table.sql` e `009_plan_overage_price.sql`). `clinics.plan`/`clinics.pending_plan` são `text` com foreign key pra `plans(id)` (antes era enum fechado do Postgres — trocado porque enum não dá pra editar/remover valor livremente). `lib/plans.ts` centraliza o acesso: `getActivePlans` (landing, seletores — só `active=true`), `getAllPlans` (CRUD do admin, inclui inativos), `getPlanById`, `planValueFor`/`effectiveMonthlyPrice` (cálculo de preço, considerando desconto customizado). CRUD completo em `/admin/plans` (`components/admin/PlanForm.tsx`, `api/admin/plans/`). Excluir um plano só funciona se nenhuma clínica o usa (a FK barra fisicamente) — a alternativa é desativar.
@@ -110,6 +119,17 @@ Adicionar um plano novo: direto em `/admin/plans/new`, sem precisar mexer em có
 ## Trilha de auditoria da assinatura
 
 `signatures` já guardava `sha256`, `ip`, `user_agent`, `signed_at_client`/`signed_at_server` desde o início, mas nada na interface mostrava isso. `/dashboard/anamneses/[id]` exibe as respostas da anamnese + toda essa trilha (link "Ver detalhes" na lista do dashboard) — é a evidência que sustenta a validade jurídica (MP 2.200-2/2001, Lei 14.063/2020) em caso de contestação.
+
+## Contra-assinatura da dentista (anamnese e evolução clínica)
+
+Além da assinatura eletrônica simples do paciente (seção acima), a dentista pode contra-assinar a anamnese e a evolução clínica com certificado ICP-Brasil (mesmo provider trocável de `lib/signature/index.ts` usado por atestados/prescrições — normalmente `local_agent`). O resultado é **um único PDF com as duas assinaturas**, não dois arquivos separados: `issueAnamnesisDentistSignature`/`issueEvolutionDentistSignature` carregam o PDF que o paciente já assinou (`PDFDocument.load`) e aplicam a assinatura da dentista em cima dele, em vez de gerar um documento novo do zero.
+
+Isso só é seguro quando o paciente assina **primeiro** — colar conteúdo depois de uma assinatura ICP-Brasil já embutida invalidaria o hash/`ByteRange` dela, já que o `pdf-lib` reserializa o arquivo inteiro ao salvar (não faz incremental update de verdade). Por isso a ordem é diferente em cada documento:
+
+- **Anamnese**: o paciente sempre assina primeiro (na hora, ao preencher) — a contra-assinatura da dentista é sempre segura e pode acontecer a qualquer momento depois.
+- **Evolução clínica**: a ordem foi invertida especificamente por causa disso. Finalizar um tratamento já dispara automaticamente o pedido de assinatura ao paciente por WhatsApp (`requestEvolutionSignature`, chamado em `POST /api/clinics/[clinicId]/treatments/finalize`) — a contra-assinatura da dentista (botão "Assinar como dentista", em `TreatmentDetailModal.tsx`/`EvolucoesPendentesClient.tsx`) só fica habilitada depois que o paciente confirma (`signature_status === "assinada"`); antes disso, some da lista de "evoluções pendentes" e aparece desabilitada com o aviso "Aguardando o paciente assinar".
+
+Depois que a dentista assina, o paciente recebe um WhatsApp com o link do portal de validação pública correspondente — `/validar-anamnese/[code]` ou `/validar-evolucao/[code]` (código em `signatures.verification_code`/`treatment_evolution_signatures.verification_code`) — com um botão de download real do PDF final, além da conferência de hash SHA-256 já existente.
 
 ## Assinatura digital de atestados/prescrições (Certisign)
 

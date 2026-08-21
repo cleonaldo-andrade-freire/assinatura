@@ -46,11 +46,15 @@ NEXT_PUBLIC_SIGNATURE_PROVIDER=mock
 
 CRON_SECRET=<gere outra string aleatória longa>
 NEXT_PUBLIC_APP_URL=https://<seu-domínio-do-app-na-vercel>
+
+ANTHROPIC_API_KEY=<chave da API da Anthropic — ver platform.claude.com>
 ```
 
 > Comece com `ASAAS_BASE_URL=https://sandbox.asaas.com/api/v3` e uma chave sandbox pra testar o fluxo de cobrança inteiro sem mexer com dinheiro real, antes de trocar pra produção.
 >
 > `SIGNATURE_PROVIDER=mock` simula a assinatura (sem validade jurídica) — é o suficiente pra subir e testar o app. Trocar pra `certisign`, `psc` ou `local_agent` exige as variáveis extras correspondentes (`CERTISIGN_*`, `PSC_*` — ver `app/.env.example`) e é um passo separado, não bloqueia esse deploy inicial.
+>
+> `ANTHROPIC_API_KEY` alimenta o agente de triagem de leads no WhatsApp (`/dashboard/leads`, ver `app/README.md` seção "Mini-CRM de leads") — sem ela, mensagens de números sem anamnese/agendamento em andamento simplesmente não recebem resposta do bot (best-effort, não derruba o webhook). Não bloqueia o deploy inicial, mas sem essa chave o Mini-CRM não funciona.
 
 ⚠️ **Diferente do ambiente local:** se o valor de `ASAAS_API_KEY` no seu `.env` local está escrito com barra invertida antes do `$` (`\$aact_...`) — ajuste feito pra contornar um bug do loader `@next/env` lendo arquivo `.env` —, **na Vercel cole sem essa barra** (`$aact_...` puro). A Vercel injeta a variável direto no processo, sem o processamento que causava aquele bug; colar com a barra faria o valor ficar errado (com uma barra invertida literal dentro).
 
