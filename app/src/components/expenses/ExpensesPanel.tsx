@@ -39,7 +39,6 @@ export function ExpensesPanel({
   month,
   monthLabel,
   todayStr,
-  overdueCount,
   overdueTotal,
   overdueActive,
   fixedMonthlyCost,
@@ -62,7 +61,6 @@ export function ExpensesPanel({
   month: string;
   monthLabel: string;
   todayStr: string;
-  overdueCount: number;
   overdueTotal: number;
   overdueActive: boolean;
   fixedMonthlyCost: number;
@@ -209,7 +207,7 @@ export function ExpensesPanel({
         >
           <div className={styles.statLabel}>Vencidas</div>
           <div className={styles.statValue} style={{ color: "var(--danger)" }}>
-            {overdueCount} · {formatMoney(overdueTotal)}
+            {formatMoney(overdueTotal)}
           </div>
         </a>
         <div className={`${styles.statCard} ${styles.statCardDashboard}`}>

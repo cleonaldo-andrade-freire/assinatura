@@ -77,7 +77,6 @@ export default async function DespesasPage({
     .eq("clinic_id", clinic.id)
     .eq("status", "pendente")
     .lt("due_date", today);
-  const overdueCount = overdueAmountsData?.length ?? 0;
   const overdueTotal = (overdueAmountsData ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
 
   const { data: paidAmountsData } = await supabase
@@ -164,7 +163,6 @@ export default async function DespesasPage({
           month={month}
           monthLabel={monthLabel}
           todayStr={today}
-          overdueCount={overdueCount}
           overdueTotal={overdueTotal}
           overdueActive={overdueActive}
           fixedMonthlyCost={fixedMonthlyCost}
