@@ -77,14 +77,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
 
   async function handleDownloadPdf() {
     if (!request?.pdf_storage_key) return;
-    // We don't have a specific GET pdf route yet, we can use the storage download URL directly.
-    // Wait, storage requires auth, but the dentist is logged in.
-    const { data } = await supabase.storage.from("signed-pdfs").createSignedUrl(request.pdf_storage_key, 60 * 60);
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, "_blank");
-    } else {
-      push("Erro ao baixar PDF", "error");
-    }
+    window.open(`/api/clinics/${clinicId}/patients/${patientId}/consent-term/pdf`, "_blank");
   }
 
   if (loading) {
