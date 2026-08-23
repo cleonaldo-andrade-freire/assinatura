@@ -110,9 +110,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const pdfBuffer = Buffer.from(pdfBytes);
   const pdfHash = crypto.createHash("sha256").update(pdfBuffer).digest("hex");
-  const fileName = `${request.clinic_id}/consent_term_${request.id}_${pdfHash.substring(0, 8)}.pdf`;
-
-  const pdfStorageKey = await savePdf("treatment-evolutions", fileName, pdfBuffer); // reaproveitamos o bucket das evoluções ou anamneses (pode ser "anamneses" também se quiser, são PDFs)
+  // Save using clinic_id to respect storage RLS policies for signed-pdfs
+  const pdfStorageKey = await savePdf(request.clinic_id, `consent_term_${request.id}_${pdfHash.substring(0, 8)}`, pdfBuffer);
 
   if (!pdfStorageKey) {
     return NextResponse.json({ error: "pdf_storage_failed" }, { status: 500 });

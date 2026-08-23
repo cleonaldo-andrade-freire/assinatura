@@ -7,6 +7,21 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
 
+function PdfIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 3h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: string; patientId: string }) {
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState<any>(null); // consent_term_signatures
@@ -120,8 +135,15 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
             
             <div style={{ display: "flex", gap: 8 }}>
               {request.status === "assinado" ? (
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={handleDownloadPdf}>
-                  Ver PDF
+                <button 
+                  type="button" 
+                  className={styles.iconActionBtn} 
+                  style={{ width: 32, height: 32 }} 
+                  onClick={handleDownloadPdf}
+                  title="Ver PDF"
+                  aria-label="Ver PDF"
+                >
+                  <PdfIcon />
                 </button>
               ) : (
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmOpen(true)} disabled={sending}>
