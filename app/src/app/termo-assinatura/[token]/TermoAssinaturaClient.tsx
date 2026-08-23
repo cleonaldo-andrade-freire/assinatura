@@ -140,16 +140,21 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
             Olá, <strong>{data?.patientNameMasked}</strong>. Por segurança, digite seu CPF para acessar o documento.
           </p>
           <form onSubmit={handleAuthSubmit}>
-            <input
-              type="tel"
-              value={cpfInput}
-              onChange={e => setCpfInput(formatCPF(e.target.value))}
-              placeholder="000.000.000-00"
-              className="input"
-              maxLength={14}
-            />
-            {cpfError && <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 6 }}>{cpfError}</div>}
-            <button type="submit" className="btn-primary" style={{ width: "100%", marginTop: 20 }}>Acessar documento</button>
+            <div className="field">
+              <label htmlFor="cpf">CPF</label>
+              <input
+                id="cpf"
+                type="text"
+                inputMode="numeric"
+                value={cpfInput}
+                onChange={e => setCpfInput(formatCPF(e.target.value))}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                style={{ fontWeight: 700 }}
+              />
+              {cpfError && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>{cpfError}</div>}
+            </div>
+            <button type="submit" className="btn-primary" style={{ marginTop: 8 }}>Acessar documento</button>
           </form>
         </div>
       )}
