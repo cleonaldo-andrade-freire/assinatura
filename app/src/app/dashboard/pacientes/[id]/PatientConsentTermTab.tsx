@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatBRDateTime } from "@/lib/date";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import styles from "@/styles/shell.module.css";
 
 export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: string; patientId: string }) {
@@ -10,6 +11,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
   const [request, setRequest] = useState<any>(null); // consent_term_signatures
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const supabase = createSupabaseBrowserClient();
 
   async function fetchRequest() {
@@ -32,7 +34,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
   }, [clinicId, patientId]);
 
   async function handleSend() {
-    if (!confirm("Enviar solicitação de assinatura para o WhatsApp do paciente?")) return;
+    setConfirmOpen(false);
     setSending(true);
     setError("");
     
@@ -87,7 +89,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
           <div className={styles.emptyIcon}>📄</div>
           <h3>Nenhum Termo Assinado</h3>
           <p>Este paciente ainda não assinou o termo de adesão isoladamente.</p>
-          <button className={styles.btnPrimary} onClick={handleSend} disabled={sending} style={{ marginTop: 20 }}>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setConfirmOpen(true)} disabled={sending} style={{ marginTop: 20 }}>
             {sending ? "Enviando..." : "Solicitar Assinatura (WhatsApp)"}
           </button>
         </div>
@@ -119,7 +121,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
                   Ver PDF
                 </button>
               ) : (
-                <button className={styles.btnSecondary} onClick={handleSend} disabled={sending}>
+                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmOpen(true)} disabled={sending}>
                   Reenviar WhatsApp
                 </button>
               )}
@@ -136,6 +138,16 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Solicitar Assinatura"
+        message="Enviar solicitação de assinatura para o WhatsApp do paciente?"
+        confirmLabel="Sim, enviar"
+        cancelLabel="Cancelar"
+        onConfirm={handleSend}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
