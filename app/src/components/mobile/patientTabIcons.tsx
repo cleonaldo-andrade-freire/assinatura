@@ -126,6 +126,7 @@ function DadosPessoaisIcon() {
  * cabem todas sem precisar de scroll horizontal. */
 export const PATIENT_TAB_ICONS: Record<PatientTabKey, () => JSX.Element> = {
   dados_pessoais: DadosPessoaisIcon,
+  termo: AtestadosIcon,
   agendamentos: AgendamentosIcon,
   orcamentos: OrcamentosIcon,
   tratamentos: TratamentosIcon,

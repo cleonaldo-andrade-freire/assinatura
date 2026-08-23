@@ -677,6 +677,33 @@ export interface ElectronicConsentTerm {
   created_at: string;
 }
 
+export type ConsentTermSignatureStatus = "aguardando_assinatura" | "assinado" | "expirado" | "cancelado";
+
+export interface ConsentTermSignature {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  token: string;
+  status: ConsentTermSignatureStatus;
+  expires_at: string | null;
+  term_version: string;
+  term_text_hash: string;
+  sent_whatsapp_at: string | null;
+  phone_e164: string | null;
+  signer_name: string | null;
+  signer_cpf: string | null;
+  signed_at_client: string | null;
+  signed_at_server: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  stroke_data: Record<string, unknown> | null;
+  verification_code: string | null;
+  pdf_storage_key: string | null;
+  sha256: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DocumentSignatureEvent {
   id: number;
   clinic_id: string;

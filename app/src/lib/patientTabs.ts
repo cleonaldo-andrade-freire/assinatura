@@ -9,6 +9,7 @@
  */
 export const PATIENT_TABS = [
   { key: "dados_pessoais", label: "Dados Pessoais" },
+  { key: "termo", label: "Termo" },
   { key: "agendamentos", label: "Agendamentos" },
   { key: "orcamentos", label: "Orçamentos" },
   { key: "tratamentos", label: "Tratamentos" },

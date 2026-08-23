@@ -278,7 +278,7 @@ export async function verifySecondFactor(
 export async function getEvolutionDocument(token: string) {
   const found = await lookupByToken(token);
   if (!found || !found.evolution.content_snapshot) return null;
-  const { evolution, clinic } = found;
+  const { evolution, clinic, patient } = found;
   return {
     clinicName: clinic.name,
     clinicLogoUrl: clinic.logo_url,

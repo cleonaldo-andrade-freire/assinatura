@@ -11,6 +11,7 @@ import { AnamnesisGridActions } from "@/components/AnamnesisGridActions";
 import { CertificateGridActions } from "@/components/CertificateGridActions";
 import { PrescriptionGridActions } from "@/components/PrescriptionGridActions";
 import { PatientTabs } from "@/components/PatientTabs";
+import { PatientConsentTermTab } from "./PatientConsentTermTab";
 import { PATIENT_TABS, STAFF_ALLOWED_TAB_KEYS, type PatientTabKey } from "@/lib/patientTabs";
 import { NewBudgetTrigger } from "@/components/budgets/NewBudgetTrigger";
 import { BudgetRowActions } from "@/components/budgets/BudgetRowActions";
@@ -611,6 +612,7 @@ export default async function EditPatientPage({
         role={role}
         panels={{
           dados_pessoais: <PatientForm clinicId={clinic.id} patient={patient} />,
+          termo: <PatientConsentTermTab clinicId={clinic.id} patientId={patient.id} />,
           anamneses: anamnesesPanel,
           agendamentos: agendamentosPanel,
           orcamentos: orcamentosPanel,
