@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   // Cadastra/vincula o paciente automaticamente se o dentista não selecionou
   // uma sugestão da busca — mesma correção aplicada em `certificates/route.ts`.
-  let patientId = input.patient_id;
+  let patientId: string | null | undefined = input.patient_id;
   let finalPhone = input.patient_phone ?? null;
   let finalCpf = input.patient_cpf ?? null;
 
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       patient_name: input.patient_name,
       patient_cpf: finalCpf,
       patient_phone: finalPhone,
-      patient_id: patientId,
+      patient_id: patientId ?? null,
       dentist_name: clinic.dentist_name,
       dentist_cro: clinic.dentist_cro,
       dentist_cro_uf: clinic.dentist_cro_uf,
