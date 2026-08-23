@@ -2,7 +2,6 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isValidToken } from "@/lib/validation";
 import { buildConsentTermPdf } from "@/lib/consentTermPdf";
 import { savePdf } from "@/lib/pdfStorage";
 
@@ -34,7 +33,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  if (!isValidToken(params.token)) {
+  if (!params.token || !/^[0-9a-f]{64}$/i.test(params.token)) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

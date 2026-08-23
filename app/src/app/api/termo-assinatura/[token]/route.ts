@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isValidToken } from "@/lib/validation";
-
 export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
-  if (!isValidToken(params.token)) {
+  if (!params.token || !/^[0-9a-f]{64}$/i.test(params.token)) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

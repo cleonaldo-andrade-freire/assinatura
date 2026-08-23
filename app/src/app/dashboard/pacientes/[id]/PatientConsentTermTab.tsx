@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatBRDateTime } from "@/lib/date";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
 
 export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: string; patientId: string }) {
@@ -12,6 +13,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { toasts, push, dismiss } = useToasts();
   const supabase = createSupabaseBrowserClient();
 
   async function fetchRequest() {
@@ -48,10 +50,11 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
         throw new Error(data.message || data.error || "Erro ao enviar solicitação");
       }
       
-      alert("Solicitação enviada com sucesso!");
+      push("Solicitação enviada com sucesso!", "success");
       fetchRequest();
     } catch (err: any) {
       setError(err.message);
+      push(err.message, "error");
     } finally {
       setSending(false);
     }
@@ -65,7 +68,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
     if (data?.signedUrl) {
       window.open(data.signedUrl, "_blank");
     } else {
-      alert("Erro ao baixar PDF");
+      push("Erro ao baixar PDF", "error");
     }
   }
 
@@ -148,6 +151,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
         onConfirm={handleSend}
         onCancel={() => setConfirmOpen(false)}
       />
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }
