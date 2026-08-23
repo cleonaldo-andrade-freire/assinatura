@@ -27,6 +27,7 @@ export async function upsertPatientFromContact(
       .select("id, cpf")
       .eq("clinic_id", clinicId)
       .eq("phone", phone)
+      .limit(1)
       .maybeSingle();
 
     if (existing) {

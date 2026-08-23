@@ -111,21 +111,40 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // não só update): sem isso, uma anamnese de paciente que nunca existiu no
   // sistema não deixava nenhum registro em `patients`, e o aceite do Termo
   // de Adesão (passo 6b abaixo) precisa de um patient_id pra existir.
-  let patientQuery = supabase.from("patients").select("id").eq("clinic_id", anamnesis.clinic_id);
-  if (payload.patient_cpf) {
-    patientQuery = patientQuery.eq("cpf", payload.patient_cpf);
-  } else if (payload.patient_phone) {
-    patientQuery = patientQuery.eq("phone", payload.patient_phone);
-  }
-  const { data: patientMatches } = await patientQuery;
+  const cleanPhone = payload.patient_phone?.replace(/\D/g, "") || anamnesis.patient_phone?.replace(/\D/g, "");
+  const cleanCpf = payload.patient_cpf || null;
 
   let patientId: string | null = null;
-  if (patientMatches && patientMatches.length > 0) {
-    patientId = patientMatches[0].id;
+
+  // Tenta achar pelo telefone (que é como o send-link cadastra inicialmente)
+  if (cleanPhone) {
+    const { data: byPhone } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("clinic_id", anamnesis.clinic_id)
+      .eq("phone", cleanPhone)
+      .limit(1)
+      .maybeSingle();
+    if (byPhone) patientId = byPhone.id;
+  }
+
+  // Se não achou pelo telefone, tenta pelo CPF (caso o paciente tenha mudado de celular mas preencheu o CPF correto)
+  if (!patientId && cleanCpf) {
+    const { data: byCpf } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("clinic_id", anamnesis.clinic_id)
+      .eq("cpf", cleanCpf)
+      .limit(1)
+      .maybeSingle();
+    if (byCpf) patientId = byCpf.id;
+  }
+
+  if (patientId) {
     await supabase.from("patients").update({
       name: payload.patient_name,
-      cpf: payload.patient_cpf,
-      phone: payload.patient_phone,
+      cpf: cleanCpf,
+      phone: cleanPhone,
       birth_date: payload.birth_date,
       rg: payload.rg,
       occupation: payload.occupation,
@@ -138,8 +157,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       .insert({
         clinic_id: anamnesis.clinic_id,
         name: payload.patient_name,
-        cpf: payload.patient_cpf,
-        phone: payload.patient_phone || anamnesis.patient_phone,
+        cpf: cleanCpf,
+        phone: cleanPhone || anamnesis.patient_phone,
         birth_date: payload.birth_date,
         rg: payload.rg,
         occupation: payload.occupation,
