@@ -8,7 +8,7 @@ Painel multi-clínica + API para consultório odontológico, tudo integrado pelo
 |---|---|---|---|
 | Dashboard | Visão geral: KPIs do dia/mês, agenda de hoje, cancelamentos e retornos pendentes de contato, tratamentos/débitos em aberto | `/dashboard` | owner + staff (KPIs financeiros só pra owner) |
 | Agenda | Semana/mês/dia, criação e detalhe de agendamento (modal), confirmação/lembrete automático por WhatsApp | `/dashboard/agenda` | owner + staff |
-| Pacientes | Cadastro, busca, ficha com abas (agendamentos, orçamentos, tratamentos, débitos, imagens, anamneses, atestados, prescrições — ver restrição por papel abaixo) | `/dashboard/pacientes` | owner + staff (abas restritas pra staff) |
+| Pacientes | Cadastro, busca, ficha com abas (agendamentos, orçamentos, tratamentos, débitos, imagens, anamneses, termos, atestados, prescrições — ver restrição por papel abaixo) | `/dashboard/pacientes` | owner + staff (abas restritas pra staff) |
 | Anamneses | Modelos de perguntas, conversa conduzida pelo WhatsApp, assinatura eletrônica do paciente com trilha de auditoria | `/dashboard/anamneses`, `/dashboard/templates` | só owner |
 | Atestados | Emissão com assinatura digital ICP-Brasil, modelos de texto reaproveitáveis, revogação | `/dashboard/atestados` | só owner |
 | Prescrições | Emissão com assinatura digital ICP-Brasil, controle de medicamento controlado, modelos, revogação | `/dashboard/prescricoes` | só owner |
@@ -119,6 +119,17 @@ Adicionar um plano novo: direto em `/admin/plans/new`, sem precisar mexer em có
 ## Trilha de auditoria da assinatura
 
 `signatures` já guardava `sha256`, `ip`, `user_agent`, `signed_at_client`/`signed_at_server` desde o início, mas nada na interface mostrava isso. `/dashboard/anamneses/[id]` exibe as respostas da anamnese + toda essa trilha (link "Ver detalhes" na lista do dashboard) — é a evidência que sustenta a validade jurídica (MP 2.200-2/2001, Lei 14.063/2020) em caso de contestação.
+
+## Termo de Adesão (Assinatura Eletrônica)
+
+Pacientes podem assinar termos de adesão avulsos, no mesmo formato da anamnese (assinatura eletrônica simples do paciente). O fluxo funciona assim:
+1. O dentista envia a solicitação pela aba "Termo" na ficha do paciente.
+2. O sistema dispara uma mensagem no WhatsApp do paciente com o link.
+3. O paciente abre o link (`/termo-assinatura/[token]`), que **exige a digitação do CPF** para validar a identidade antes de exibir o documento.
+4. Após o CPF ser validado no servidor, o paciente lê o termo e assina na tela do celular/computador.
+5. O PDF do termo é gerado automaticamente, guardado na aba do paciente, e fica com a trilha de auditoria (IP, Hash, Data/Hora).
+
+O modelo de texto base do termo de adesão fica centralizado em `/dashboard/configuracoes`, preenchendo automaticamente as variáveis da clínica e do paciente.
 
 ## Contra-assinatura da dentista (anamnese e evolução clínica)
 
