@@ -13,10 +13,6 @@ import { useMobileV2Active } from "@/lib/useMobileV2Active";
 import { DraftBanner } from "@/components/mobile/DraftBanner";
 import styles from "@/styles/shell.module.css";
 
-interface CidSuggestion {
-  code: string;
-  description: string;
-}
 
 function todayISO(): string {
   const now = new Date();
@@ -50,10 +46,7 @@ export function NewCertificateForm({
   const [patientId, setPatientId] = useState<string | null>(initialPatientId ?? null);
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
 
-  const [cid, setCid] = useState("");
-  const [cidSuggestions, setCidSuggestions] = useState<CidSuggestion[]>([]);
-  const [showCidSuggestions, setShowCidSuggestions] = useState(false);
-  const [hideCid, setHideCid] = useState(false);
+
   const [reason, setReason] = useState("");
   const [restDays, setRestDays] = useState(1);
   const [startsOn, setStartsOn] = useState(todayISO());
@@ -61,7 +54,7 @@ export function NewCertificateForm({
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cidDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   const { isAgentRunning, signHash } = useAgent();
   const [showAgentSelector, setShowAgentSelector] = useState(false);
@@ -75,16 +68,15 @@ export function NewCertificateForm({
   const draftKey = mobileV2 ? `mobiledraft:certificate:${clinicId}:${initialPatientId ?? "new"}` : null;
   const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
     draftKey,
-    { patientId, patientName, cid, hideCid, reason, restDays, startsOn, templateId },
-    { isEmpty: (v) => !v.patientName.trim() && !v.reason.trim() && !v.cid.trim() }
+    { patientId, patientName, reason, restDays, startsOn, templateId },
+    { isEmpty: (v) => !v.patientName.trim() && !v.reason.trim() }
   );
 
   function restoreDraft() {
     if (!draft) return;
     setPatientId(draft.patientId);
     setPatientName(draft.patientName);
-    setCid(draft.cid);
-    setHideCid(draft.hideCid);
+
     setReason(draft.reason);
     setRestDays(draft.restDays);
     setStartsOn(draft.startsOn);
@@ -92,26 +84,7 @@ export function NewCertificateForm({
     dismissDraftPrompt();
   }
 
-  useEffect(() => {
-    if (cidDebounceRef.current) clearTimeout(cidDebounceRef.current);
-    if (cid.trim().length < 2) {
-      setCidSuggestions([]);
-      return;
-    }
-    cidDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/cid-codes/search?q=${encodeURIComponent(cid.trim())}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setCidSuggestions(data.codes ?? []);
-      } catch {
-        // idem — autocomplete de CID é conveniência, não bloqueia o texto livre
-      }
-    }, 300);
-    return () => {
-      if (cidDebounceRef.current) clearTimeout(cidDebounceRef.current);
-    };
-  }, [cid]);
+
 
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
@@ -178,8 +151,7 @@ export function NewCertificateForm({
         body: JSON.stringify({
           patient_name: patientName.trim(),
           patient_id: patientId ?? undefined,
-          cid: cid.trim() || undefined,
-          hide_cid_on_patient_pdf: hideCid,
+
           reason: reason.trim(),
           rest_days: restDays,
           starts_on: startsOn,
@@ -299,76 +271,7 @@ export function NewCertificateForm({
         </div>
       </div>
 
-      <div className={styles.field} style={{ position: "relative" }}>
-        <label htmlFor="cid" className={styles.label}>
-          CID (opcional)
-        </label>
-        <input
-          id="cid"
-          type="text"
-          className={styles.input}
-          value={cid}
-          onChange={(e) => {
-            setCid(e.target.value);
-            setShowCidSuggestions(true);
-          }}
-          onFocus={() => setShowCidSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowCidSuggestions(false), 150)}
-          autoComplete="off"
-          placeholder="Ex.: K02.9 ou busque pela descrição"
-        />
-        {showCidSuggestions && cidSuggestions.length > 0 && (
-          <ul
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 5,
-              margin: "4px 0 0",
-              padding: 4,
-              listStyle: "none",
-              background: "var(--surface)",
-              border: "1.5px solid var(--line)",
-              borderRadius: "var(--radius-sm)",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-              maxHeight: 220,
-              overflowY: "auto",
-            }}
-          >
-            {cidSuggestions.map((s) => (
-              <li key={s.code}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setCid(s.code);
-                    setShowCidSuggestions(false);
-                    setCidSuggestions([]);
-                  }}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    borderRadius: 6,
-                    fontSize: 13.5,
-                  }}
-                >
-                  <strong>{s.code}</strong> — {s.description}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13.5 }}>
-          <input type="checkbox" checked={hideCid} onChange={(e) => setHideCid(e.target.checked)} />
-          Ocultar CID no atestado do paciente (Lei nº 9.436/97) — fica salvo só no registro
-        </label>
-      </div>
+
 
       <div className={styles.field}>
         <label htmlFor="reason" className={styles.label}>

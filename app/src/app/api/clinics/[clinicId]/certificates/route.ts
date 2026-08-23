@@ -16,8 +16,7 @@ const bodySchema = z.object({
     .refine((val) => !val || isValidCPF(val), { message: "CPF inválido" }),
   patient_phone: z.string().min(10).optional(),
   patient_id: z.string().uuid().optional(),
-  cid: z.string().optional(),
-  hide_cid_on_patient_pdf: z.boolean().default(false),
+
   reason: z.string().min(1),
   rest_days: z.number().int().min(0),
   starts_on: z.string().min(1),
@@ -94,8 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       dentist_name: clinic.dentist_name,
       dentist_cro: clinic.dentist_cro,
       dentist_cro_uf: clinic.dentist_cro_uf,
-      cid: input.cid ?? null,
-      hide_cid_on_patient_pdf: input.hide_cid_on_patient_pdf,
+
       reason: input.reason,
       rest_days: input.rest_days,
       starts_on: input.starts_on,

@@ -82,11 +82,7 @@ export async function buildCertificatePdf(
   field("Data de emissão:", formatDateBR(certificate.created_at));
   field("Início do afastamento:", formatDateBR(certificate.starts_on));
   field("Dias de afastamento:", String(certificate.rest_days));
-  // Lei nº 9.436/97: se a clínica marcou "ocultar CID", o diagnóstico fica só
-  // no registro interno (tela de detalhe do dashboard), fora deste PDF.
-  if (!certificate.hide_cid_on_patient_pdf && certificate.cid) {
-    field("CID:", certificate.cid);
-  }
+
 
   ensureSpace(20);
   y -= 6;
