@@ -80,17 +80,27 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   // Cadastra/vincula o paciente automaticamente se o dentista não selecionou
   // uma sugestão da busca — mesma correção aplicada em `certificates/route.ts`.
-  const patientId =
-    input.patient_id ??
-    (await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone, input.patient_cpf));
+  let patientId = input.patient_id;
+  let finalPhone = input.patient_phone ?? null;
+  let finalCpf = input.patient_cpf ?? null;
+
+  if (patientId) {
+    const { data: patient } = await supabase.from("patients").select("phone, cpf").eq("id", patientId).single();
+    if (patient) {
+      if (!finalPhone) finalPhone = patient.phone;
+      if (!finalCpf) finalCpf = patient.cpf;
+    }
+  } else {
+    patientId = await upsertPatientFromContact(supabase, clinic.id, input.patient_name, input.patient_phone, input.patient_cpf);
+  }
 
   const { data: prescription, error } = await supabase
     .from("prescriptions")
     .insert({
       clinic_id: clinic.id,
       patient_name: input.patient_name,
-      patient_cpf: input.patient_cpf ?? null,
-      patient_phone: input.patient_phone ?? null,
+      patient_cpf: finalCpf,
+      patient_phone: finalPhone,
       patient_id: patientId,
       dentist_name: clinic.dentist_name,
       dentist_cro: clinic.dentist_cro,

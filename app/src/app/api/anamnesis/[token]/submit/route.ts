@@ -214,6 +214,17 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "pdf_save_failed", message: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 
+  // 8.5 Atualizar a anamnese original com os dados preenchidos no formulário
+  // para garantir que tenhamos o celular atualizado para o disparo do WhatsApp
+  await supabase
+    .from("anamneses")
+    .update({
+      patient_phone: payload.patient_phone || anamnesis.patient_phone || null,
+      patient_cpf: payload.patient_cpf || anamnesis.patient_cpf || null,
+      patient_name: payload.patient_name,
+    })
+    .eq("id", anamnesis.id);
+
   // 9. Registrar Assinatura
   const { data: signatureData, error: signatureError } = await supabase
     .from("signatures")
