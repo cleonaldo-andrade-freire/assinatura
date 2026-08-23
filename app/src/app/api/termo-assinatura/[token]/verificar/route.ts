@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
+
+const bodySchema = z.object({ cpf: z.string().min(1) });
+
+export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   if (!params.token || !/^[0-9a-f]{64}$/i.test(params.token)) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();
@@ -16,10 +25,6 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const expired = request.status === "aguardando_assinatura" && request.expires_at 
-    ? new Date(request.expires_at).getTime() < Date.now()
-    : false;
-
   const [{ data: clinic }, { data: patient }] = await Promise.all([
     supabase.from("clinics").select("name, logo_url, consent_term_text, cnpj").eq("id", request.clinic_id).single(),
     supabase.from("patients").select("name, cpf, phone").eq("id", request.patient_id).single()
@@ -29,25 +34,20 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Mascarar o nome para segurança, assim como na evolução
-  const maskName = (fullName: string) => {
-    return fullName
-      .trim()
-      .split(/\s+/)
-      .map((part, i, arr) => {
-        if (i === 0 || i === arr.length - 1) return part.length <= 2 ? part : `${part.slice(0, Math.max(2, Math.ceil(part.length * 0.4)))}***`;
-        return "***";
-      })
-      .join(" ");
-  };
+  const cleanCpf = (cpf: string) => cpf.replace(/\D/g, "");
+
+  if (cleanCpf(patient.cpf || "") !== cleanCpf(parsed.data.cpf)) {
+    return NextResponse.json({ error: "wrong_cpf" }, { status: 401 });
+  }
+
+  const processedHtml = (clinic.consent_term_text || "")
+    .replace(/\{\{clinica_nome\}\}/g, clinic.name || "")
+    .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj || "Não informado")
+    .replace(/\{\{paciente_nome\}\}/g, patient.name || "")
+    .replace(/\{\{paciente_cpf\}\}/g, patient.cpf || "Não informado");
 
   return NextResponse.json({
-    found: true,
-    status: expired ? "expirada" : request.status,
-    clinicName: clinic.name,
-    clinicLogoUrl: clinic.logo_url,
-    patientNameMasked: maskName(patient.name),
-    hasCpf: !!patient.cpf, // Para a tela pedir ou não o CPF para verificação
-    pdfStorageKey: request.pdf_storage_key, // se já estiver assinado
+    ok: true,
+    consentTermHtml: processedHtml
   });
 }

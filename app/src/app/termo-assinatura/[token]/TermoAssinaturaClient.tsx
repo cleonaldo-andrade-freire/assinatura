@@ -22,6 +22,7 @@ interface StatusData {
 export function TermoAssinaturaClient({ token }: { token: string }) {
   const [step, setStep] = useState<Step>("loading");
   const [data, setData] = useState<StatusData | null>(null);
+  const [htmlContent, setHtmlContent] = useState("");
   const [cpfInput, setCpfInput] = useState("");
   const [cpfError, setCpfError] = useState("");
   
@@ -47,7 +48,7 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
       .catch(() => setStep("not-found"));
   }, [token]);
 
-  function handleAuthSubmit(e: React.FormEvent) {
+  async function handleAuthSubmit(e: React.FormEvent) {
     e.preventDefault();
     setCpfError("");
     const plain = onlyDigits(cpfInput);
@@ -55,9 +56,29 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
       setCpfError("Digite os 11 números do CPF.");
       return;
     }
-    // We don't verify CPF immediately via API to avoid two requests, we pass it to submit.
-    // Wait, the user might want to read the term first. We'll just hold the CPF and send on submit.
-    setStep("review");
+
+    try {
+      const res = await fetch(`/api/termo-assinatura/${encodeURIComponent(token)}/verificar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cpf: plain })
+      });
+      
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        if (body?.error === "wrong_cpf") {
+          setCpfError("CPF incorreto. Verifique o número e tente novamente.");
+        } else {
+          setCpfError("Erro ao verificar CPF. Tente novamente.");
+        }
+        return;
+      }
+
+      setHtmlContent(body.consentTermHtml);
+      setStep("review");
+    } catch (err) {
+      setCpfError("Erro de conexão. Tente novamente.");
+    }
   }
 
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
@@ -167,7 +188,7 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
           </div>
           
           <div onScroll={handleScroll} style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px", background: "var(--bg)" }}>
-            <div className={richTextStyles.richContent} dangerouslySetInnerHTML={{ __html: data?.consentTermHtml || "" }} style={{ fontSize: 14, color: "var(--ink-soft)", background: "#fff", padding: 15, borderRadius: 8, border: "1px solid var(--line)" }} />
+            <div className={richTextStyles.richContent} dangerouslySetInnerHTML={{ __html: htmlContent }} style={{ fontSize: 14, color: "var(--ink-soft)", background: "#fff", padding: 15, borderRadius: 8, border: "1px solid var(--line)" }} />
           </div>
 
           <div style={{ padding: 20, borderTop: "1px solid var(--line)", background: "var(--surface)" }}>
