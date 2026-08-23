@@ -284,7 +284,13 @@ export async function getEvolutionDocument(token: string) {
     clinicLogoUrl: clinic.logo_url,
     snapshot: evolution.content_snapshot,
     contentHash: evolution.content_hash,
-    consentTermText: clinic.consent_term_text,
+    consentTermText: clinic.consent_term_text
+      ? clinic.consent_term_text
+          .replace(/\{\{clinica_nome\}\}/g, clinic.name || "")
+          .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj || "Não informado")
+          .replace(/\{\{paciente_nome\}\}/g, patient.name || "")
+          .replace(/\{\{paciente_cpf\}\}/g, patient.cpf || "Não informado")
+      : null,
     consentTermVersion: clinic.consent_term_version,
   };
 }
