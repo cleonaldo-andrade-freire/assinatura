@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { formatCPF, formatCNPJ } from "@/lib/validation";
 
 const bodySchema = z.object({ cpf: z.string().min(1) });
 
@@ -42,9 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const processedHtml = (clinic.consent_term_text || "")
     .replace(/\{\{clinica_nome\}\}/g, clinic.name || "")
-    .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj || "Não informado")
+    .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj ? formatCNPJ(clinic.cnpj) : "Não informado")
     .replace(/\{\{paciente_nome\}\}/g, patient.name || "")
-    .replace(/\{\{paciente_cpf\}\}/g, patient.cpf || "Não informado");
+    .replace(/\{\{paciente_cpf\}\}/g, patient.cpf ? formatCPF(patient.cpf) : "Não informado");
 
   return NextResponse.json({
     ok: true,
