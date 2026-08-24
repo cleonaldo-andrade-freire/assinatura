@@ -101,6 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     signature: {
       signerName: payload.signature.signerName,
       signerCpf: payload.signature.signerCpf,
+      dataUrl: payload.signature.dataUrl,
       signedAtServerIso: signedAtServer,
       ip,
       userAgent,

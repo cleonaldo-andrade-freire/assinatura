@@ -11,6 +11,7 @@ interface ConsentTermPdfData {
   signature: {
     signerName: string;
     signerCpf: string;
+    dataUrl: string;
     signedAtServerIso: string;
     ip: string;
     userAgent: string;
@@ -127,6 +128,46 @@ export async function buildConsentTermPdf(data: ConsentTermPdfData): Promise<Uin
     y -= lineHeight;
     ensureSpace(lineHeight);
   }
+
+  // Assinatura Visual
+  ensureSpace(200);
+  y -= 20;
+  page.drawText("Assinatura do Signatário", { x: MARGIN, y, size: 12, font: bold });
+  y -= 15;
+  page.drawText("Ao assinar abaixo, você confirma que todas as informações são verdadeiras e que", { x: MARGIN, y, size: 10, font });
+  y -= 15;
+  page.drawText("concorda com o Termo de Consentimento e Adesão apresentado.", { x: MARGIN, y, size: 10, font });
+  y -= 30;
+
+  if (data.signature.dataUrl && data.signature.dataUrl.startsWith("data:image/png;base64,")) {
+    const base64Data = data.signature.dataUrl.replace("data:image/png;base64,", "");
+    try {
+      const imgBuffer = Buffer.from(base64Data, "base64");
+      const pngImage = await doc.embedPng(imgBuffer);
+      page.drawImage(pngImage, {
+        x: MARGIN,
+        y: y - 80,
+        width: 300,
+        height: 100,
+      });
+    } catch(e) {
+      console.error("Falha ao embutir imagem de assinatura", e);
+    }
+  }
+
+  y -= 100;
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: MARGIN + 300, y },
+    thickness: 1,
+    color: rgb(0, 0, 0)
+  });
+  y -= 15;
+  page.drawText(data.signature.signerName, { x: MARGIN, y, size: 10, font: bold });
+  y -= 15;
+  page.drawText(`Documento assinado eletronicamente (Lei nº 14.063/2020). IP: ${data.signature.ip}`, { x: MARGIN, y, size: 8, font: mono });
+  y -= 12;
+  page.drawText(`Data/Hora: ${formatBRDateTime(data.signature.signedAtServerIso)}`, { x: MARGIN, y, size: 8, font: mono });
 
   y -= 40;
   ensureSpace(200);
