@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readPdf } from "@/lib/pdfStorage";
 
-export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; patientId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
     .from("consent_term_signatures")
     .select("pdf_storage_key")
     .eq("clinic_id", params.clinicId)
-    .eq("patient_id", params.patientId)
+    .eq("patient_id", params.id)
     .eq("status", "assinado")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: { clinicId: s
     return new NextResponse(pdf as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="termo-adesao-${params.patientId}.pdf"`,
+        "Content-Disposition": `inline; filename="termo-adesao-${params.id}.pdf"`,
       },
     });
   } catch (error: any) {
