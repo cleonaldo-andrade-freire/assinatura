@@ -80,6 +80,7 @@ export async function buildCertificatePdf(
     `${certificate.dentist_name} — CRO ${certificate.dentist_cro}/${certificate.dentist_cro_uf}`
   );
   field("Data de emissão:", formatDateBR(certificate.created_at));
+  field("Data do atendimento:", formatDateBR(certificate.care_date));
   field("Início do afastamento:", formatDateBR(certificate.starts_on));
   field("Dias de afastamento:", String(certificate.rest_days));
 
@@ -101,6 +102,7 @@ export async function buildCertificatePdf(
     paciente_nome: certificate.patient_name,
     paciente_cpf: certificate.patient_cpf ?? "",
     data_emissao: formatDateBR(certificate.created_at),
+    data_atendimento: formatDateBR(certificate.care_date),
     data_inicio: formatDateBR(certificate.starts_on),
     dias_afastamento: String(certificate.rest_days),
   };

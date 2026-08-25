@@ -2,6 +2,7 @@ export const CERTIFICATE_PLACEHOLDERS: { token: string; label: string }[] = [
   { token: "{{paciente_nome}}", label: "Nome do paciente" },
   { token: "{{paciente_cpf}}", label: "CPF" },
   { token: "{{data_emissao}}", label: "Data de emissão" },
+  { token: "{{data_atendimento}}", label: "Data de atendimento" },
   { token: "{{data_inicio}}", label: "Data de início" },
   { token: "{{dias_afastamento}}", label: "Dias de afastamento" },
 ];

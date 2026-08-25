@@ -19,6 +19,7 @@ const bodySchema = z.object({
 
   reason: z.string().min(1),
   rest_days: z.number().int().min(0),
+  care_date: z.string().min(1),
   starts_on: z.string().min(1),
   signerCertificatePem: z.string().optional(),
   // Via não assinada digitalmente (shell mobile v2, prompt §8) — default
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
       reason: input.reason,
       rest_days: input.rest_days,
+      care_date: input.care_date,
       starts_on: input.starts_on,
     })
     .select("id")

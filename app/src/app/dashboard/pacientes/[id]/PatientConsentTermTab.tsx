@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatBRDateTime } from "@/lib/date";
+import { formatCPF } from "@/lib/validation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import styles from "@/styles/shell.module.css";
@@ -75,10 +76,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
     }
   }
 
-  async function handleDownloadPdf() {
-    if (!request?.pdf_storage_key) return;
-    window.open(`/api/clinics/${clinicId}/patients/${patientId}/consent-term/pdf`, "_blank");
-  }
+
 
   if (loading) {
     return <div className={styles.emptyState}>Carregando...</div>;
@@ -128,16 +126,17 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
             
             <div style={{ display: "flex", gap: 8 }}>
               {request.status === "assinado" ? (
-                <button 
-                  type="button" 
-                  className={styles.iconActionBtn} 
-                  style={{ width: 32, height: 32 }} 
-                  onClick={handleDownloadPdf}
+                <a
+                  href={`/api/clinics/${clinicId}/patients/${patientId}/consent-term/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${styles.btn} ${styles.btnSecondary}`}
                   title="Ver PDF"
                   aria-label="Ver PDF"
+                  style={{ textDecoration: "none" }}
                 >
-                  <PdfIcon />
-                </button>
+                  Ver PDF
+                </a>
               ) : (
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmOpen(true)} disabled={sending}>
                   Reenviar WhatsApp
@@ -148,7 +147,7 @@ export function PatientConsentTermTab({ clinicId, patientId }: { clinicId: strin
           
           {request.status === "assinado" && (
             <div style={{ background: "var(--bg)", padding: 15, borderRadius: 6, fontSize: 13, color: "var(--ink-soft)" }}>
-              <div style={{ marginBottom: 6 }}><strong>Signatário:</strong> {request.signer_name} (CPF: {request.signer_cpf})</div>
+              <div style={{ marginBottom: 6 }}><strong>Signatário:</strong> {request.signer_name} (CPF: {request.signer_cpf ? formatCPF(request.signer_cpf) : "-"})</div>
               <div style={{ marginBottom: 6 }}><strong>Assinado em:</strong> {request.signed_at_server ? formatBRDateTime(request.signed_at_server) : "-"}</div>
               <div style={{ marginBottom: 6 }}><strong>IP:</strong> {request.ip}</div>
               <div><strong>Código Verificação:</strong> {request.verification_code}</div>

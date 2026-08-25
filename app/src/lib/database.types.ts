@@ -125,6 +125,7 @@ export interface Certificate {
   hide_cid_on_patient_pdf: boolean;
   reason: string;
   rest_days: number;
+  care_date: string;
   starts_on: string;
   status: CertificateStatus;
   signature_provider: string | null;

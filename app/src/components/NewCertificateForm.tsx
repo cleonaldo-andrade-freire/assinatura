@@ -49,6 +49,7 @@ export function NewCertificateForm({
 
   const [reason, setReason] = useState("");
   const [restDays, setRestDays] = useState(1);
+  const [careDate, setCareDate] = useState(todayISO());
   const [startsOn, setStartsOn] = useState(todayISO());
   const [templateId, setTemplateId] = useState("");
 
@@ -68,7 +69,7 @@ export function NewCertificateForm({
   const draftKey = mobileV2 ? `mobiledraft:certificate:${clinicId}:${initialPatientId ?? "new"}` : null;
   const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
     draftKey,
-    { patientId, patientName, reason, restDays, startsOn, templateId },
+    { patientId, patientName, reason, restDays, careDate, startsOn, templateId },
     { isEmpty: (v) => !v.patientName.trim() && !v.reason.trim() }
   );
 
@@ -79,6 +80,7 @@ export function NewCertificateForm({
 
     setReason(draft.reason);
     setRestDays(draft.restDays);
+    setCareDate(draft.careDate ?? draft.startsOn); // Fallback para drafts antigos
     setStartsOn(draft.startsOn);
     setTemplateId(draft.templateId);
     dismissDraftPrompt();
@@ -154,6 +156,7 @@ export function NewCertificateForm({
 
           reason: reason.trim(),
           rest_days: restDays,
+          care_date: careDate,
           starts_on: startsOn,
           unsigned: unsigned || undefined,
           signerCertificatePem: cert
@@ -249,6 +252,12 @@ export function NewCertificateForm({
       />
 
       <div className={styles.formRow}>
+        <div className={styles.field}>
+          <label htmlFor="careDate" className={styles.label}>
+            Data do atendimento
+          </label>
+          <input id="careDate" type="date" className={styles.input} value={careDate} onChange={(e) => setCareDate(e.target.value)} required />
+        </div>
         <div className={styles.field}>
           <label htmlFor="startsOn" className={styles.label}>
             Início do afastamento

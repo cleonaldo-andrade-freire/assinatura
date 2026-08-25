@@ -4,6 +4,7 @@ import { appendSignatureEvent, computeContentHash, verifySignatureChain } from "
 import { buildEvolutionSignedPdf } from "@/lib/evolutionSignaturePdf";
 import { savePdf, readPdf } from "@/lib/pdfStorage";
 import { ensureUniqueEvolutionSignatureCode, formatValidationCode } from "@/lib/validationCode";
+import { formatCNPJ, formatCPF } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { sendText, notifyClinicEvolutionSigned, notifyClinicEvolutionRefused } from "@/lib/evolution";
 import { clinicHasConfiguredConsentTerm, hashConsentText, patientHasActiveConsent, recordConsentAcceptance } from "@/lib/electronicConsent";
@@ -287,9 +288,9 @@ export async function getEvolutionDocument(token: string) {
     consentTermText: clinic.consent_term_text
       ? clinic.consent_term_text
           .replace(/\{\{clinica_nome\}\}/g, clinic.name || "")
-          .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj || "Não informado")
+          .replace(/\{\{clinica_cnpj\}\}/g, clinic.cnpj ? formatCNPJ(clinic.cnpj) : "Não informado")
           .replace(/\{\{paciente_nome\}\}/g, patient.name || "")
-          .replace(/\{\{paciente_cpf\}\}/g, patient.cpf || "Não informado")
+          .replace(/\{\{paciente_cpf\}\}/g, patient.cpf ? formatCPF(patient.cpf) : "Não informado")
       : null,
     consentTermVersion: clinic.consent_term_version,
   };
