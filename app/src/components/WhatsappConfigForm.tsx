@@ -171,7 +171,7 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
       <div className={styles.field}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
           <input type="checkbox" checked={leadBotEnabled} onChange={(e) => setLeadBotEnabled(e.target.checked)} />
-          Mini-CRM (triagem por IA) ativo pra números desconhecidos
+          Registrar contatos de números desconhecidos como leads
         </label>
       </div>
 

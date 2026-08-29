@@ -35,7 +35,9 @@ export async function findOpenLead(supabase: SupabaseClient, clinicId: string, p
  * Acha o lead em triagem aberta pro telefone, ou cria um novo. Usado pelo
  * webhook da Evolution API a cada mensagem recebida de um número sem anamnese
  * em andamento nem agendamento pendente, depois que `matchesLeadBotTrigger`
- * (quando configurado) já liberou a criação de um lead novo.
+ * (quando configurado) já liberou a criação de um lead novo. Nasce em
+ * `waiting_reply` ("Aguardando resposta") — o atendimento por IA foi removido
+ * por enquanto e a equipe responde manualmente pelo Kanban.
  */
 export async function findOrCreateOpenLead(
   supabase: SupabaseClient,
@@ -47,7 +49,7 @@ export async function findOrCreateOpenLead(
 
   const { data: created, error } = await supabase
     .from("leads")
-    .insert({ clinic_id: clinicId, patient_phone: phone, status: "bot_active" })
+    .insert({ clinic_id: clinicId, patient_phone: phone, status: "waiting_reply" })
     .select("*")
     .single();
   if (error || !created) throw new Error(`Falha ao criar lead: ${error?.message}`);

@@ -8,7 +8,6 @@ import { brPhoneVariants } from "@/lib/validation";
 import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import { findOpenLead, findOrCreateOpenLead, appendLeadMessage, matchesLeadBotTrigger } from "@/lib/leads";
-import { runLeadTriageAgent } from "@/lib/leadAgent";
 import type { Clinic, Conversation, LeadMessage, Question } from "@/lib/database.types";
 
 /** Janela dentro da qual um `fromMe` com o mesmo texto de uma mensagem 'bot'
@@ -88,8 +87,10 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
 
     // Nenhuma anamnese em andamento, nenhum agendamento pendente — número
     // desconhecido (ou fora do fluxo já mapeado). É aqui que o Mini-CRM entra:
-    // a triagem por IA assume a conversa, a menos que a clínica tenha
-    // desligado o bot em `lead_bot_enabled`.
+    // registramos o contato como lead pra equipe atender manualmente pelo
+    // Kanban, a menos que a clínica tenha desligado isso em `lead_bot_enabled`.
+    // O atendimento por IA foi removido por enquanto (ver lib/leadAgent.ts) —
+    // nenhuma resposta automática é enviada ao paciente.
     if (!clinic.lead_bot_enabled) {
       console.log(
         `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: lead_bot_enabled=false para o telefone ${inbound.phone}`
@@ -116,26 +117,13 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       content: inbound.text,
     });
 
-    // Handoff em andamento (dentista assumiu manualmente ou contato eletivo
-    // adiado pra abertura, ver handleOutboundEcho/marcarRetornoParaAmanha) —
-    // bot fica calado até a equipe mover o lead de volta pro Kanban.
-    if (lead.status === "waiting_reply") {
-      console.log(
-        `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} em waiting_reply — bot não responde`
-      );
-      return NextResponse.json({ ok: true });
-    }
-
+    // Atendimento é 100% humano por enquanto — nenhuma resposta automática.
+    // O lead fica no Kanban ("Aguardando resposta") e a equipe responde pelo
+    // WhatsApp da clínica (esse envio manual é captado por handleOutboundEcho
+    // e gravado como 'staff').
     console.log(
-      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} acionando triagem por IA`
+      `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} mensagem registrada — atendimento humano`
     );
-
-    try {
-      const replyText = await runLeadTriageAgent(supabase, clinic, lead);
-      await sendText(clinic, inbound.phone, replyText);
-    } catch (err) {
-      console.error("Falha no agente de triagem de leads:", err);
-    }
 
     return NextResponse.json({ ok: true });
   }
