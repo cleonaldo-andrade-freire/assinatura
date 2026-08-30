@@ -1,0 +1,13 @@
+-- Espelho de alerta do Mini-CRM pro número da equipe.
+--
+-- O app WhatsApp Business da clínica não emite notificação em segundo plano
+-- enquanto o Evolution está vinculado como aparelho (o WhatsApp suprime o push
+-- do aparelho principal quando há um dispositivo companion tipo Baileys sempre
+-- conectado). Pra a equipe não perder mensagem de paciente, o webhook agora
+-- espelha um aviso pro `clinics.notify_phone` (ex.: celular pessoal da
+-- dentista, que notifica normal por não ter vínculo).
+--
+-- `last_alert_at` guarda quando o último aviso foi disparado pra esse lead —
+-- serve de throttle: um novo aviso só sai se passou a janela (15 min) desde o
+-- anterior, pra uma conversa de ida e volta não pingar a cada mensagem.
+alter table leads add column last_alert_at timestamptz;

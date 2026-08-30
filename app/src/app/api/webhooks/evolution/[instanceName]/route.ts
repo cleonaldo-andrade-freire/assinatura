@@ -8,12 +8,16 @@ import { brPhoneVariants } from "@/lib/validation";
 import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import { findOpenLead, findOrCreateOpenLead, appendLeadMessage, matchesLeadBotTrigger } from "@/lib/leads";
-import type { Clinic, Conversation, LeadMessage, Question } from "@/lib/database.types";
+import type { Clinic, Conversation, Lead, LeadMessage, Question } from "@/lib/database.types";
 
 /** Janela dentro da qual um `fromMe` com o mesmo texto de uma mensagem 'bot'
  * recém-gravada é tratado como eco da própria resposta do bot, não como
  * handoff manual — ver `handleOutboundEcho`. */
 const BOT_ECHO_WINDOW_MS = 30_000;
+
+/** Intervalo mínimo entre dois avisos de `maybeSendLeadAlert` pro mesmo lead —
+ * uma conversa de ida e volta ping­aria a equipe a cada mensagem sem isso. */
+const LEAD_ALERT_THROTTLE_MS = 15 * 60_000;
 
 /**
  * Recebe eventos MESSAGES_UPSERT da Evolution API. Configure isso no "Set Webhook"
@@ -125,6 +129,8 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} mensagem registrada — atendimento humano`
     );
 
+    await maybeSendLeadAlert(supabase, clinic, lead, inbound.phone, inbound.text);
+
     return NextResponse.json({ ok: true });
   }
 
@@ -182,6 +188,55 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Espelha um aviso da mensagem do paciente pro `clinic.notify_phone` (ex.: o
+ * celular pessoal da dentista). Existe porque o app WhatsApp Business da
+ * clínica não notifica em segundo plano enquanto o Evolution está vinculado
+ * como aparelho — o WhatsApp suprime o push do aparelho principal quando há um
+ * companion tipo Baileys sempre conectado. O `notify_phone`, por não ter
+ * vínculo, notifica normal.
+ *
+ * Throttle de `LEAD_ALERT_THROTTLE_MS` por lead (via `leads.last_alert_at`)
+ * pra não pingar a cada mensagem de uma mesma conversa. Best-effort: falha de
+ * WhatsApp aqui não pode travar o 200 do webhook.
+ */
+async function maybeSendLeadAlert(
+  supabase: SupabaseClient,
+  clinic: Clinic,
+  lead: Lead,
+  patientPhone: string,
+  text: string
+): Promise<void> {
+  if (!clinic.notify_phone) return;
+
+  // Não avisa se quem mandou a mensagem é o próprio número de aviso (a dentista
+  // testando a linha da clínica pelo celular dela, p.ex.) — evita eco.
+  const patientVariants = new Set(brPhoneVariants(patientPhone));
+  if (brPhoneVariants(clinic.notify_phone).some((v) => patientVariants.has(v))) return;
+
+  if (
+    lead.last_alert_at &&
+    Date.now() - new Date(lead.last_alert_at).getTime() < LEAD_ALERT_THROTTLE_MS
+  ) {
+    return;
+  }
+
+  const quem = lead.patient_name || "Paciente";
+  try {
+    await sendText(
+      clinic,
+      clinic.notify_phone,
+      `🔔 Mensagem na linha da clínica\n\n${quem} (${patientPhone}):\n"${text}"\n\nResponda pelo app WhatsApp Business da clínica.`
+    );
+    await supabase
+      .from("leads")
+      .update({ last_alert_at: new Date().toISOString() })
+      .eq("id", lead.id);
+  } catch (err) {
+    console.error("Falha ao espelhar aviso de lead pro notify_phone:", err);
+  }
 }
 
 /**

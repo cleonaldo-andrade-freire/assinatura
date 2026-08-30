@@ -746,6 +746,7 @@ export interface Lead {
   clinical_summary: string | null;
   created_at: string;
   updated_at: string;
+  last_alert_at: string | null;
 }
 
 export type LeadMessageRole = "patient" | "bot" | "staff";
