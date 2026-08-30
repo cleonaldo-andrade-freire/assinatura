@@ -15,6 +15,7 @@ type FormState = Pick<
   | "notify_phone"
   | "lead_bot_enabled"
   | "lead_bot_trigger_phrase"
+  | "lead_alert_enabled"
 >;
 
 const phonePrefixStyle: React.CSSProperties = {
@@ -41,6 +42,7 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
     lead_bot_trigger_phrase: clinic.lead_bot_trigger_phrase ?? "",
   });
   const [leadBotEnabled, setLeadBotEnabled] = useState(clinic.lead_bot_enabled);
+  const [leadAlertEnabled, setLeadAlertEnabled] = useState(clinic.lead_alert_enabled);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
           whatsapp_number: form.whatsapp_number ? toE164BR(form.whatsapp_number) : "",
           notify_phone: form.notify_phone ? toE164BR(form.notify_phone) : "",
           lead_bot_enabled: leadBotEnabled,
+          lead_alert_enabled: leadAlertEnabled,
         }),
       });
       if (!res.ok) {
@@ -116,6 +119,17 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
           </div>
           <span className={styles.hint}>Pode ser o mesmo número acima, ou outro (ex.: celular da recepção)</span>
         </div>
+      </div>
+
+      <div className={styles.field}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
+          <input type="checkbox" checked={leadAlertEnabled} onChange={(e) => setLeadAlertEnabled(e.target.checked)} />
+          Espelhar mensagens de lead como aviso pro número acima
+        </label>
+        <span className={styles.hint}>
+          Manda um resumo de cada mensagem de paciente pro &quot;número pra avisar&quot;, no máximo 1 a cada 15 min por
+          conversa. Útil quando o app da clínica não notifica em segundo plano por causa do vínculo do Evolution.
+        </span>
       </div>
 
       <div className={styles.formRow}>

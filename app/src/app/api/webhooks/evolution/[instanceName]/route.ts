@@ -209,7 +209,7 @@ async function maybeSendLeadAlert(
   patientPhone: string,
   text: string
 ): Promise<void> {
-  if (!clinic.notify_phone) return;
+  if (!clinic.lead_alert_enabled || !clinic.notify_phone) return;
 
   // Não avisa se quem mandou a mensagem é o próprio número de aviso (a dentista
   // testando a linha da clínica pelo celular dela, p.ex.) — evita eco.

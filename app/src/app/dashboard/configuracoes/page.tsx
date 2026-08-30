@@ -6,6 +6,7 @@ import { ClinicProfileForm } from "@/components/ClinicProfileForm";
 import { ConsentTermForm } from "@/components/ConsentTermForm";
 import { LogoUpload } from "@/components/LogoUpload";
 import { ConnectWhatsApp } from "@/components/ConnectWhatsApp";
+import { LeadAlertSettings } from "@/components/LeadAlertSettings";
 import { PlanPicker } from "@/components/PlanPicker";
 import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
@@ -149,6 +150,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             que saem as notificações da clínica (link de assinatura, atestado emitido, lembretes).
           </p>
           <ConnectWhatsApp clinicId={clinic.id} initialWhatsappNumber={clinic.whatsapp_number} />
+          <LeadAlertSettings
+            clinicId={clinic.id}
+            initialEnabled={clinic.lead_alert_enabled}
+            initialNotifyPhone={clinic.notify_phone}
+          />
         </div>
       </div>
 

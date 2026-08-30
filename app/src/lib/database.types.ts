@@ -49,6 +49,10 @@ export interface Clinic {
   consent_term_updated_at: string | null;
   lead_bot_enabled: boolean;
   lead_bot_trigger_phrase: string | null;
+  /** Espelha cada mensagem de paciente (lead) como um aviso pro `notify_phone`
+   * — útil quando o app da clínica não notifica em segundo plano por causa do
+   * vínculo do Evolution. Ver `maybeSendLeadAlert` no webhook. Opt-in. */
+  lead_alert_enabled: boolean;
   created_at: string;
 }
 
