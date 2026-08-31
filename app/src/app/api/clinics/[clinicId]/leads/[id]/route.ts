@@ -3,9 +3,15 @@ import { z } from "zod";
 import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const patchSchema = z.object({
-  status: z.enum(["bot_active", "waiting_reply", "urgent", "scheduled"]),
-});
+const patchSchema = z
+  .object({
+    status: z.enum(["bot_active", "waiting_reply", "urgent", "scheduled"]).optional(),
+    // string vazia = limpar o nome (volta pra "Sem nome ainda")
+    patient_name: z.string().trim().max(120).optional(),
+  })
+  .refine((d) => d.status !== undefined || d.patient_name !== undefined, {
+    message: "nada para atualizar",
+  });
 
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const auth = await getClinicAndRole();
@@ -18,10 +24,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "invalid_body", details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (parsed.data.status !== undefined) update.status = parsed.data.status;
+  if (parsed.data.patient_name !== undefined) update.patient_name = parsed.data.patient_name || null;
+
   const supabase = await createSupabaseServerClient();
   const { data: lead, error } = await supabase
     .from("leads")
-    .update({ status: parsed.data.status, updated_at: new Date().toISOString() })
+    .update(update)
     .eq("id", params.id)
     .eq("clinic_id", params.clinicId)
     .select("*")

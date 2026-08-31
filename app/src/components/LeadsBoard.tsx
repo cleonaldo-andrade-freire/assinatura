@@ -32,6 +32,21 @@ function TrashIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 20h4L18.5 9.5a2.121 2.121 0 00-3-3L5 17v3z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 6.5l4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: "owner" | "staff"; leads: Lead[] }) {
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
@@ -215,6 +230,10 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
           role={role}
           onClose={() => setOpenLead(null)}
           onRequestDelete={() => setConfirmDeleteId(openLead.id)}
+          onRenamed={(name) => {
+            setLocalLeads((cur) => cur.map((l) => (l.id === openLead.id ? { ...l, patient_name: name } : l)));
+            setOpenLead((o) => (o ? { ...o, patient_name: name } : o));
+          }}
         />
       )}
 
@@ -261,16 +280,48 @@ function LeadDetailModal({
   role,
   onClose,
   onRequestDelete,
+  onRenamed,
 }: {
   clinicId: string;
   lead: Lead;
   role: "owner" | "staff";
   onClose: () => void;
   onRequestDelete: () => void;
+  onRenamed: (name: string | null) => void;
 }) {
   const [messages, setMessages] = useState<LeadMessage[] | null>(null);
   const [loading, setLoading] = useState(true);
   const threadRef = useRef<HTMLDivElement>(null);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(lead.patient_name ?? "");
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  async function saveName() {
+    const next = nameDraft.trim();
+    if (next === (lead.patient_name ?? "")) {
+      setEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    setNameError(null);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_name: next }),
+      });
+      if (!res.ok) {
+        setNameError("Não deu pra salvar. Tenta de novo.");
+        return;
+      }
+      onRenamed(next || null);
+      setEditingName(false);
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -311,7 +362,77 @@ function LeadDetailModal({
         <div className={chat.chatHeader}>
           <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={38} tone="brand" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className={chat.chatHeaderName}>{lead.patient_name || "Sem nome ainda"}</div>
+            {editingName ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveName();
+                    if (e.key === "Escape") {
+                      setNameDraft(lead.patient_name ?? "");
+                      setNameError(null);
+                      setEditingName(false);
+                    }
+                  }}
+                  placeholder="Nome do paciente"
+                  maxLength={120}
+                  disabled={savingName}
+                  style={{
+                    flex: 1,
+                    minWidth: 140,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    padding: "4px 8px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1.5px solid var(--line)",
+                    background: "var(--surface)",
+                    color: "var(--ink)",
+                  }}
+                />
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  style={{ padding: "4px 10px", fontSize: 12.5 }}
+                  onClick={saveName}
+                  disabled={savingName}
+                >
+                  {savingName ? "Salvando…" : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ padding: "4px 10px", fontSize: 12.5 }}
+                  onClick={() => {
+                    setNameDraft(lead.patient_name ?? "");
+                    setNameError(null);
+                    setEditingName(false);
+                  }}
+                  disabled={savingName}
+                >
+                  Cancelar
+                </button>
+                {nameError && <span style={{ fontSize: 12, color: "var(--danger)", width: "100%" }}>{nameError}</span>}
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span className={chat.chatHeaderName}>{lead.patient_name || "Sem nome ainda"}</span>
+                <button
+                  type="button"
+                  className={styles.iconActionBtn}
+                  style={{ width: 26, height: 26 }}
+                  onClick={() => {
+                    setNameDraft(lead.patient_name ?? "");
+                    setEditingName(true);
+                  }}
+                  title="Editar nome"
+                  aria-label="Editar nome"
+                >
+                  <PencilIcon />
+                </button>
+              </div>
+            )}
             <div className={chat.chatHeaderPhone}>{lead.patient_phone}</div>
           </div>
           <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[lead.status]}`}>{LEAD_STATUS_LABEL[lead.status]}</span>
