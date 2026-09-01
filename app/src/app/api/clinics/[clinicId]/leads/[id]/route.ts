@@ -8,8 +8,10 @@ const patchSchema = z
     status: z.enum(["bot_active", "waiting_reply", "urgent", "scheduled"]).optional(),
     // string vazia = limpar o nome (volta pra "Sem nome ainda")
     patient_name: z.string().trim().max(120).optional(),
+    // motivo/observação do contato, mostrado no card do Kanban. Vazio = limpar.
+    clinical_summary: z.string().trim().max(500).optional(),
   })
-  .refine((d) => d.status !== undefined || d.patient_name !== undefined, {
+  .refine((d) => d.status !== undefined || d.patient_name !== undefined || d.clinical_summary !== undefined, {
     message: "nada para atualizar",
   });
 
@@ -27,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (parsed.data.status !== undefined) update.status = parsed.data.status;
   if (parsed.data.patient_name !== undefined) update.patient_name = parsed.data.patient_name || null;
+  if (parsed.data.clinical_summary !== undefined) update.clinical_summary = parsed.data.clinical_summary || null;
 
   const supabase = await createSupabaseServerClient();
   const { data: lead, error } = await supabase

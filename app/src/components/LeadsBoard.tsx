@@ -230,9 +230,9 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
           role={role}
           onClose={() => setOpenLead(null)}
           onRequestDelete={() => setConfirmDeleteId(openLead.id)}
-          onRenamed={(name) => {
-            setLocalLeads((cur) => cur.map((l) => (l.id === openLead.id ? { ...l, patient_name: name } : l)));
-            setOpenLead((o) => (o ? { ...o, patient_name: name } : o));
+          onLeadPatched={(patch) => {
+            setLocalLeads((cur) => cur.map((l) => (l.id === openLead.id ? { ...l, ...patch } : l)));
+            setOpenLead((o) => (o ? { ...o, ...patch } : o));
           }}
         />
       )}
@@ -280,14 +280,14 @@ function LeadDetailModal({
   role,
   onClose,
   onRequestDelete,
-  onRenamed,
+  onLeadPatched,
 }: {
   clinicId: string;
   lead: Lead;
   role: "owner" | "staff";
   onClose: () => void;
   onRequestDelete: () => void;
-  onRenamed: (name: string | null) => void;
+  onLeadPatched: (patch: Partial<Lead>) => void;
 }) {
   const [messages, setMessages] = useState<LeadMessage[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -297,6 +297,11 @@ function LeadDetailModal({
   const [nameDraft, setNameDraft] = useState(lead.patient_name ?? "");
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+
+  const [editingSummary, setEditingSummary] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState(lead.clinical_summary ?? "");
+  const [savingSummary, setSavingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   async function saveName() {
     const next = nameDraft.trim();
@@ -316,10 +321,35 @@ function LeadDetailModal({
         setNameError("Não deu pra salvar. Tenta de novo.");
         return;
       }
-      onRenamed(next || null);
+      onLeadPatched({ patient_name: next || null });
       setEditingName(false);
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function saveSummary() {
+    const next = summaryDraft.trim();
+    if (next === (lead.clinical_summary ?? "")) {
+      setEditingSummary(false);
+      return;
+    }
+    setSavingSummary(true);
+    setSummaryError(null);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clinical_summary: next }),
+      });
+      if (!res.ok) {
+        setSummaryError("Não deu pra salvar. Tenta de novo.");
+        return;
+      }
+      onLeadPatched({ clinical_summary: next || null });
+      setEditingSummary(false);
+    } finally {
+      setSavingSummary(false);
     }
   }
 
@@ -444,6 +474,110 @@ function LeadDetailModal({
           <button type="button" className={styles.iconActionBtn} onClick={onClose} title="Fechar" aria-label="Fechar">
             ✕
           </button>
+        </div>
+
+        <div
+          style={{
+            padding: "10px 14px",
+            borderBottom: "1px solid var(--line)",
+            background: "var(--surface-sunken)",
+            fontSize: 13,
+          }}
+        >
+          {editingSummary ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <textarea
+                autoFocus
+                value={summaryDraft}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setSummaryDraft(lead.clinical_summary ?? "");
+                    setSummaryError(null);
+                    setEditingSummary(false);
+                  }
+                }}
+                placeholder="Ex.: dor de dente há 2 dias, quer avaliação; convênio X; retorno de canal…"
+                maxLength={500}
+                rows={2}
+                disabled={savingSummary}
+                style={{
+                  width: "100%",
+                  resize: "vertical",
+                  fontSize: 13,
+                  padding: "6px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--line)",
+                  background: "var(--surface)",
+                  color: "var(--ink)",
+                }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  style={{ padding: "4px 10px", fontSize: 12.5 }}
+                  onClick={saveSummary}
+                  disabled={savingSummary}
+                >
+                  {savingSummary ? "Salvando…" : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ padding: "4px 10px", fontSize: 12.5 }}
+                  onClick={() => {
+                    setSummaryDraft(lead.clinical_summary ?? "");
+                    setSummaryError(null);
+                    setEditingSummary(false);
+                  }}
+                  disabled={savingSummary}
+                >
+                  Cancelar
+                </button>
+                {summaryError && <span style={{ fontSize: 12, color: "var(--danger)" }}>{summaryError}</span>}
+              </div>
+            </div>
+          ) : lead.clinical_summary ? (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: "pre-wrap" }}>
+                <strong style={{ color: "var(--ink-soft)", fontWeight: 600 }}>Motivo: </strong>
+                {lead.clinical_summary}
+              </span>
+              <button
+                type="button"
+                className={styles.iconActionBtn}
+                style={{ width: 26, height: 26, flex: "none" }}
+                onClick={() => {
+                  setSummaryDraft(lead.clinical_summary ?? "");
+                  setEditingSummary(true);
+                }}
+                title="Editar motivo"
+                aria-label="Editar motivo"
+              >
+                <PencilIcon />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSummaryDraft("");
+                setEditingSummary(true);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "var(--brand)",
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              + Adicionar motivo do contato
+            </button>
+          )}
         </div>
 
         <div ref={threadRef} className={chat.chatThread}>
