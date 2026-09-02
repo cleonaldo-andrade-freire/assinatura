@@ -214,6 +214,12 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
                         <span>{lead.clinical_summary}</span>
                       </div>
                     )}
+                    <div
+                      style={{ marginTop: 6, fontSize: 11.5, color: "var(--ink-soft)" }}
+                      title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${new Date(lead.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${formatBRTime(lead.created_at)}`}
+                    >
+                      {leadDateLabel(lead.created_at)}
+                    </div>
                   </button>
                 ))}
                 {items.length === 0 && <p className={styles.kanbanEmptyColumn}>Nada por aqui</p>}
@@ -260,6 +266,19 @@ const STATUS_BADGE_CLASS: Record<LeadStatus, string> = {
   urgent: styles.statusDanger,
   scheduled: styles.statusOk,
 };
+
+/** Data de entrada do lead pro rodapé do card: "Hoje HH:mm" / "Ontem HH:mm"
+ * pros recentes, DD/MM/AAAA pros mais antigos. */
+function leadDateLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (sameDay(d, now)) return `Hoje ${formatBRTime(iso)}`;
+  if (sameDay(d, yesterday)) return `Ontem ${formatBRTime(iso)}`;
+  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
 
 /** "Hoje", "Ontem", ou o dia da semana + data — mesma lógica de agrupar por
  * dia que um app de mensagens de verdade usa pra separador entre grupos. */
