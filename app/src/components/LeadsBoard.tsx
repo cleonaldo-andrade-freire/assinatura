@@ -205,7 +205,21 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
                     <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                       <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={28} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className={styles.kanbanCardTitle}>{lead.patient_name || "Sem nome ainda"}</div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                          <div
+                            className={styles.kanbanCardTitle}
+                            style={{ marginBottom: 0, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                          >
+                            {lead.patient_name || "Sem nome ainda"}
+                          </div>
+                          <div
+                            className={styles.kanbanCardTitle}
+                            style={{ marginBottom: 0, flex: "none", whiteSpace: "nowrap" }}
+                            title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${new Date(lead.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${formatBRTime(lead.created_at)}`}
+                          >
+                            {leadDateLabel(lead.created_at)}
+                          </div>
+                        </div>
                         <div className={styles.kanbanCardSubtitle}>{lead.patient_phone}</div>
                       </div>
                     </div>
@@ -214,12 +228,6 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
                         <span>{lead.clinical_summary}</span>
                       </div>
                     )}
-                    <div
-                      style={{ marginTop: 6, fontSize: 11.5, color: "var(--ink-soft)" }}
-                      title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${new Date(lead.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${formatBRTime(lead.created_at)}`}
-                    >
-                      {leadDateLabel(lead.created_at)}
-                    </div>
                   </button>
                 ))}
                 {items.length === 0 && <p className={styles.kanbanEmptyColumn}>Nada por aqui</p>}
