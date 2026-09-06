@@ -7,6 +7,9 @@ const bodySchema = z.object({
   whatsapp_number: z.string().min(10).optional(),
   notify_phone: z.string().min(10).optional(),
   lead_alert_enabled: z.boolean().optional(),
+  // Saudação automática enviada uma única vez quando um lead novo abre pelo
+  // WhatsApp. String vazia = limpar (não responde nada).
+  lead_bot_greeting: z.string().max(2000).optional(),
 });
 
 /**
@@ -27,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const update: Record<string, string | boolean> = {};
+  const update: Record<string, string | boolean | null> = {};
   if (parsed.data.whatsapp_number !== undefined) {
     update.whatsapp_number = parsed.data.whatsapp_number;
     // Conveniência de onboarding: na primeira vez que a clínica confirma o
@@ -39,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   }
   if (parsed.data.notify_phone !== undefined) update.notify_phone = parsed.data.notify_phone;
   if (parsed.data.lead_alert_enabled !== undefined) update.lead_alert_enabled = parsed.data.lead_alert_enabled;
+  if (parsed.data.lead_bot_greeting !== undefined) update.lead_bot_greeting = parsed.data.lead_bot_greeting.trim() || null;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });

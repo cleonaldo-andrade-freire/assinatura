@@ -7,6 +7,7 @@ import { ConsentTermForm } from "@/components/ConsentTermForm";
 import { LogoUpload } from "@/components/LogoUpload";
 import { ConnectWhatsApp } from "@/components/ConnectWhatsApp";
 import { LeadAlertSettings } from "@/components/LeadAlertSettings";
+import { LeadGreetingSettings } from "@/components/LeadGreetingSettings";
 import { PlanPicker } from "@/components/PlanPicker";
 import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
@@ -155,6 +156,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             initialEnabled={clinic.lead_alert_enabled}
             initialNotifyPhone={clinic.notify_phone}
           />
+          <LeadGreetingSettings clinicId={clinic.id} initialGreeting={clinic.lead_bot_greeting} />
         </div>
       </div>
 
