@@ -6,6 +6,7 @@ import { getSignatureProvider } from "@/lib/signature";
 import { sendText } from "@/lib/evolution";
 import { loadClinicLogoForPdf } from "@/lib/pdfLogo";
 import { ensureUniqueValidationCode } from "@/lib/validationCode";
+import { isExamsOnly } from "@/lib/prescriptionExams";
 import type { Clinic, Prescription } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -283,11 +284,13 @@ async function finishPrescriptionSignature(
 
   if (finalPrescription.patient_phone) {
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/prescricao?token=${finalPrescription.token}`;
-    const sent = await sendText(
-      clinic,
-      finalPrescription.patient_phone,
-      `💊 Seu receituário odontológico já está disponível: ${link}`
-    );
+    const message = isExamsOnly({
+      items: finalPrescription.items,
+      exam_requests: finalPrescription.exam_requests ?? [],
+    })
+      ? `🔬 Sua solicitação de exames já está disponível: ${link}`
+      : `💊 Seu receituário odontológico já está disponível: ${link}`;
+    const sent = await sendText(clinic, finalPrescription.patient_phone, message);
     if (sent) {
       await supabase
         .from("prescriptions")

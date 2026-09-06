@@ -38,6 +38,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
     .maybeSingle();
   if (!prescription) notFound();
   const p = prescription as Prescription;
+  const examRequests = p.exam_requests ?? [];
   const notesSegments = p.notes
     ? resolveReasonSegments(p.notes, {
         paciente_nome: p.patient_name,
@@ -72,41 +73,62 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
           {p.patient_phone && detailRow("WhatsApp", `+55 ${formatBRPhoneLocal(p.patient_phone)}`)}
           {detailRow("Dentista responsável", `${p.dentist_name} — CRO ${p.dentist_cro}/${p.dentist_cro_uf}`)}
 
-          <div style={{ padding: "10px 0" }}>
-            <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 8 }}>
-              Medicamentos
-            </span>
-            {p.items.map((item, i) => (
-              <div key={i} style={{ padding: "8px 0", borderBottom: i < p.items.length - 1 ? "1px solid var(--line)" : "none" }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
-                  {i + 1}. {item.drug_name}
-                </div>
-                <div style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
-                  {item.dosage} — {item.instructions}
-                  {item.generic_allowed && " · aceita genérico"}
-                </div>
-                {item.control_type !== "comum" && (
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      marginTop: 4,
-                      color: item.control_type === "antimicrobiano_retencao" ? "#7a5a17" : "var(--danger)",
-                    }}
-                  >
-                    {item.control_type === "antimicrobiano_retencao" ? "⚠️ " : ""}
-                    {PRESCRIPTION_CONTROL_LABEL[item.control_type]}
+          {p.items.length > 0 && (
+            <div style={{ padding: "10px 0" }}>
+              <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 8 }}>
+                Medicamentos
+              </span>
+              {p.items.map((item, i) => (
+                <div key={i} style={{ padding: "8px 0", borderBottom: i < p.items.length - 1 ? "1px solid var(--line)" : "none" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {i + 1}. {item.drug_name}
                   </div>
-                )}
-                {item.dispensed_at && (
-                  <div style={{ fontSize: 12.5, color: "var(--brand)", fontWeight: 600, marginTop: 4 }}>
-                    ✅ Dispensado em {formatBRDateTime(item.dispensed_at, "medium")} — CRF {item.dispensed_by_crf},
-                    farmácia CNPJ {item.dispensed_by_pharmacy_cnpj}
+                  <div style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
+                    {item.dosage} — {item.instructions}
+                    {item.generic_allowed && " · aceita genérico"}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                  {item.control_type !== "comum" && (
+                    <div
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        marginTop: 4,
+                        color: item.control_type === "antimicrobiano_retencao" ? "#7a5a17" : "var(--danger)",
+                      }}
+                    >
+                      {item.control_type === "antimicrobiano_retencao" ? "⚠️ " : ""}
+                      {PRESCRIPTION_CONTROL_LABEL[item.control_type]}
+                    </div>
+                  )}
+                  {item.dispensed_at && (
+                    <div style={{ fontSize: 12.5, color: "var(--brand)", fontWeight: 600, marginTop: 4 }}>
+                      ✅ Dispensado em {formatBRDateTime(item.dispensed_at, "medium")} — CRF {item.dispensed_by_crf},
+                      farmácia CNPJ {item.dispensed_by_pharmacy_cnpj}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {examRequests.length > 0 && (
+            <div style={{ padding: "10px 0" }}>
+              <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 8 }}>
+                Solicitação de exames
+              </span>
+              {examRequests.map((exam, i) => (
+                <div
+                  key={i}
+                  style={{ padding: "8px 0", borderBottom: i < examRequests.length - 1 ? "1px solid var(--line)" : "none" }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {i + 1}. {exam.name}
+                  </div>
+                  {exam.notes && <div style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>{exam.notes}</div>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {notesSegments && (
             <div style={{ padding: "10px 0" }}>

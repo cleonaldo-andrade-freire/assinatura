@@ -4,6 +4,7 @@ import { isValidToken } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatBRDate } from "@/lib/date";
 import type { Prescription } from "@/lib/database.types";
+import { isExamsOnly } from "@/lib/prescriptionExams";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
 
 export default async function PrescricaoPage({ searchParams }: { searchParams: { token?: string } }) {
@@ -16,6 +17,10 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
   const p = prescription as Prescription;
 
   const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", p.clinic_id).single();
+
+  const examRequests = p.exam_requests ?? [];
+  const examsOnly = isExamsOnly({ items: p.items, exam_requests: examRequests });
+  const docLabel = examsOnly ? "Solicitação de exames" : "Receituário odontológico";
 
   const notesSegments = p.notes
     ? resolveReasonSegments(p.notes, {
@@ -45,7 +50,10 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
         <div className="card" style={{ textAlign: "center" }}>
           <h1>Documento em processamento</h1>
           <p style={{ color: "var(--ink-soft)" }}>
-            Seu receituário ainda está sendo preparado. Atualize esta página em alguns instantes.
+            {examsOnly
+              ? "Sua solicitação de exames ainda está sendo preparada."
+              : "Seu receituário ainda está sendo preparado."}{" "}
+            Atualize esta página em alguns instantes.
           </p>
         </div>
       ) : (
@@ -70,7 +78,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
 
           <div className="card">
             <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-              Receituário odontológico
+              {docLabel}
             </p>
             <h1>Documento assinado</h1>
             <p style={{ fontSize: 15, marginBottom: 18 }}>
@@ -94,6 +102,15 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
                   </dd>
                 </div>
               ))}
+              {examRequests.map((exam, i) => (
+                <div key={`exam-${i}`} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                  <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Exame {i + 1}</dt>
+                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>
+                    {exam.name}
+                    {exam.notes && <span style={{ fontWeight: 400, color: "var(--ink-soft)" }}> — {exam.notes}</span>}
+                  </dd>
+                </div>
+              ))}
               {notesSegments && (
                 <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                   <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Orientações gerais</dt>
@@ -110,7 +127,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
           <div className="card" style={{ textAlign: "center", padding: "20px 4px" }}>
             <a
               href={`/api/prescriptions/${p.token}/pdf`}
-              download={`receituario-${p.patient_name}.pdf`}
+              download={`${examsOnly ? "solicitacao-exames" : "receituario"}-${p.patient_name}.pdf`}
               className="btn-primary"
               style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none" }}
             >
@@ -118,7 +135,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
                 <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M4 18v1.5A1.5 1.5 0 005.5 21h13a1.5 1.5 0 001.5-1.5V18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
               </svg>
-              Baixar receituário em PDF
+              Baixar {examsOnly ? "solicitação de exames" : "receituário"} em PDF
             </a>
           </div>
         </>

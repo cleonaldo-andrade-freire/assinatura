@@ -95,6 +95,7 @@ export default async function PrescriptionTemplatesPage({
                 <tr>
                   <th>Nome</th>
                   <th>Medicamentos</th>
+                  <th>Exames</th>
                   <th></th>
                 </tr>
               </thead>
@@ -103,6 +104,7 @@ export default async function PrescriptionTemplatesPage({
                   <ClickableRow key={t.id} href={`/dashboard/prescricoes/templates/${t.id}`}>
                     <td className={styles.rowTitle}>{t.name}</td>
                     <td>{t.items.length}</td>
+                    <td>{(t.exam_requests ?? []).length}</td>
                     <td>
                       <PrescriptionTemplateRowActions clinicId={clinic.id} templateId={t.id} />
                     </td>

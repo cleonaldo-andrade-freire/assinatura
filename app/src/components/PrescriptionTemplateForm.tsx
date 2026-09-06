@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PRESCRIPTION_PLACEHOLDERS } from "@/lib/documentReason";
 import { PrescriptionItemsEditor } from "@/components/PrescriptionItemsEditor";
-import type { PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
+import { ExamRequestsEditor } from "@/components/ExamRequestsEditor";
+import type { ExamRequest, PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 export function PrescriptionTemplateForm({
@@ -21,6 +22,7 @@ export function PrescriptionTemplateForm({
       ? template.items
       : [{ drug_name: "", dosage: "", instructions: "", generic_allowed: false, control_type: "comum" }]
   );
+  const [examRequests, setExamRequests] = useState<ExamRequest[]>(template?.exam_requests ?? []);
   const [notesTemplate, setNotesTemplate] = useState(template?.notes_template ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +65,9 @@ export function PrescriptionTemplateForm({
         body: JSON.stringify({
           name: name.trim(),
           items: items.filter((i) => i.drug_name.trim()),
+          exam_requests: examRequests
+            .filter((e) => e.name.trim())
+            .map((e) => ({ name: e.name.trim(), notes: e.notes?.trim() || undefined })),
           notes_template: notesTemplate.trim() || undefined,
         }),
       });
@@ -108,6 +113,11 @@ export function PrescriptionTemplateForm({
           <div className={styles.field}>
             <label className={styles.label}>Medicamentos padrão (opcional)</label>
             <PrescriptionItemsEditor items={items} onChange={setItems} />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Solicitação de exames padrão (opcional)</label>
+            <ExamRequestsEditor exams={examRequests} onChange={setExamRequests} />
           </div>
 
           <div className={styles.field}>

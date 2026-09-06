@@ -11,9 +11,15 @@ const itemSchema = z.object({
   control_type: z.enum(["comum", "antimicrobiano_retencao", "controlado_especial"]).default("comum"),
 });
 
+const examRequestSchema = z.object({
+  name: z.string().min(1),
+  notes: z.string().optional(),
+});
+
 const bodySchema = z.object({
   name: z.string().min(1),
   items: z.array(itemSchema).default([]),
+  exam_requests: z.array(examRequestSchema).default([]),
   notes_template: z.string().optional(),
 });
 
@@ -56,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     .update({
       name: parsed.data.name,
       items: parsed.data.items,
+      exam_requests: parsed.data.exam_requests,
       notes_template: parsed.data.notes_template ?? null,
     })
     .eq("id", params.id)

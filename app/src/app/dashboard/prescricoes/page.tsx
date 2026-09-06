@@ -160,7 +160,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
                       </span>
                     </td>
                     <td data-label="Data">{formatBRDate(p.created_at)}</td>
-                    <td data-label="Itens">{p.items.length}</td>
+                    <td data-label="Itens">{p.items.length + (p.exam_requests ?? []).length}</td>
                     <td data-label="Status">
                       <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>
                         {DOCUMENT_STATUS_LABEL[p.status]}

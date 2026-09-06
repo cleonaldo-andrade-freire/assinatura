@@ -6,9 +6,11 @@ import { formatBRPhoneLocal, formatCPF, isValidCPF, toE164BR } from "@/lib/valid
 import { formatBRDate } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PrescriptionItemsEditor } from "@/components/PrescriptionItemsEditor";
+import { ExamRequestsEditor } from "@/components/ExamRequestsEditor";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
-import type { Prescription, PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
+import { hasPrescriptionContent } from "@/lib/prescriptionExams";
+import type { ExamRequest, Prescription, PrescriptionItem, PrescriptionTemplate } from "@/lib/database.types";
 import { useDraftAutosave } from "@/lib/useDraftAutosave";
 import { useMobileV2Active } from "@/lib/useMobileV2Active";
 import { DraftBanner } from "@/components/mobile/DraftBanner";
@@ -48,6 +50,7 @@ export function NewPrescriptionForm({
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
 
   const [items, setItems] = useState<PrescriptionItem[]>([]);
+  const [examRequests, setExamRequests] = useState<ExamRequest[]>([]);
   const [notes, setNotes] = useState("");
   const [templateId, setTemplateId] = useState("");
 
@@ -66,8 +69,11 @@ export function NewPrescriptionForm({
   const draftKey = mobileV2 ? `mobiledraft:prescription:${clinicId}:${initialPatientId ?? "new"}` : null;
   const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
     draftKey,
-    { patientId, patientName, items, notes, templateId },
-    { isEmpty: (v) => !v.patientName.trim() && v.items.length === 0 && !v.notes.trim() }
+    { patientId, patientName, items, examRequests, notes, templateId },
+    {
+      isEmpty: (v) =>
+        !v.patientName.trim() && v.items.length === 0 && v.examRequests.length === 0 && !v.notes.trim(),
+    }
   );
 
   function restoreDraft() {
@@ -75,6 +81,7 @@ export function NewPrescriptionForm({
     setPatientId(draft.patientId);
     setPatientName(draft.patientName);
     setItems(draft.items);
+    setExamRequests(draft.examRequests ?? []);
     setNotes(draft.notes);
     setTemplateId(draft.templateId);
     dismissDraftPrompt();
@@ -96,6 +103,7 @@ export function NewPrescriptionForm({
     if (template.items.length > 0) {
       setItems(template.items.map((i) => ({ ...i })));
     }
+    setExamRequests((template.exam_requests ?? []).map((e) => ({ ...e })));
     setNotes(template.notes_template ?? "");
   }
 
@@ -116,6 +124,9 @@ export function NewPrescriptionForm({
           items: items
             .filter((i) => i.drug_name.trim())
             .map((i) => ({ ...i, dosage: i.dosage.trim(), instructions: i.instructions.trim() })),
+          exam_requests: examRequests
+            .filter((e) => e.name.trim())
+            .map((e) => ({ name: e.name.trim(), notes: e.notes?.trim() || undefined })),
           notes_template: notes.trim() || undefined,
         }),
       });
@@ -147,6 +158,10 @@ export function NewPrescriptionForm({
     setError(null);
     if (!patientName.trim()) {
       setError("Preencha o nome do paciente.");
+      return;
+    }
+    if (!hasPrescriptionContent(items.filter((i) => i.drug_name.trim()), examRequests.filter((e) => e.name.trim()))) {
+      setError("Adicione ao menos um medicamento ou um exame.");
       return;
     }
     if (items.some((i) => i.control_type === "controlado_especial")) {
@@ -187,6 +202,9 @@ export function NewPrescriptionForm({
           items: items
             .filter((i) => i.drug_name.trim())
             .map((i) => ({ ...i, dosage: i.dosage.trim(), instructions: i.instructions.trim() })),
+          exam_requests: examRequests
+            .filter((e) => e.name.trim())
+            .map((e) => ({ name: e.name.trim(), notes: e.notes?.trim() || undefined })),
           notes: notes.trim() || undefined,
           unsigned: unsigned || undefined,
           signerCertificatePem: cert
@@ -306,6 +324,20 @@ export function NewPrescriptionForm({
             setTemplateSaved(false);
           }}
         />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Solicitação de exames (opcional)</label>
+        <ExamRequestsEditor
+          exams={examRequests}
+          onChange={(next) => {
+            setExamRequests(next);
+            setTemplateSaved(false);
+          }}
+        />
+        <p className={styles.hint}>
+          Sai numa seção própria do receituário. Um documento pode ter só exames, sem nenhum medicamento.
+        </p>
       </div>
 
       <div className={styles.field}>

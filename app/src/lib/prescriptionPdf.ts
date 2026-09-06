@@ -2,6 +2,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { drawClinicLetterhead, formatDateBR, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
+import { isExamsOnly, prescriptionDocTitle } from "@/lib/prescriptionExams";
 import type { Prescription } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -34,6 +35,7 @@ export async function buildPrescriptionPdf(
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
   const contentWidth = PAGE_WIDTH - MARGIN * 2;
+  const examRequests = prescription.exam_requests ?? [];
 
   let page: PDFPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = PAGE_HEIGHT - 60;
@@ -60,7 +62,13 @@ export async function buildPrescriptionPdf(
     }
   }
 
-  page.drawText("Receituário Odontológico", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText(prescriptionDocTitle({ items: prescription.items, exam_requests: examRequests }), {
+    x: MARGIN,
+    y,
+    size: 16,
+    font: bold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
   y -= 20;
   y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo);
 
@@ -114,6 +122,37 @@ export async function buildPrescriptionPdf(
     }
     y -= 8;
   });
+
+  if (examRequests.length > 0) {
+    // Divisória só quando veio lista de medicamentos antes — num documento
+    // só de exames a linha do cabeçalho de dados já serve de separador.
+    if (prescription.items.length > 0) {
+      ensureSpace(24);
+      y -= 4;
+      page.drawLine({
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness: 1,
+        color: rgb(0.86, 0.86, 0.86),
+      });
+      y -= 20;
+    }
+
+    if (!isExamsOnly({ items: prescription.items, exam_requests: examRequests })) {
+      ensureSpace(16);
+      page.drawText("Solicitação de exames", { x: MARGIN, y, size: 12, font: bold, color: rgb(0.08, 0.08, 0.08) });
+      y -= 18;
+    }
+
+    examRequests.forEach((exam, i) => {
+      ensureSpace(15);
+      drawWrapped(wrapText(`${i + 1}. ${exam.name}`, bold, 11.5, contentWidth), bold, 11.5, 15);
+      if (exam.notes) {
+        drawWrapped(wrapText(exam.notes, font, 10.5, contentWidth - 14), font, 10.5, 14);
+      }
+      y -= 8;
+    });
+  }
 
   if (prescription.notes) {
     ensureSpace(20);

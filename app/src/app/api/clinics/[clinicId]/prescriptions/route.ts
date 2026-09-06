@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { issuePrescription } from "@/lib/prescriptions";
 import { isValidCPF } from "@/lib/validation";
 import { upsertPatientFromContact } from "@/lib/patients";
+import { hasPrescriptionContent } from "@/lib/prescriptionExams";
 
 const itemSchema = z.object({
   drug_name: z.string().min(1),
@@ -17,22 +18,35 @@ const itemSchema = z.object({
   control_type: z.enum(["comum", "antimicrobiano_retencao", "controlado_especial"]).default("comum"),
 });
 
-const bodySchema = z.object({
-  patient_name: z.string().min(1),
-  patient_cpf: z
-    .string()
-    .min(1)
-    .optional()
-    .refine((val) => !val || isValidCPF(val), { message: "CPF inválido" }),
-  patient_phone: z.string().min(10).optional(),
-  patient_id: z.string().uuid().optional(),
-  items: z.array(itemSchema).min(1),
+const examRequestSchema = z.object({
+  name: z.string().min(1),
   notes: z.string().optional(),
-  signerCertificatePem: z.string().optional(),
-  // Via não assinada digitalmente (shell mobile v2, prompt §8) — default
-  // false preserva o fluxo de assinatura normal pra quem não manda esse campo.
-  unsigned: z.boolean().default(false),
 });
+
+const bodySchema = z
+  .object({
+    patient_name: z.string().min(1),
+    patient_cpf: z
+      .string()
+      .min(1)
+      .optional()
+      .refine((val) => !val || isValidCPF(val), { message: "CPF inválido" }),
+    patient_phone: z.string().min(10).optional(),
+    patient_id: z.string().uuid().optional(),
+    // `items` deixou de ser obrigatório: um receituário pode ser só exames.
+    // A regra "tem que ter ao menos um dos dois" fica no refine abaixo.
+    items: z.array(itemSchema).default([]),
+    exam_requests: z.array(examRequestSchema).default([]),
+    notes: z.string().optional(),
+    signerCertificatePem: z.string().optional(),
+    // Via não assinada digitalmente (shell mobile v2, prompt §8) — default
+    // false preserva o fluxo de assinatura normal pra quem não manda esse campo.
+    unsigned: z.boolean().default(false),
+  })
+  .refine((body) => hasPrescriptionContent(body.items, body.exam_requests), {
+    message: "Informe ao menos um medicamento ou um exame.",
+    path: ["items"],
+  });
 
 /** Lista as prescrições da clínica logada. RLS já garante que só vem o que é dela. */
 export async function GET(_req: NextRequest, { params }: { params: { clinicId: string } }) {
@@ -106,6 +120,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       dentist_cro: clinic.dentist_cro,
       dentist_cro_uf: clinic.dentist_cro_uf,
       items: input.items,
+      exam_requests: input.exam_requests,
       notes: input.notes ?? null,
     })
     .select("id")

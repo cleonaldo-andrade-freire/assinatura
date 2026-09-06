@@ -204,6 +204,17 @@ export interface PrescriptionItem {
   dispensed_by_pharmacy_cnpj?: string | null;
 }
 
+/**
+ * Solicitação de exame dentro de um receituário — pedido explícito, não
+ * previsto no schema original (migration 065 adicionou a coluna). Cada
+ * entrada é o nome do exame e uma observação/indicação clínica opcional.
+ * Um receituário pode ter só exames, sem nenhum medicamento.
+ */
+export interface ExamRequest {
+  name: string;
+  notes?: string;
+}
+
 export interface PrescriptionDispensation {
   id: string;
   prescription_id: string;
@@ -227,6 +238,8 @@ export interface Prescription {
   dentist_cro: string;
   dentist_cro_uf: string;
   items: PrescriptionItem[];
+  /** Solicitações de exame — coluna adicionada na migration 065. Default `[]`. */
+  exam_requests: ExamRequest[];
   notes: string | null;
   status: PrescriptionStatus;
   signature_provider: string | null;
@@ -254,6 +267,8 @@ export interface PrescriptionTemplate {
   clinic_id: string;
   name: string;
   items: PrescriptionItem[];
+  /** Exames padrão do modelo — coluna adicionada na migration 065. Default `[]`. */
+  exam_requests: ExamRequest[];
   notes_template: string | null;
   created_at: string;
 }
