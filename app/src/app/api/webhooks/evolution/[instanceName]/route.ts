@@ -121,8 +121,24 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       content: inbound.text,
     });
 
-    // Atendimento é 100% humano por enquanto — nenhuma resposta automática.
-    // O lead fica no Kanban ("Aguardando resposta") e a equipe responde pelo
+    // Resposta automática ao PRIMEIRO contato de um lead novo (texto
+    // pré-preenchido do anúncio) — enviada uma única vez, só quando a clínica
+    // configurou `lead_bot_greeting`. Depois disso o atendimento segue 100%
+    // humano pelo Kanban. Gravada como 'bot' pra handleOutboundEcho não
+    // confundir o eco dela (que volta como fromMe) com um handoff manual.
+    if (!existingLead && clinic.lead_bot_greeting?.trim()) {
+      const greeting = clinic.lead_bot_greeting.trim();
+      try {
+        await sendText(clinic, inbound.phone, greeting);
+        await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "bot", content: greeting });
+        console.log(`[evolution-webhook] clinic=${clinic.id} lead=${lead.id} saudação automática enviada`);
+      } catch (err) {
+        console.error("Falha ao enviar saudação automática do lead:", err);
+      }
+    }
+
+    // Depois da saudação (quando houver), o atendimento é 100% humano — o
+    // lead fica no Kanban ("Aguardando resposta") e a equipe responde pelo
     // WhatsApp da clínica (esse envio manual é captado por handleOutboundEcho
     // e gravado como 'staff').
     console.log(

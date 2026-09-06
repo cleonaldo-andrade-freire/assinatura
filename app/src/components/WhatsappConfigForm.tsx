@@ -15,6 +15,7 @@ type FormState = Pick<
   | "notify_phone"
   | "lead_bot_enabled"
   | "lead_bot_trigger_phrase"
+  | "lead_bot_greeting"
   | "lead_alert_enabled"
 >;
 
@@ -40,6 +41,7 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
     evolution_api_key: clinic.evolution_api_key ?? "",
     notify_phone: formatBRPhoneLocal(clinic.notify_phone ?? ""),
     lead_bot_trigger_phrase: clinic.lead_bot_trigger_phrase ?? "",
+    lead_bot_greeting: clinic.lead_bot_greeting ?? "",
   });
   const [leadBotEnabled, setLeadBotEnabled] = useState(clinic.lead_bot_enabled);
   const [leadAlertEnabled, setLeadAlertEnabled] = useState(clinic.lead_alert_enabled);
@@ -204,6 +206,24 @@ export function WhatsappConfigForm({ clinicId, clinic }: { clinicId: string; cli
           Se a clínica tem uma landing page com botão de WhatsApp de mensagem pré-preenchida, cole aqui um trecho
           dessa mensagem — só uma mensagem nova que contenha esse trecho abre lead (spam/propaganda no mesmo número
           deixa de virar lead). Deixe vazio pra manter o comportamento atual (qualquer número desconhecido abre lead).
+        </span>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="lead_bot_greeting">
+          Resposta automática ao primeiro contato (opcional)
+        </label>
+        <textarea
+          id="lead_bot_greeting"
+          className={styles.input}
+          rows={5}
+          placeholder="Ex.: Olá, tudo bem? Como posso te ajudar? Realizamos atendimentos de urgência 24h…"
+          value={form.lead_bot_greeting}
+          onChange={(e) => set("lead_bot_greeting", e.target.value)}
+        />
+        <span className={styles.hint}>
+          Enviada uma única vez, automaticamente, quando um lead novo abre pelo WhatsApp. Depois disso o atendimento
+          segue 100% humano pelo Kanban. Deixe vazio pra não responder nada automaticamente.
         </span>
       </div>
 

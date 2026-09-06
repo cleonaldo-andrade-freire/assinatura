@@ -11,6 +11,7 @@ const bodySchema = z.object({
   notify_phone: z.string().optional(),
   lead_bot_enabled: z.boolean().optional(),
   lead_bot_trigger_phrase: z.string().optional(),
+  lead_bot_greeting: z.string().optional(),
   lead_alert_enabled: z.boolean().optional(),
 });
 
