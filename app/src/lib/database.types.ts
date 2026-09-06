@@ -774,6 +774,13 @@ export interface Lead {
   created_at: string;
   updated_at: string;
   last_alert_at: string | null;
+  /** Timestamp da última mensagem da conversa (qualquer papel) — mantido por
+   * appendLeadMessage. Ordena a coluna "Aguardando resposta" e alimenta o
+   * filtro "sem resposta há +Nd". Migration 067. */
+  last_message_at: string | null;
+  /** Lead tirado do quadro (agendado antigo ou arquivado à mão) — sai das
+   * colunas, mantém o histórico, aparece na lista "Arquivados". Migration 067. */
+  archived_at: string | null;
 }
 
 export type LeadMessageRole = "patient" | "bot" | "staff";

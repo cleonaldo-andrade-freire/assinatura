@@ -6,7 +6,13 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { LEAD_STATUSES, LEAD_STATUS_LABEL } from "@/lib/leads";
+import {
+  LEAD_BOARD_STATUSES,
+  LEAD_STATUS_LABEL,
+  STALE_WAITING_DAYS,
+  compareLeadsForColumn,
+  isStaleWaiting,
+} from "@/lib/leads";
 import { formatBRTime, formatBRWeekday } from "@/lib/date";
 import type { Lead, LeadMessage, LeadStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -47,7 +53,35 @@ function PencilIcon() {
   );
 }
 
-export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: "owner" | "staff"; leads: Lead[] }) {
+function ArchiveIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M5 7v11a1 1 0 001 1h12a1 1 0 001-1V7M4 7l1.5-3h13L21 7M10 11h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function LeadsBoard({
+  clinicId,
+  role,
+  openLeads,
+  scheduledLeads,
+  archivedLeads,
+  listLimit,
+}: {
+  clinicId: string;
+  role: "owner" | "staff";
+  openLeads: Lead[];
+  scheduledLeads: Lead[];
+  archivedLeads: Lead[];
+  listLimit: number;
+}) {
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -57,8 +91,16 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [localLeads, setLocalLeads] = useState(leads);
-  useEffect(() => setLocalLeads(leads), [leads]);
+  const [localOpen, setLocalOpen] = useState(openLeads);
+  const [localScheduled, setLocalScheduled] = useState(scheduledLeads);
+  const [localArchived, setLocalArchived] = useState(archivedLeads);
+  useEffect(() => setLocalOpen(openLeads), [openLeads]);
+  useEffect(() => setLocalScheduled(scheduledLeads), [scheduledLeads]);
+  useEffect(() => setLocalArchived(archivedLeads), [archivedLeads]);
+
+  const [search, setSearch] = useState("");
+  const [onlyStale, setOnlyStale] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Mantém o board sozinho em dia (mesmo padrão de AgendaRealtimeRefresh:
   // postgres_changes + polling de segurança a cada 30s) e avisa com um toast
@@ -92,19 +134,40 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
     };
   }, [clinicId, push, router]);
 
+  const query = search.trim().toLowerCase();
+  const matchesSearch = (l: Lead) =>
+    !query ||
+    (l.patient_name?.toLowerCase().includes(query) ?? false) ||
+    l.patient_phone.includes(query) ||
+    (l.clinical_summary?.toLowerCase().includes(query) ?? false);
+
   const byStatus = useMemo(() => {
     const map = new Map<LeadStatus, Lead[]>();
-    for (const status of LEAD_STATUSES) map.set(status, []);
-    for (const l of localLeads) map.get(l.status)?.push(l);
+    for (const status of LEAD_BOARD_STATUSES) map.set(status, []);
+    for (const l of localOpen) {
+      if (!matchesSearch(l)) continue;
+      if (onlyStale && !isStaleWaiting(l, STALE_WAITING_DAYS)) continue;
+      map.get(l.status)?.push(l);
+    }
+    for (const [status, items] of map) items.sort((a, b) => compareLeadsForColumn(status, a, b));
     return map;
-  }, [localLeads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localOpen, query, onlyStale]);
 
+  const visibleScheduled = localScheduled.filter(matchesSearch);
+  const staleCount = localOpen.filter((l) => isStaleWaiting(l, STALE_WAITING_DAYS)).length;
+
+  /** Move um lead entre as colunas do quadro e a lista de agendados. */
   async function moveLead(leadId: string, status: LeadStatus) {
     setDragOverStatus(null);
-    const previous = localLeads;
-    if (previous.find((l) => l.id === leadId)?.status === status) return;
+    const lead = localOpen.find((l) => l.id === leadId) ?? localScheduled.find((l) => l.id === leadId);
+    if (!lead || lead.status === status) return;
 
-    setLocalLeads((cur) => cur.map((l) => (l.id === leadId ? { ...l, status } : l)));
+    const prevOpen = localOpen;
+    const prevScheduled = localScheduled;
+    const moved = { ...lead, status };
+    setLocalOpen((cur) => (status === "scheduled" ? cur.filter((l) => l.id !== leadId) : upsert(cur, moved)));
+    setLocalScheduled((cur) => (status === "scheduled" ? upsert(cur, moved) : cur.filter((l) => l.id !== leadId)));
     setMoving(true);
     try {
       const res = await fetch(`/api/clinics/${clinicId}/leads/${leadId}`, {
@@ -114,7 +177,8 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setLocalLeads(previous);
+        setLocalOpen(prevOpen);
+        setLocalScheduled(prevScheduled);
         push(data?.message || data?.error || "Falha ao mover o lead.");
         return;
       }
@@ -122,6 +186,41 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
       router.refresh();
     } finally {
       setMoving(false);
+    }
+  }
+
+  async function setArchived(lead: Lead, archived: boolean) {
+    const prevOpen = localOpen;
+    const prevScheduled = localScheduled;
+    const prevArchived = localArchived;
+    if (archived) {
+      setLocalOpen((cur) => cur.filter((l) => l.id !== lead.id));
+      setLocalScheduled((cur) => cur.filter((l) => l.id !== lead.id));
+      setLocalArchived((cur) => [{ ...lead, archived_at: new Date().toISOString() }, ...cur]);
+    } else {
+      setLocalArchived((cur) => cur.filter((l) => l.id !== lead.id));
+    }
+    setOpenLead(null);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      if (!res.ok) {
+        setLocalOpen(prevOpen);
+        setLocalScheduled(prevScheduled);
+        setLocalArchived(prevArchived);
+        push("Falha ao arquivar o lead.");
+        return;
+      }
+      push(archived ? "Lead arquivado." : "Lead restaurado.", "success");
+      router.refresh();
+    } catch {
+      setLocalOpen(prevOpen);
+      setLocalScheduled(prevScheduled);
+      setLocalArchived(prevArchived);
+      push("Falha ao arquivar o lead.");
     }
   }
 
@@ -135,7 +234,9 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
         push(data?.message || data?.error || "Falha ao excluir o lead.");
         return;
       }
-      setLocalLeads((cur) => cur.filter((l) => l.id !== confirmDeleteId));
+      setLocalOpen((cur) => cur.filter((l) => l.id !== confirmDeleteId));
+      setLocalScheduled((cur) => cur.filter((l) => l.id !== confirmDeleteId));
+      setLocalArchived((cur) => cur.filter((l) => l.id !== confirmDeleteId));
       setConfirmDeleteId(null);
       setOpenLead(null);
       push("Lead excluído.", "success");
@@ -145,34 +246,52 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
     }
   }
 
+  const dropHandlers = (status: LeadStatus) =>
+    !moving && draggingId
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault();
+            if (dragOverStatus !== status) setDragOverStatus(status);
+          },
+          onDragLeave: () => setDragOverStatus((s) => (s === status ? null : s)),
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            const id = e.dataTransfer.getData("text/plain");
+            setDraggingId(null);
+            if (id) moveLead(id, status);
+          },
+        }
+      : {};
+
   return (
     <>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 14 }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nome, telefone ou motivo…"
+          className={styles.input}
+          style={{ flex: "1 1 260px", maxWidth: 360 }}
+        />
+        <button
+          type="button"
+          onClick={() => setOnlyStale((v) => !v)}
+          className={`${styles.btn} ${onlyStale ? styles.btnPrimary : styles.btnGhost}`}
+          style={{ fontSize: 12.5 }}
+        >
+          Sem resposta há +{STALE_WAITING_DAYS} dias{staleCount > 0 ? ` (${staleCount})` : ""}
+        </button>
+      </div>
+
       <div className={styles.kanbanBoard}>
-        {LEAD_STATUSES.map((status) => {
+        {LEAD_BOARD_STATUSES.map((status) => {
           const items = byStatus.get(status) ?? [];
           return (
             <div
               key={status}
               className={styles.kanbanColumn}
-              onDragOver={
-                !moving && draggingId
-                  ? (e) => {
-                      e.preventDefault();
-                      if (dragOverStatus !== status) setDragOverStatus(status);
-                    }
-                  : undefined
-              }
-              onDragLeave={!moving && draggingId ? () => setDragOverStatus((s) => (s === status ? null : s)) : undefined}
-              onDrop={
-                !moving && draggingId
-                  ? (e) => {
-                      e.preventDefault();
-                      const id = e.dataTransfer.getData("text/plain");
-                      setDraggingId(null);
-                      if (id) moveLead(id, status);
-                    }
-                  : undefined
-              }
+              {...dropHandlers(status)}
               style={{
                 background: dragOverStatus === status ? "var(--brand-tint)" : undefined,
                 outline: dragOverStatus === status ? "2px dashed var(--brand)" : undefined,
@@ -217,7 +336,7 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
                             style={{ marginBottom: 0, flex: "none", whiteSpace: "nowrap" }}
                             title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${new Date(lead.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${formatBRTime(lead.created_at)}`}
                           >
-                            {leadDateLabel(lead.created_at)}
+                            {leadDateLabel(lead.last_message_at ?? lead.created_at)}
                           </div>
                         </div>
                         <div className={styles.kanbanCardSubtitle}>{lead.patient_phone}</div>
@@ -237,6 +356,103 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
         })}
       </div>
 
+      {/* Agendados — lista, não coluna: lead agendado é caso encerrado. Continua
+          aceitando drop pra marcar um card como agendado. */}
+      <section
+        {...dropHandlers("scheduled")}
+        className={styles.panel}
+        style={{
+          marginTop: 18,
+          background: dragOverStatus === "scheduled" ? "var(--brand-tint)" : undefined,
+          outline: dragOverStatus === "scheduled" ? "2px dashed var(--brand)" : undefined,
+        }}
+      >
+        <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p className={styles.panelHeaderTitle}>Agendados</p>
+          <span className={styles.kanbanColumnCount}>{localScheduled.length}</span>
+        </div>
+        <div className={styles.panelBody} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {visibleScheduled.length === 0 ? (
+            <p className={styles.kanbanEmptyColumn} style={{ padding: "8px 0" }}>
+              {localScheduled.length === 0 ? "Nenhum lead agendado." : "Nada bate com a busca."}
+            </p>
+          ) : (
+            visibleScheduled.map((lead) => (
+              <MiniLeadRow
+                key={lead.id}
+                clinicId={clinicId}
+                lead={lead}
+                draggable={!moving}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", lead.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  setDraggingId(lead.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverStatus(null);
+                }}
+                onClick={() => setOpenLead(lead)}
+                trailing={<span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{leadDateLabel(lead.created_at)}</span>}
+              />
+            ))
+          )}
+          {localScheduled.length >= listLimit && (
+            <p className={styles.hint} style={{ margin: "4px 0 0" }}>
+              Mostrando os {listLimit} agendados mais recentes.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Arquivados — recolhido por padrão. */}
+      <div style={{ marginTop: 14 }}>
+        <button
+          type="button"
+          onClick={() => setShowArchived((v) => !v)}
+          className={`${styles.btn} ${styles.btnGhost}`}
+          style={{ fontSize: 12.5 }}
+        >
+          {showArchived ? "▾" : "▸"} Arquivados ({localArchived.length})
+        </button>
+        {showArchived && (
+          <div className={styles.panel} style={{ marginTop: 8 }}>
+            <div className={styles.panelBody} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {localArchived.length === 0 ? (
+                <p className={styles.kanbanEmptyColumn} style={{ padding: "8px 0" }}>Nenhum lead arquivado.</p>
+              ) : (
+                localArchived.map((lead) => (
+                  <MiniLeadRow
+                    key={lead.id}
+                    clinicId={clinicId}
+                    lead={lead}
+                    onClick={() => setOpenLead(lead)}
+                    trailing={
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ fontSize: 12, padding: "3px 10px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setArchived(lead, false);
+                        }}
+                      >
+                        Restaurar
+                      </button>
+                    }
+                  />
+                ))
+              )}
+              {localArchived.length >= listLimit && (
+                <p className={styles.hint} style={{ margin: "4px 0 0" }}>
+                  Mostrando os {listLimit} mais recentes.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {openLead && (
         <LeadDetailModal
           clinicId={clinicId}
@@ -244,8 +460,12 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
           role={role}
           onClose={() => setOpenLead(null)}
           onRequestDelete={() => setConfirmDeleteId(openLead.id)}
+          onArchive={() => setArchived(openLead, !openLead.archived_at)}
           onLeadPatched={(patch) => {
-            setLocalLeads((cur) => cur.map((l) => (l.id === openLead.id ? { ...l, ...patch } : l)));
+            const apply = (l: Lead) => (l.id === openLead.id ? { ...l, ...patch } : l);
+            setLocalOpen((cur) => cur.map(apply));
+            setLocalScheduled((cur) => cur.map(apply));
+            setLocalArchived((cur) => cur.map(apply));
             setOpenLead((o) => (o ? { ...o, ...patch } : o));
           }}
         />
@@ -254,7 +474,7 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
       <ConfirmDialog
         open={!!confirmDeleteId}
         title="Excluir lead"
-        message="Isso apaga o lead e todo o histórico de conversa dele. Não pode ser desfeito."
+        message="Isso apaga o lead e todo o histórico de conversa dele. Não pode ser desfeito. Pra só tirar do quadro sem perder a conversa, use Arquivar."
         confirmLabel="Excluir"
         danger
         loading={deleting}
@@ -265,6 +485,66 @@ export function LeadsBoard({ clinicId, role, leads }: { clinicId: string; role: 
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
+  );
+}
+
+/** Substitui um lead na lista pelo id, ou adiciona no início se não estiver lá. */
+function upsert(list: Lead[], lead: Lead): Lead[] {
+  return list.some((l) => l.id === lead.id) ? list.map((l) => (l.id === lead.id ? lead : l)) : [lead, ...list];
+}
+
+function MiniLeadRow({
+  clinicId,
+  lead,
+  trailing,
+  onClick,
+  draggable,
+  onDragStart,
+  onDragEnd,
+}: {
+  clinicId: string;
+  lead: Lead;
+  trailing?: React.ReactNode;
+  onClick: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={styles.kanbanCard}
+      style={{ display: "flex", alignItems: "center", gap: 10, cursor: draggable ? "grab" : "pointer" }}
+    >
+      <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={26} />
+      <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+        <span
+          style={{
+            display: "block",
+            fontSize: 13,
+            fontWeight: 600,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {lead.patient_name || "Sem nome ainda"}
+        </span>
+        <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)" }}>{lead.patient_phone}</span>
+      </span>
+      {trailing}
+    </div>
   );
 }
 
@@ -307,6 +587,7 @@ function LeadDetailModal({
   role,
   onClose,
   onRequestDelete,
+  onArchive,
   onLeadPatched,
 }: {
   clinicId: string;
@@ -314,6 +595,7 @@ function LeadDetailModal({
   role: "owner" | "staff";
   onClose: () => void;
   onRequestDelete: () => void;
+  onArchive: () => void;
   onLeadPatched: (patch: Partial<Lead>) => void;
 }) {
   const [messages, setMessages] = useState<LeadMessage[] | null>(null);
@@ -493,6 +775,15 @@ function LeadDetailModal({
             <div className={chat.chatHeaderPhone}>{lead.patient_phone}</div>
           </div>
           <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[lead.status]}`}>{LEAD_STATUS_LABEL[lead.status]}</span>
+          <button
+            type="button"
+            className={styles.iconActionBtn}
+            onClick={onArchive}
+            title={lead.archived_at ? "Restaurar lead" : "Arquivar lead"}
+            aria-label={lead.archived_at ? "Restaurar lead" : "Arquivar lead"}
+          >
+            <ArchiveIcon />
+          </button>
           {role === "owner" && (
             <button type="button" className={styles.iconActionBtn} onClick={onRequestDelete} title="Excluir lead" aria-label="Excluir lead">
               <TrashIcon />

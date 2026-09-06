@@ -10,10 +10,17 @@ const patchSchema = z
     patient_name: z.string().trim().max(120).optional(),
     // motivo/observação do contato, mostrado no card do Kanban. Vazio = limpar.
     clinical_summary: z.string().trim().max(500).optional(),
+    // true = arquivar (sai do quadro, mantém histórico); false = restaurar.
+    archived: z.boolean().optional(),
   })
-  .refine((d) => d.status !== undefined || d.patient_name !== undefined || d.clinical_summary !== undefined, {
-    message: "nada para atualizar",
-  });
+  .refine(
+    (d) =>
+      d.status !== undefined ||
+      d.patient_name !== undefined ||
+      d.clinical_summary !== undefined ||
+      d.archived !== undefined,
+    { message: "nada para atualizar" }
+  );
 
 export async function PATCH(req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
   const auth = await getClinicAndRole();
@@ -30,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (parsed.data.status !== undefined) update.status = parsed.data.status;
   if (parsed.data.patient_name !== undefined) update.patient_name = parsed.data.patient_name || null;
   if (parsed.data.clinical_summary !== undefined) update.clinical_summary = parsed.data.clinical_summary || null;
+  if (parsed.data.archived !== undefined) update.archived_at = parsed.data.archived ? new Date().toISOString() : null;
 
   const supabase = await createSupabaseServerClient();
   const { data: lead, error } = await supabase

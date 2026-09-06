@@ -3,7 +3,17 @@ import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { LeadsBoard } from "@/components/LeadsBoard";
+import { LEAD_BOARD_STATUSES } from "@/lib/leads";
 import type { Lead } from "@/lib/database.types";
+
+/** Lead 'scheduled' mais antigo que isto sai do quadro sozinho no próximo
+ * carregamento da página — faxina lazy, sem cron (ver guia-deploy: cron no
+ * Hobby é limitado a 1x/dia). */
+const AUTO_ARCHIVE_SCHEDULED_DAYS = 45;
+
+/** Teto de linhas nas listas de agendados/arquivados — o que passa disso é
+ * histórico e não precisa aparecer na tela de triagem. */
+const LIST_LIMIT = 50;
 
 export default async function LeadsPage() {
   const auth = await getClinicAndRole();
@@ -11,12 +21,41 @@ export default async function LeadsPage() {
   const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+
+  // Faxina: agendados antigos saem do quadro antes de qualquer leitura.
+  const autoArchiveCutoff = new Date(Date.now() - AUTO_ARCHIVE_SCHEDULED_DAYS * 86_400_000).toISOString();
+  await supabase
     .from("leads")
-    .select("*")
+    .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("clinic_id", clinic.id)
-    .order("created_at", { ascending: false });
-  const leads = (data as Lead[]) ?? [];
+    .eq("status", "scheduled")
+    .is("archived_at", null)
+    .lt("created_at", autoArchiveCutoff);
+
+  const [openRes, scheduledRes, archivedRes] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("*")
+      .eq("clinic_id", clinic.id)
+      .in("status", LEAD_BOARD_STATUSES)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("leads")
+      .select("*")
+      .eq("clinic_id", clinic.id)
+      .eq("status", "scheduled")
+      .is("archived_at", null)
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(LIST_LIMIT),
+    supabase
+      .from("leads")
+      .select("*")
+      .eq("clinic_id", clinic.id)
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false })
+      .limit(LIST_LIMIT),
+  ]);
 
   return (
     <ClinicShell
@@ -29,7 +68,14 @@ export default async function LeadsPage() {
       userName={userName}
       userAvatarUrl={userAvatarUrl}
     >
-      <LeadsBoard clinicId={clinic.id} role={role} leads={leads} />
+      <LeadsBoard
+        clinicId={clinic.id}
+        role={role}
+        openLeads={(openRes.data as Lead[]) ?? []}
+        scheduledLeads={(scheduledRes.data as Lead[]) ?? []}
+        archivedLeads={(archivedRes.data as Lead[]) ?? []}
+        listLimit={LIST_LIMIT}
+      />
     </ClinicShell>
   );
 }

@@ -4,6 +4,46 @@ import { brPhoneVariants } from "@/lib/validation";
 
 export const LEAD_STATUSES: LeadStatus[] = ["bot_active", "waiting_reply", "urgent", "scheduled"];
 
+/** Colunas do Kanban de leads. 'scheduled' fica FORA de propósito — lead
+ * agendado é caso encerrado e vai pra lista "Agendados" abaixo do quadro,
+ * pra as colunas mostrarem só o que precisa de ação. */
+export const LEAD_BOARD_STATUSES: LeadStatus[] = ["bot_active", "waiting_reply", "urgent"];
+
+/** Dias parado em 'waiting_reply' (sem mensagem nova) pro chip "sem resposta"
+ * do quadro. */
+export const STALE_WAITING_DAYS = 2;
+
+/**
+ * Lead em 'waiting_reply' sem nenhuma mensagem nova há pelo menos `days` dias
+ * — base do filtro "sem resposta há +Nd". Cai pro `created_at` enquanto não
+ * houver `last_message_at` (leads anteriores à migration 067, já retro-
+ * preenchidos, ou sem histórico).
+ */
+export function isStaleWaiting(
+  lead: Pick<Lead, "status" | "last_message_at" | "created_at">,
+  days: number,
+  now: number = Date.now()
+): boolean {
+  if (lead.status !== "waiting_reply") return false;
+  const ref = new Date(lead.last_message_at ?? lead.created_at).getTime();
+  return now - ref >= days * 86_400_000;
+}
+
+/**
+ * Ordena os cards de uma coluna. "Aguardando resposta" vai por quem espera há
+ * mais tempo primeiro (a pessoa mais esquecida no topo); as demais colunas
+ * seguem os mais recentes primeiro.
+ */
+export function compareLeadsForColumn(
+  status: LeadStatus,
+  a: Pick<Lead, "last_message_at" | "created_at">,
+  b: Pick<Lead, "last_message_at" | "created_at">
+): number {
+  const at = new Date(a.last_message_at ?? a.created_at).getTime();
+  const bt = new Date(b.last_message_at ?? b.created_at).getTime();
+  return status === "waiting_reply" ? at - bt : bt - at;
+}
+
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   bot_active: "Bot atendendo",
   waiting_reply: "Aguardando resposta",
@@ -85,6 +125,7 @@ export async function appendLeadMessage(
   supabase: SupabaseClient,
   input: { leadId: string; clinicId: string; role: LeadMessageRole; content: string }
 ): Promise<void> {
+  const now = new Date().toISOString();
   const { error } = await supabase.from("lead_messages").insert({
     lead_id: input.leadId,
     clinic_id: input.clinicId,
@@ -94,4 +135,9 @@ export async function appendLeadMessage(
   // Não lança — histórico não pode travar a resposta ao paciente, mesmo padrão
   // de recordAppointmentEvent em lib/appointments.ts.
   if (error) console.error("Falha ao gravar mensagem do lead:", error);
+
+  // Mantém leads.last_message_at pro quadro ordenar/filtrar sem um join em
+  // lead_messages a cada render. Best-effort pelo mesmo motivo acima.
+  const { error: touchError } = await supabase.from("leads").update({ last_message_at: now }).eq("id", input.leadId);
+  if (touchError) console.error("Falha ao atualizar last_message_at do lead:", touchError);
 }
