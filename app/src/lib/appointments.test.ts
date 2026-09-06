@@ -122,6 +122,14 @@ describe("buildDaySlotTimes", () => {
     const [first] = buildDaySlotTimes("2026-08-12", 8, 9);
     expect(new Date(first).toISOString()).toBe("2026-08-12T11:00:00.000Z");
   });
+
+  it("a grade padrão vai das 08:00 às 20:30 (BR) — clínica atende até 21:00", () => {
+    const slots = buildDaySlotTimes("2026-08-12");
+    // 08:00 BR (-03:00) === 11:00 UTC
+    expect(new Date(slots[0]).toISOString()).toBe("2026-08-12T11:00:00.000Z");
+    // último slot: 20:30 BR === 23:30 UTC (fecha 21:00)
+    expect(new Date(slots[slots.length - 1]).toISOString()).toBe("2026-08-12T23:30:00.000Z");
+  });
 });
 
 describe("appointmentEndsAt", () => {

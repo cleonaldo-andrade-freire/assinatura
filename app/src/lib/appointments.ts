@@ -6,11 +6,13 @@ import type { Appointment, AppointmentEventActor, AppointmentStatus } from "@/li
 export const APPOINTMENT_SLOT_MINUTES = 30;
 
 // Horário de funcionamento assumido pra desenhar a grade — o schema não tem
-// um campo de horário de expediente por clínica ainda. 08h–19h cobre o
-// horário comercial típico; um agendamento fora dessa faixa (se algum dia
-// existir) continua funcionando, só não aparece como uma linha vazia extra.
+// um campo de horário de expediente por clínica ainda. 08h–21h cobre o
+// horário comercial típico, incluindo turno da noite; um agendamento fora
+// dessa faixa (se algum dia existir) continua funcionando, só não aparece
+// como uma linha vazia extra. `END_HOUR` é exclusivo: o último slot de
+// 30min começa 20:30 (a clínica fecha às 21:00).
 export const AGENDA_START_HOUR = 8;
-export const AGENDA_END_HOUR = 19;
+export const AGENDA_END_HOUR = 21;
 
 /**
  * Chave canônica pra casar um `scheduled_at` vindo do banco com um horário de
