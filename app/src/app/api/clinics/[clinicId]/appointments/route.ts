@@ -17,6 +17,10 @@ const bodySchema = z.object({
   urgent: z.boolean().optional(),
   notes: z.string().optional(),
   return_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "data de retorno inválida" }).optional(),
+  // Só REGISTRO de um atendimento que já aconteceu (urgência lançada depois):
+  // entra como 'atendido', não notifica o paciente e não é barrado por
+  // horário no passado nem por sobreposição com outra consulta.
+  backdated: z.boolean().optional(),
 });
 
 /**
@@ -61,27 +65,35 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
   }
   const input = parsed.data;
   const durationMinutes = input.duration_minutes ?? APPOINTMENT_SLOT_MINUTES;
+  const backdated = input.backdated ?? false;
 
-  if (new Date(input.scheduled_at).getTime() < Date.now()) {
-    return NextResponse.json(
-      { error: "past_datetime", message: "Não dá pra agendar num horário que já passou." },
-      { status: 400 }
-    );
+  // Registro retroativo é, por definição, um horário que já passou — e um
+  // encaixe de urgência costuma sobrepor outra consulta. Só a via normal de
+  // agendamento aplica essas duas barreiras.
+  if (!backdated) {
+    if (new Date(input.scheduled_at).getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "past_datetime", message: "Não dá pra agendar num horário que já passou." },
+        { status: 400 }
+      );
+    }
   }
 
   const supabase = await createSupabaseServerClient();
 
-  const conflict = await findOverlappingAppointment(supabase, {
-    clinicId: clinic.id,
-    professionalName: input.professional_name,
-    scheduledAt: input.scheduled_at,
-    durationMinutes,
-  });
-  if (conflict) {
-    return NextResponse.json(
-      { error: "schedule_conflict", message: "Já existe um agendamento nesse horário para este profissional." },
-      { status: 409 }
-    );
+  if (!backdated) {
+    const conflict = await findOverlappingAppointment(supabase, {
+      clinicId: clinic.id,
+      professionalName: input.professional_name,
+      scheduledAt: input.scheduled_at,
+      durationMinutes,
+    });
+    if (conflict) {
+      return NextResponse.json(
+        { error: "schedule_conflict", message: "Já existe um agendamento nesse horário para este profissional." },
+        { status: 409 }
+      );
+    }
   }
 
   // Se quem agendou não veio da busca de paciente (sem patient_id — só
@@ -103,6 +115,8 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       urgent: input.urgent ?? false,
       notes: input.notes ?? null,
       return_due_date: input.return_due_date ?? null,
+      backdated,
+      ...(backdated ? { status: "atendido" } : {}),
     })
     .select("*")
     .single();
@@ -124,16 +138,20 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     appointmentId: appointment.id,
     clinicId: clinic.id,
     eventType: "created",
-    toStatus: "agendado",
+    toStatus: backdated ? "atendido" : "agendado",
     actor: "recepcao",
   });
 
-  // Best-effort — mesmo padrão do resto do app (ex.: notifyClinicSigned):
-  // uma falha de WhatsApp não pode impedir o agendamento de ser criado.
-  try {
-    await sendAppointmentRequest(supabase, clinic, appointment);
-  } catch (err) {
-    console.error("Falha ao enviar confirmação de agendamento por WhatsApp:", err);
+  // Registro retroativo não dispara nada pro paciente — a consulta já
+  // aconteceu, é só lançamento no sistema.
+  if (!backdated) {
+    // Best-effort — mesmo padrão do resto do app (ex.: notifyClinicSigned):
+    // uma falha de WhatsApp não pode impedir o agendamento de ser criado.
+    try {
+      await sendAppointmentRequest(supabase, clinic, appointment);
+    } catch (err) {
+      console.error("Falha ao enviar confirmação de agendamento por WhatsApp:", err);
+    }
   }
 
   // "À medida que for reagendando, sair da lista" — se este paciente tinha

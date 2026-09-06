@@ -49,6 +49,10 @@ export interface Clinic {
   consent_term_updated_at: string | null;
   lead_bot_enabled: boolean;
   lead_bot_trigger_phrase: string | null;
+  /** Resposta automática enviada uma única vez quando um lead NOVO abre pelo
+   * WhatsApp (texto pré-preenchido do anúncio). Null/vazio = não responde,
+   * atendimento segue 100% humano. Ver o webhook da Evolution. */
+  lead_bot_greeting: string | null;
   /** Espelha cada mensagem de paciente (lead) como um aviso pro `notify_phone`
    * — útil quando o app da clínica não notifica em segundo plano por causa do
    * vínculo do Evolution. Ver `maybeSendLeadAlert` no webhook. Opt-in. */
@@ -355,6 +359,10 @@ export interface Appointment {
   return_dismissed_at: string | null;
   // Idem, mas pra lista de "consultas canceladas" do dashboard.
   cancellation_dismissed_at: string | null;
+  // Só REGISTRO de um atendimento que já aconteceu (urgência lançada depois):
+  // entra como 'atendido', não notifica o paciente e fica fora da constraint
+  // de não-sobreposição (ver migration 066).
+  backdated: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;

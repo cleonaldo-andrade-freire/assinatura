@@ -69,6 +69,10 @@ export function NewAppointmentForm({
   const [duration, setDuration] = useState(30);
   const [urgent, setUrgent] = useState(false);
   const [notes, setNotes] = useState("");
+  // Registro retroativo — atendimento que já aconteceu (urgência sem
+  // marcação prévia, lançada depois): libera data/horário no passado, entra
+  // como "Atendido" e não dispara nada pro paciente.
+  const [backdated, setBackdated] = useState(false);
 
   const [returnOption, setReturnOption] = useState<ReturnOption>("none");
   const [returnCustomMonths, setReturnCustomMonths] = useState(2);
@@ -90,7 +94,13 @@ export function NewAppointmentForm({
   // abaixo limpa a seleção normalmente.
   const allSlotsForDate = buildDaySlotTimes(date);
   const futureSlots = allSlotsForDate.filter((s) => new Date(s).getTime() > Date.now());
-  const slots = time && allSlotsForDate.includes(time) && !futureSlots.includes(time) ? [time, ...futureSlots].sort() : futureSlots;
+  // No registro retroativo o dia inteiro é ofertável (o atendimento já
+  // aconteceu); no fluxo normal só os horários que ainda não passaram.
+  const slots = backdated
+    ? allSlotsForDate
+    : time && allSlotsForDate.includes(time) && !futureSlots.includes(time)
+    ? [time, ...futureSlots].sort()
+    : futureSlots;
   const phoneDigits = patientPhone.replace(/\D/g, "");
   const phoneError = showErrors && phoneDigits.length < 10 ? "Celular inválido." : null;
 
@@ -109,7 +119,7 @@ export function NewAppointmentForm({
     }
     if (time && !slots.includes(time)) setTime("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [date, backdated]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -184,6 +194,7 @@ export function NewAppointmentForm({
           urgent,
           notes: notes.trim() || undefined,
           return_due_date: computeReturnDueDate() ?? undefined,
+          backdated: backdated || undefined,
         }),
       });
       const data = await res.json();
@@ -206,7 +217,13 @@ export function NewAppointmentForm({
       disabled={sending}
       style={{ width: "100%", justifyContent: "center" }}
     >
-      {sending ? "Agendando…" : "Criar agendamento"}
+      {backdated
+        ? sending
+          ? "Registrando…"
+          : "Registrar atendimento"
+        : sending
+        ? "Agendando…"
+        : "Criar agendamento"}
     </button>
   );
 
@@ -341,6 +358,33 @@ export function NewAppointmentForm({
 
         <div className={styles.fgroup}>
           <p className={styles.fgroupLabel}>Agendamento</p>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              cursor: "pointer",
+              marginBottom: 12,
+              padding: "10px 12px",
+              border: "1px solid var(--line-soft)",
+              borderRadius: "var(--radius-sm)",
+              background: backdated ? "var(--surface-sunken)" : "transparent",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={backdated}
+              onChange={(e) => setBackdated(e.target.checked)}
+              style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--brand)", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13.5 }}>
+              <span style={{ fontWeight: 600 }}>Registro retroativo</span> — atendimento que já aconteceu (urgência
+              lançada depois). Libera data/horário no passado, entra como <strong>Atendido</strong> e não envia
+              nada pro paciente.
+            </span>
+          </label>
+
           <div className={styles.formRow}>
             <div className={styles.field}>
               <label htmlFor="date" className={styles.label}>
@@ -351,7 +395,7 @@ export function NewAppointmentForm({
                 type="date"
                 className={styles.input}
                 value={date}
-                min={brDateOnly()}
+                min={backdated ? undefined : brDateOnly()}
                 onChange={(e) => setDate(e.target.value)}
                 required
               />
