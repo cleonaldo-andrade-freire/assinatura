@@ -3,6 +3,7 @@ import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { LeadsBoard } from "@/components/LeadsBoard";
+import { NewLeadButton } from "@/components/NewLeadButton";
 import { LEAD_BOARD_STATUSES, backfillLeadNamesFromPatients } from "@/lib/leads";
 import type { Lead } from "@/lib/database.types";
 
@@ -75,6 +76,7 @@ export default async function LeadsPage() {
       userEmail={userEmail}
       userName={userName}
       userAvatarUrl={userAvatarUrl}
+      actions={<NewLeadButton clinicId={clinic.id} />}
     >
       {loadError ? (
         <div
