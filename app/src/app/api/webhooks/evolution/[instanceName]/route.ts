@@ -29,7 +29,14 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   const payload = await req.json().catch(() => null);
   const inbound = parseInboundMessage(payload);
 
-  if (!inbound || !inbound.text) {
+  // `inboundText` é o texto real OU um rótulo tipo "[áudio]" quando a mensagem
+  // é só mídia — assim um primeiro contato só por áudio/imagem ainda vira lead.
+  // `isMediaOnly` marca esse caso pros fluxos que precisam de texto de verdade
+  // (anamnese, confirmar/cancelar agendamento) o ignorarem.
+  const inboundText = inbound?.text ?? inbound?.mediaLabel ?? null;
+  const isMediaOnly = !!inbound && !inbound.text && !!inbound.mediaLabel;
+
+  if (!inbound || !inboundText) {
     console.log(
       `[evolution-webhook] instance=${params.instanceName} ignorado: inbound=${
         inbound ? JSON.stringify({ fromMe: inbound.fromMe, hasText: !!inbound.text }) : "não parseou o payload"
@@ -51,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   }
 
   if (inbound.fromMe) {
-    await handleOutboundEcho(supabase, clinic, inbound.phone, inbound.text);
+    await handleOutboundEcho(supabase, clinic, inbound.phone, inboundText);
     return NextResponse.json({ ok: true });
   }
 
@@ -65,13 +72,23 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .limit(1)
     .maybeSingle();
 
+  // Mídia no meio de uma anamnese não é uma resposta válida — pede texto e sai
+  // (não avança o motor de conversa nem abre lead).
+  if (conversation && isMediaOnly) {
+    await sendText(clinic, inbound.phone, "Recebi seu arquivo, mas preciso da resposta em texto pra continuar. 🙏");
+    return NextResponse.json({ ok: true });
+  }
+
   if (!conversation) {
-    // Nenhuma anamnese em andamento pra esse número — antes de desistir do
-    // evento, checa se é uma resposta de confirmação de agendamento (canal
-    // alternativo ao link, ver lib/appointmentNotifications.ts).
-    const pendingAppointment = await findPendingAppointmentForPhone(supabase, clinic.id, inbound.phone);
+    // Nenhuma anamnese em andamento pra esse número — antes de tratar como
+    // lead, checa se é uma resposta de confirmação de agendamento (canal
+    // alternativo ao link, ver lib/appointmentNotifications.ts). Mídia pura
+    // nunca é confirmar/cancelar, então esse ramo só vale pra texto real.
+    const pendingAppointment = isMediaOnly
+      ? null
+      : await findPendingAppointmentForPhone(supabase, clinic.id, inbound.phone);
     if (pendingAppointment) {
-      const action = matchConfirmCancel(inbound.text);
+      const action = matchConfirmCancel(inboundText);
       if (action) {
         console.log(
           `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} appointment=${pendingAppointment.id} resposta="${action}" via texto livre`
@@ -79,22 +96,19 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
         await processAppointmentResponse(supabase, clinic, pendingAppointment, action, "paciente");
         return NextResponse.json({ ok: true });
       }
-      // Tem agendamento pendente mas o texto não deu pra interpretar como
-      // confirmar/cancelar — orienta a usar o link, que é sempre inequívoco.
+      // Tem agendamento pendente mas não é confirmar/cancelar — orienta a usar
+      // o link e SEGUE pro fluxo de lead abaixo (a mensagem é uma dúvida real
+      // que a equipe precisa ver no quadro, não pode se perder).
       await sendText(
         clinic,
         inbound.phone,
-        `Não entendi. Pra confirmar ou cancelar sua consulta, toque aqui: ${process.env.NEXT_PUBLIC_APP_URL}/confirmacao/${pendingAppointment.confirm_token}`
+        `Pra confirmar ou cancelar sua consulta, toque aqui: ${process.env.NEXT_PUBLIC_APP_URL}/confirmacao/${pendingAppointment.confirm_token}`
       );
-      return NextResponse.json({ ok: true });
     }
 
-    // Nenhuma anamnese em andamento, nenhum agendamento pendente — número
-    // desconhecido (ou fora do fluxo já mapeado). É aqui que o Mini-CRM entra:
-    // registramos o contato como lead pra equipe atender manualmente pelo
-    // Kanban, a menos que a clínica tenha desligado isso em `lead_bot_enabled`.
-    // O atendimento por IA foi removido por enquanto (ver lib/leadAgent.ts) —
-    // nenhuma resposta automática é enviada ao paciente.
+    // Número desconhecido (ou fora do fluxo já mapeado). É aqui que o Mini-CRM
+    // entra: registra o contato como lead pra equipe atender pelo Kanban, a
+    // menos que a clínica tenha desligado isso em `lead_bot_enabled`.
     if (!clinic.lead_bot_enabled) {
       console.log(
         `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: lead_bot_enabled=false para o telefone ${inbound.phone}`
@@ -102,31 +116,28 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       return NextResponse.json({ ok: true });
     }
 
-    // Só cria lead NOVO se a mensagem "parecer" um contato genuíno — ver
-    // matchesLeadBotTrigger. Uma conversa já aberta (findOpenLead encontra
-    // algo) segue normal, o gate só protege a criação do primeiro contato.
+    // `lead_bot_trigger_phrase` NÃO bloqueia mais a criação do lead (regra:
+    // não perder nenhum lead). Ela só decide se a equipe recebe o alerta no
+    // celular e se a saudação automática sai — pra spam/propaganda no mesmo
+    // número entrar no quadro em silêncio em vez de sumir. `matchesLeadBotTrigger`
+    // devolve true quando não há frase configurada, mantendo o comportamento
+    // padrão intacto.
     const existingLead = await findOpenLead(supabase, clinic.id, inbound.phone);
-    if (!existingLead && !matchesLeadBotTrigger(clinic.lead_bot_trigger_phrase, inbound.text)) {
-      console.log(
-        `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} ignorado: mensagem não bate com lead_bot_trigger_phrase para ${inbound.phone}`
-      );
-      return NextResponse.json({ ok: true });
-    }
+    const genuineContact = matchesLeadBotTrigger(clinic.lead_bot_trigger_phrase, inboundText);
 
     const lead = existingLead ?? (await findOrCreateOpenLead(supabase, clinic.id, inbound.phone));
     await appendLeadMessage(supabase, {
       leadId: lead.id,
       clinicId: clinic.id,
       role: "patient",
-      content: inbound.text,
+      content: inboundText,
     });
 
-    // Resposta automática ao PRIMEIRO contato de um lead novo (texto
-    // pré-preenchido do anúncio) — enviada uma única vez, só quando a clínica
-    // configurou `lead_bot_greeting`. Depois disso o atendimento segue 100%
-    // humano pelo Kanban. Gravada como 'bot' pra handleOutboundEcho não
-    // confundir o eco dela (que volta como fromMe) com um handoff manual.
-    if (!existingLead && clinic.lead_bot_greeting?.trim()) {
+    // Saudação automática: só no primeiro contato de um lead novo E quando a
+    // mensagem bate com a frase-gatilho (ou não há frase) — não manda o texto
+    // do anúncio pra um spammer. Gravada como 'bot' pra handleOutboundEcho não
+    // confundir o eco dela com um handoff manual.
+    if (!existingLead && genuineContact && clinic.lead_bot_greeting?.trim()) {
       const greeting = clinic.lead_bot_greeting.trim();
       try {
         await sendText(clinic, inbound.phone, greeting);
@@ -137,15 +148,15 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
       }
     }
 
-    // Depois da saudação (quando houver), o atendimento é 100% humano — o
-    // lead fica no Kanban ("Aguardando resposta") e a equipe responde pelo
-    // WhatsApp da clínica (esse envio manual é captado por handleOutboundEcho
-    // e gravado como 'staff').
     console.log(
       `[evolution-webhook] instance=${params.instanceName} clinic=${clinic.id} lead=${lead.id} mensagem registrada — atendimento humano`
     );
 
-    await maybeSendLeadAlert(supabase, clinic, lead, inbound.phone, inbound.text);
+    // Alerta pro celular da equipe: sempre em conversa já aberta; num contato
+    // novo, só se bater com a frase-gatilho (ou não há frase).
+    if (existingLead || genuineContact) {
+      await maybeSendLeadAlert(supabase, clinic, lead, inbound.phone, inboundText);
+    }
 
     return NextResponse.json({ ok: true });
   }
@@ -159,7 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     typedConversation.questions,
     typedConversation.current_index,
     typedConversation.answers,
-    inbound.text
+    inbound.text ?? ""
   );
 
   if (result.kind === "clarify") {

@@ -82,7 +82,26 @@ export interface InboundMessage {
   phone: string; // remoteJid sem o sufixo @s.whatsapp.net
   fromMe: boolean;
   text: string | null;
+  /** Quando a mensagem não tem texto mas É uma mensagem de conteúdo (áudio,
+   * imagem, figurinha…): um rótulo curto tipo "[áudio]" pra usar no lugar do
+   * texto (senão um primeiro contato só por áudio nunca virava lead).
+   * `null` pra mensagens de texto e pra tipos sem conteúdo (reação, protocolo). */
+  mediaLabel: string | null;
 }
+
+/** message.<campo> → rótulo, pros tipos de conteúdo sem texto que ainda contam como contato. */
+const MEDIA_LABELS: { field: string; label: string }[] = [
+  { field: "imageMessage", label: "[imagem]" },
+  { field: "videoMessage", label: "[vídeo]" },
+  { field: "audioMessage", label: "[áudio]" },
+  { field: "pttMessage", label: "[áudio]" },
+  { field: "stickerMessage", label: "[figurinha]" },
+  { field: "documentMessage", label: "[documento]" },
+  { field: "documentWithCaptionMessage", label: "[documento]" },
+  { field: "locationMessage", label: "[localização]" },
+  { field: "contactMessage", label: "[contato]" },
+  { field: "contactsArrayMessage", label: "[contato]" },
+];
 
 /**
  * Extrai os dados relevantes do payload de webhook da Evolution API pro evento
@@ -102,18 +121,29 @@ export function parseInboundMessage(payload: unknown): InboundMessage | null {
   if (!remoteJid) return null;
 
   const message = data.message as Record<string, unknown> | undefined;
+  const cap = (field: string) =>
+    (message?.[field] as Record<string, unknown> | undefined)?.caption as string | undefined;
   const text =
     (message?.conversation as string | undefined) ??
     ((message?.extendedTextMessage as Record<string, unknown> | undefined)?.text as string | undefined) ??
     ((message?.buttonsResponseMessage as Record<string, unknown> | undefined)?.selectedDisplayText as
       | string
       | undefined) ??
+    cap("imageMessage") ??
+    cap("videoMessage") ??
+    cap("documentMessage") ??
     null;
+
+  let mediaLabel: string | null = null;
+  if (!text && message) {
+    mediaLabel = MEDIA_LABELS.find((m) => message[m.field])?.label ?? null;
+  }
 
   return {
     remoteJid,
     phone: remoteJid.replace(/@.*$/, ""),
     fromMe: Boolean(key?.fromMe),
     text,
+    mediaLabel,
   };
 }
