@@ -3,7 +3,7 @@ import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { LeadsBoard } from "@/components/LeadsBoard";
-import { LEAD_BOARD_STATUSES } from "@/lib/leads";
+import { LEAD_BOARD_STATUSES, backfillLeadNamesFromPatients } from "@/lib/leads";
 import type { Lead } from "@/lib/database.types";
 
 /** Lead 'scheduled' mais antigo que isto sai do quadro sozinho no próximo
@@ -32,6 +32,10 @@ export default async function LeadsPage() {
     .is("archived_at", null)
     .lt("created_at", autoArchiveCutoff);
 
+  // Leads "Sem nome ainda" cujo telefone já é de um paciente cadastrado
+  // ganham o nome dele antes da leitura abaixo.
+  await backfillLeadNamesFromPatients(supabase, clinic.id);
+
   const [openRes, scheduledRes, archivedRes] = await Promise.all([
     supabase
       .from("leads")
@@ -57,6 +61,10 @@ export default async function LeadsPage() {
       .limit(LIST_LIMIT),
   ]);
 
+  // Sem isso, uma query que falha (ex.: coluna de migration ainda não
+  // aplicada) devolvia lista vazia e o quadro parecia só "sem leads".
+  const loadError = openRes.error ?? scheduledRes.error ?? archivedRes.error;
+
   return (
     <ClinicShell
       clinicName={clinic.name}
@@ -68,14 +76,28 @@ export default async function LeadsPage() {
       userName={userName}
       userAvatarUrl={userAvatarUrl}
     >
-      <LeadsBoard
-        clinicId={clinic.id}
-        role={role}
-        openLeads={(openRes.data as Lead[]) ?? []}
-        scheduledLeads={(scheduledRes.data as Lead[]) ?? []}
-        archivedLeads={(archivedRes.data as Lead[]) ?? []}
-        listLimit={LIST_LIMIT}
-      />
+      {loadError ? (
+        <div
+          style={{
+            padding: 14,
+            background: "var(--surface-sunken)",
+            borderLeft: "4px solid var(--danger)",
+            borderRadius: 8,
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 600, color: "var(--danger)" }}>Não deu pra carregar os leads.</p>
+          <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "var(--ink-soft)" }}>{loadError.message}</p>
+        </div>
+      ) : (
+        <LeadsBoard
+          clinicId={clinic.id}
+          role={role}
+          openLeads={(openRes.data as Lead[]) ?? []}
+          scheduledLeads={(scheduledRes.data as Lead[]) ?? []}
+          archivedLeads={(archivedRes.data as Lead[]) ?? []}
+          listLimit={LIST_LIMIT}
+        />
+      )}
     </ClinicShell>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LEAD_BOARD_STATUSES, compareLeadsForColumn, isStaleWaiting } from "./leads";
+import { LEAD_BOARD_STATUSES, compareLeadsForColumn, findPatientNameForPhone, isStaleWaiting } from "./leads";
 import type { Lead } from "./database.types";
 
 function fakeLead(overrides: Partial<Lead>): Lead {
@@ -47,6 +47,33 @@ describe("isStaleWaiting", () => {
   it("cai pro created_at quando não há last_message_at", () => {
     const lead = fakeLead({ status: "waiting_reply", last_message_at: null, created_at: "2026-09-01T12:00:00+00:00" });
     expect(isStaleWaiting(lead, 2, NOW)).toBe(true);
+  });
+});
+
+describe("findPatientNameForPhone", () => {
+  const patients = [
+    { name: "Maria Souza", phone: "5579999998888" },
+    { name: "  ", phone: "5579911112222" }, // nome em branco não conta
+    { name: "João Lima", phone: "557988887777" }, // 8 dígitos, sem o 9
+  ];
+
+  it("acha o nome quando o telefone bate exatamente", () => {
+    expect(findPatientNameForPhone("5579999998888", patients)).toBe("Maria Souza");
+  });
+
+  it("acha o nome pela variação do nono dígito", () => {
+    // lead sem o 9, paciente com o 9
+    expect(findPatientNameForPhone("557999998888", [{ name: "Maria Souza", phone: "5579999998888" }])).toBe(
+      "Maria Souza"
+    );
+  });
+
+  it("devolve null quando nenhum paciente bate", () => {
+    expect(findPatientNameForPhone("5511777776666", patients)).toBeNull();
+  });
+
+  it("ignora paciente com nome em branco", () => {
+    expect(findPatientNameForPhone("5579911112222", patients)).toBeNull();
   });
 });
 

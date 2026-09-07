@@ -72,12 +72,29 @@ export async function findOpenLead(supabase: SupabaseClient, clinicId: string, p
 }
 
 /**
+ * Nome do paciente já cadastrado cujo telefone bate com `phone` (considerando
+ * as variações de nono dígito, mesmo critério de `brPhoneVariants`), ou `null`.
+ * Função pura sobre uma lista já carregada — quem chama faz a query.
+ */
+export function findPatientNameForPhone(
+  phone: string,
+  patients: { name: string | null; phone: string | null }[]
+): string | null {
+  const variants = new Set(brPhoneVariants(phone));
+  for (const p of patients) {
+    if (p.phone && variants.has(p.phone) && p.name?.trim()) return p.name.trim();
+  }
+  return null;
+}
+
+/**
  * Acha o lead em triagem aberta pro telefone, ou cria um novo. Usado pelo
  * webhook da Evolution API a cada mensagem recebida de um número sem anamnese
  * em andamento nem agendamento pendente, depois que `matchesLeadBotTrigger`
  * (quando configurado) já liberou a criação de um lead novo. Nasce em
  * `waiting_reply` ("Aguardando resposta") — o atendimento por IA foi removido
- * por enquanto e a equipe responde manualmente pelo Kanban.
+ * por enquanto e a equipe responde manualmente pelo Kanban. Se o número já é
+ * de um paciente cadastrado, o lead já nasce com o nome dele.
  */
 export async function findOrCreateOpenLead(
   supabase: SupabaseClient,
@@ -87,13 +104,59 @@ export async function findOrCreateOpenLead(
   const existing = await findOpenLead(supabase, clinicId, phone);
   if (existing) return existing;
 
+  const { data: patients } = await supabase
+    .from("patients")
+    .select("name, phone")
+    .eq("clinic_id", clinicId)
+    .in("phone", brPhoneVariants(phone))
+    .not("name", "is", null)
+    .limit(5);
+  const patientName = findPatientNameForPhone(phone, patients ?? []);
+
   const { data: created, error } = await supabase
     .from("leads")
-    .insert({ clinic_id: clinicId, patient_phone: phone, status: "waiting_reply" })
+    .insert({ clinic_id: clinicId, patient_phone: phone, status: "waiting_reply", patient_name: patientName })
     .select("*")
     .single();
   if (error || !created) throw new Error(`Falha ao criar lead: ${error?.message}`);
   return created as Lead;
+}
+
+/**
+ * Preenche `patient_name` dos leads que ainda estão "Sem nome ainda" quando o
+ * telefone bate com um paciente já cadastrado. Roda no carregamento da tela
+ * de Leads (mesmo lugar da faxina de agendados) — pega tanto leads antigos
+ * quanto casos em que o paciente foi cadastrado depois do lead. Best-effort:
+ * nunca lança, só preenche nome vazio, nunca sobrescreve um nome existente.
+ */
+export async function backfillLeadNamesFromPatients(supabase: SupabaseClient, clinicId: string): Promise<void> {
+  try {
+    const { data: unnamed } = await supabase
+      .from("leads")
+      .select("id, patient_phone")
+      .eq("clinic_id", clinicId)
+      .is("patient_name", null);
+    if (!unnamed?.length) return;
+
+    const allVariants = [...new Set(unnamed.flatMap((l) => brPhoneVariants(l.patient_phone)))];
+    const { data: patients } = await supabase
+      .from("patients")
+      .select("name, phone")
+      .eq("clinic_id", clinicId)
+      .in("phone", allVariants)
+      .not("name", "is", null);
+    if (!patients?.length) return;
+
+    const now = new Date().toISOString();
+    await Promise.all(
+      unnamed
+        .map((l) => ({ id: l.id, name: findPatientNameForPhone(l.patient_phone, patients) }))
+        .filter((u): u is { id: string; name: string } => !!u.name)
+        .map((u) => supabase.from("leads").update({ patient_name: u.name, updated_at: now }).eq("id", u.id))
+    );
+  } catch (err) {
+    console.error("Falha ao preencher nomes de leads a partir dos pacientes:", err);
+  }
 }
 
 function normalizeForMatch(s: string): string {
