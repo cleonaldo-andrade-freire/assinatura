@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LEAD_BOARD_STATUSES, compareLeadsForColumn, findPatientNameForPhone, isStaleWaiting } from "./leads";
+import { LEAD_BOARD_STATUSES, compareLeadsByRecency, findPatientNameForPhone, isStaleWaiting } from "./leads";
 import type { Lead } from "./database.types";
 
 function fakeLead(overrides: Partial<Lead>): Lead {
@@ -77,15 +77,18 @@ describe("findPatientNameForPhone", () => {
   });
 });
 
-describe("compareLeadsForColumn", () => {
+describe("compareLeadsByRecency", () => {
   const older = fakeLead({ last_message_at: "2026-09-02T12:00:00+00:00" });
   const newer = fakeLead({ last_message_at: "2026-09-08T12:00:00+00:00" });
 
-  it("em 'Aguardando resposta', quem espera há mais tempo vem primeiro", () => {
-    expect(compareLeadsForColumn("waiting_reply", older, newer)).toBeLessThan(0);
+  it("coloca o mais recente primeiro (ordem decrescente de data)", () => {
+    expect(compareLeadsByRecency(older, newer)).toBeGreaterThan(0);
+    expect([older, newer].sort(compareLeadsByRecency)).toEqual([newer, older]);
   });
 
-  it("nas outras colunas, o mais recente vem primeiro", () => {
-    expect(compareLeadsForColumn("urgent", older, newer)).toBeGreaterThan(0);
+  it("cai pro created_at quando não há last_message_at", () => {
+    const a = fakeLead({ last_message_at: null, created_at: "2026-09-01T00:00:00+00:00" });
+    const b = fakeLead({ last_message_at: null, created_at: "2026-09-05T00:00:00+00:00" });
+    expect([a, b].sort(compareLeadsByRecency)).toEqual([b, a]);
   });
 });

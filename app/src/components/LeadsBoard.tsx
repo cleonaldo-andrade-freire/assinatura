@@ -10,7 +10,7 @@ import {
   LEAD_BOARD_STATUSES,
   LEAD_STATUS_LABEL,
   STALE_WAITING_DAYS,
-  compareLeadsForColumn,
+  compareLeadsByRecency,
   isStaleWaiting,
 } from "@/lib/leads";
 import { formatBRTime, formatBRWeekday } from "@/lib/date";
@@ -149,7 +149,7 @@ export function LeadsBoard({
       if (onlyStale && !isStaleWaiting(l, STALE_WAITING_DAYS)) continue;
       map.get(l.status)?.push(l);
     }
-    for (const [status, items] of map) items.sort((a, b) => compareLeadsForColumn(status, a, b));
+    for (const items of map.values()) items.sort(compareLeadsByRecency);
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localOpen, query, onlyStale]);

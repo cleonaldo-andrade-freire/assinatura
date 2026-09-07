@@ -30,18 +30,17 @@ export function isStaleWaiting(
 }
 
 /**
- * Ordena os cards de uma coluna. "Aguardando resposta" vai por quem espera há
- * mais tempo primeiro (a pessoa mais esquecida no topo); as demais colunas
- * seguem os mais recentes primeiro.
+ * Ordena os cards por data decrescente — atividade mais recente
+ * (`last_message_at`, ou `created_at` enquanto não houver) no topo, em todas
+ * as colunas. Quem precisa achar os parados usa o filtro "sem resposta há +Nd".
  */
-export function compareLeadsForColumn(
-  status: LeadStatus,
+export function compareLeadsByRecency(
   a: Pick<Lead, "last_message_at" | "created_at">,
   b: Pick<Lead, "last_message_at" | "created_at">
 ): number {
   const at = new Date(a.last_message_at ?? a.created_at).getTime();
   const bt = new Date(b.last_message_at ?? b.created_at).getTime();
-  return status === "waiting_reply" ? at - bt : bt - at;
+  return bt - at;
 }
 
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
