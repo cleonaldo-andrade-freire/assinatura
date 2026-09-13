@@ -40,11 +40,15 @@ Hoje a produção assina pelo **agente local** (`SIGNATURE_PROVIDER=local_agent`
 **`src/lib/certillion/CertillionClient.ts`** — camada HTTP pura contra `https://cloud.certillion.com/css/restful/application`. Sem Supabase, sem regra de negócio, testável com `fetch` mockado.
 
 - `clientToken()` — autenticação do sistema integrador
+- `userDiscovery(cpf, psc)` — checagem prévia: esse CPF tem conta nesse PSC?
 - `buildAuthorizeUrl({ manager_id, code_challenge, psc, scope, lifetime, redirect_uri, state, login_hint })`
-- `exchangeToken({ code, code_verifier, redirect_uri })`
+- `exchangeToken({ code, code_verifier, psc, redirect_uri })`
 - `uploadDocument(token, bytes)` → `document_hash`
 - `sign(signingToken, { signature_standard, signature_policy, pki_name, hashes })` → `transaction_id` + `signatures[]`
 - `downloadDocument(token, transaction_id)` → bytes
+- `validateSignature(clientToken, signatureBase64)` — verificação automática pós-assinatura
+
+Formato exato de cada chamada: ver a seção 13, conferida contra a collection oficial.
 
 Os três passos de assinatura ficam **deliberadamente separados**. Encapsulá-los num método único faz qualquer falha reiniciar o fluxo inteiro e recobrar upload e assinatura já concluídos.
 
@@ -92,20 +96,21 @@ O `code_verifier` **não pode** ficar em cookie: a dentista abre o link no celul
 
 ### 6.1 Vínculo do certificado
 
+0. **Checagem prévia:** `POST /oauth/user-discovery` com o CPF da dentista e `psc=REMOTEID`. Se ela não tiver conta nesse PSC, o painel diz isso na hora, em vez de mandá-la bater numa tela de login que vai falhar.
 1. Painel chama `/certillion/authorize`; o servidor gera `code_verifier` + `code_challenge` (S256) e um `state`, persiste em `certillion_auth_requests`.
 2. Painel exibe QR code e link.
-3. Dentista abre no celular → `GET /oauth/authorize` com `manager_id`, `code_challenge`, `code_challenge_method=S256`, `psc=REMOTEID`, `scope=signature_session`, `lifetime=43200`, `redirect_uri`, `state`.
+3. Dentista abre no celular → `GET /oauth/authorize` com `manager_id`, `code_challenge`, `code_challenge_method=S256`, `psc=REMOTEID`, `scope=signature_session`, `lifetime`, `redirect_uri`, `state` e **`login_hint` com o CPF dela** — isso trava a autorização no titular certo em vez de aceitar quem estiver logado no celular.
 4. Ela autentica no app RemoteID com PIN ou biometria facial.
 5. Callback em `/api/auth/certillion/callback?code=...&state=...`.
-6. Servidor troca o code em `POST /oauth/token` enviando **os dois pares de credencial** — `client_id`/`client_secret` **e** `manager_id`/`manager_secret` (mesmos valores) — e o `redirect_uri` idêntico ao usado no authorize. Omitir o par `manager_*` é a causa clássica de `invalid_grant`.
-7. Confere `authorized_identification` contra `clinics.dentist_cpf`. **Se não bater, recusa e não grava** — isso impede vincular silenciosamente o certificado da pessoa errada.
+6. Servidor troca o code em `POST /oauth/token` (form-urlencoded) com `grant_type=authorization_code`, `code`, `code_verifier`, **`psc` (o mesmo do authorize)**, `redirect_uri` idêntico ao do authorize, e **os dois pares de credencial** — `client_id`/`client_secret` **e** `manager_id`/`manager_secret`, mesmos valores. Ver a nota da seção 13 sobre essa duplicidade.
+7. Confere `authorized_identification` contra `clinics.dentist_cpf`. **Se não bater, recusa e não grava** — isso impede vincular silenciosamente o certificado da pessoa errada. O `login_hint` do passo 3 é a primeira barreira; esta é a segunda, e é a que não depende do comportamento do PSC.
 8. Grava a sessão usando o `expires_in` retornado, nunca o `lifetime` pedido.
 
 ### 6.2 Assinatura do atestado
 
 1. `requestCertificateSignature` monta o PDF como hoje, já com rodapé de validação e QR.
 2. Provider busca sessão válida. **Sem sessão → `falha`** com mensagem acionável, que cai no `signature_error` já exibido em `dashboard/atestados/[id]/page.tsx:200`.
-3. `POST /oauth/client_token`.
+3. `POST /oauth/client_token` (`grant_type=client_credentials`, `client_id`, `client_secret`, `lifetime`).
 4. `POST /oauth/document` → persiste o `document_hash` em `certillion_signatures` antes de seguir.
 5. `POST /oauth/signature` com `signature_standard: PADES`, `signature_policy: AD_RB`, `pki_name: ICP_BR` → persiste o `transaction_id`.
 6. **Verifica `status.code === 140` em cada entrada de `signatures[]`.** HTTP 200 não significa assinatura válida.
@@ -161,7 +166,9 @@ Tratamento em três camadas:
 - falha no download → não repete o `/signature`
 - reconciliação resolve o provider pela linha, não pelo ambiente
 
-**Manual, inegociável antes de produção:** autorizar no celular da dentista, emitir um atestado real, baixar o PDF e **validar em validar.iti.gov.br**. Sem esse passo não está pronto — não existe sandbox e toda assinatura de teste já é real.
+**Verificação automática:** depois do download, `POST /oauth/signature/validate` com `pki_name: ICP_BR` confirma cadeia, CRL e OCSP sem intervenção humana. Roda no teste de integração e serve de rede permanente contra regressão silenciosa. Confirmar antes se essa chamada é cobrada.
+
+**Manual, inegociável antes de produção:** autorizar no celular da dentista, emitir um atestado real, baixar o PDF e **validar em validar.iti.gov.br**. O `signature/validate` é o validador do próprio fornecedor; o do ITI é a autoridade independente. Sem esse passo não está pronto — não existe sandbox e toda assinatura de teste já é real.
 
 ## 10. Fora do escopo desta entrega
 
@@ -179,3 +186,42 @@ Receitas, evoluções de tratamento e anamnese (reusam o mesmo provider depois);
 - **Credencial de teste expira em 90 dias** sem aviso; o guardrail de ambiente existe para isso não virar quebra silenciosa.
 - **Rate limit por CPF** (~80 chamadas/min, variável por PSC) — irrelevante no volume atual, relevante se o produto crescer.
 - **Custo unitário** só é conhecido na proposta comercial; PAdES é obrigatório para PDF e é a faixa mais cara.
+
+---
+
+## 13. Referência de chamadas — conferida contra a collection oficial
+
+Base: `https://cloud.certillion.com/css/restful/application` (o host `cloud-ws` é **exclusivo** do `CERTILLION_SIGNER`, que não usamos).
+
+| Chamada | Método / corpo | Auth |
+|---|---|---|
+| `/oauth/client_token` | form-urlencoded: `grant_type=client_credentials`, `client_id`, `client_secret`, `lifetime` (padrão 300s) | — |
+| `/oauth/user-discovery` | JSON: `client_id`, `client_secret`, `user_cpf_cnpj:"CPF"`, `val_cpf_cnpj`, `psc` | — |
+| `/oauth/find-psc-accounts` | JSON: `client_id`, `client_secret`, `user_cpf_cnpj`, `val_cpf_cnpj` | — |
+| `/oauth/authorize` | GET, query: `response_type=code`, `manager_id`, `code_challenge`, `code_challenge_method=S256`, `psc`, `scope`, `state`, `lifetime`, `redirect_uri`, `login_hint` | — |
+| `/oauth/token` | form-urlencoded: `grant_type=authorization_code`, `client_id`, `client_secret`, `manager_id`, `manager_secret`, `code`, `code_verifier`, `psc`, `redirect_uri` | — |
+| `/oauth/document` | multipart, campo `file` | Bearer (client ou assinatura) |
+| `/oauth/signature` | JSON: `signature_standard`, `signature_policy`, `pki_name`, `detached`, `hashes[{id, alias, hash}]` | Bearer **de assinatura** |
+| `/oauth/document/{transaction_id}` | GET, devolve bytes | Bearer (client ou assinatura) |
+| `/oauth/signature/validate` | JSON: `signature`, `pki_name` | Bearer |
+| `/certificate-discovery` | GET, header opcional `certificate_alias` | Bearer de assinatura |
+
+Note que `/certificate-discovery` **não** leva o prefixo `/oauth`.
+
+### Pontos que a collection esclareceu
+
+- **`psc` é obrigatório também no `/token`**, não só no `/authorize`, e tem que ser o mesmo nos dois.
+- **`grant_type`** é explícito nas duas chamadas de token — `client_credentials` e `authorization_code`.
+- **`redirect_uri` é opcional** e não exige pré-cadastro, mas se for enviado num, tem que ser idêntico no outro. Vamos sempre enviar.
+- **`login_hint` aceita o CPF** e é a forma de travar a autorização no titular certo.
+- **`state` é texto livre** — no exemplo do fornecedor vem um UUID com sufixo, o que confirma que podemos carregar o vínculo da clínica ali.
+
+### Divergência registrada
+
+A doc oficial lista `client_id`, `client_secret`, `manager_id` e `manager_secret` como **todos obrigatórios** no `/token`. A collection do fornecedor envia **só o par `manager_*`** (mais `psc`). Como enviar os quatro satisfaz as duas leituras e campos extras em form-urlencoded são inofensivos, mandamos os quatro. Se o `/token` responder `invalid_grant`, testar a variante com só o par `manager_*` **antes** de suspeitar do PKCE — é o ponto mais provável de divergência entre doc e servidor.
+
+### Guardado para depois, não construir agora
+
+- **`/oauth/otp_authorize`** dispensa navegador: a pessoa lê um OTP no app e digita no painel — `client_id`, `client_secret`, `username` (CPF), `otp`, `scope`, `lifetime`. Seria uma UX bem mais simples que QR + callback, **mas o OTP é do app Certillion, e a dentista usa o app do RemoteID**. Vale um teste rápido quando a credencial chegar; se funcionar com RemoteID, simplifica bastante o vínculo.
+- **Assinatura visível pela própria API** (`visible_signature_options`), com `image_data` para o logo e posicionamento na página. Hoje desenhamos o carimbo com `pdf-lib` antes de enviar, o que continua valendo. Se um dia migrarmos, atenção: os marcadores de texto na collection vêm com cifrão (`$CERT_CN_WO_CPF$`, `$SIGN_DATE$`) e no OpenAPI público aparecem sem. A collection é o artefato que roda.
+- **`/certificate-discovery`** devolve dados do certificado vinculado; serve para avisar a dentista antes de o certificado dela vencer.
