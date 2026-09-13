@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appointmentEndsAt,
   buildContinuationMap,
+  buildDayRowTimes,
   buildDaySlotTimes,
   isCancelled,
   rangesOverlap,
@@ -209,5 +210,45 @@ describe("buildContinuationMap", () => {
   it("agendamento cancelado não ocupa slot nenhum — o horário deve ficar livre pra realocação", () => {
     const appt = fakeAppointment({ scheduled_at: slots[0], duration_minutes: 90, status: "cancelado_paciente" });
     expect(buildContinuationMap([appt], slots).size).toBe(0);
+  });
+});
+
+describe("buildDayRowTimes", () => {
+  const DIA = "2026-08-12";
+
+  it("sem nada fora do expediente, é exatamente a grade padrão", () => {
+    expect(buildDayRowTimes(DIA, [])).toEqual(buildDaySlotTimes(DIA));
+  });
+
+  it("atendimento dentro do expediente não duplica a linha", () => {
+    const dentro = fakeAppointment({ scheduled_at: "2026-08-12T11:00:00+00:00" }); // 08:00 BR
+    expect(buildDayRowTimes(DIA, [dentro])).toEqual(buildDaySlotTimes(DIA));
+  });
+
+  it("urgência registrada às 23h ganha uma linha no fim da agenda", () => {
+    // Regressão: registro retroativo de urgência noturna existia no banco e
+    // nunca era desenhado — a grade ia só até 20:30, então sumia da tela.
+    const noturno = fakeAppointment({ scheduled_at: "2026-08-13T02:00:00+00:00", backdated: true }); // 23:00 BR
+    const rows = buildDayRowTimes(DIA, [noturno]);
+    expect(rows).toHaveLength(buildDaySlotTimes(DIA).length + 1);
+    expect(rows[rows.length - 1]).toBe(slotKey(noturno.scheduled_at));
+  });
+
+  it("urgência da madrugada ganha uma linha no topo, em ordem cronológica", () => {
+    const madrugada = fakeAppointment({ scheduled_at: "2026-08-12T05:00:00+00:00", backdated: true }); // 02:00 BR
+    const rows = buildDayRowTimes(DIA, [madrugada]);
+    expect(rows[0]).toBe(slotKey(madrugada.scheduled_at));
+    expect([...rows]).toEqual([...rows].sort());
+  });
+
+  it("ignora agendamento de outro dia — a lista recebida cobre a semana/mês inteiros", () => {
+    const outroDia = fakeAppointment({ scheduled_at: "2026-08-14T02:00:00+00:00", backdated: true }); // 23:00 BR do dia 13
+    expect(buildDayRowTimes(DIA, [outroDia])).toEqual(buildDaySlotTimes(DIA));
+  });
+
+  it("dois atendimentos no mesmo horário fora da grade geram uma linha só", () => {
+    const a = fakeAppointment({ scheduled_at: "2026-08-13T02:00:00+00:00", backdated: true });
+    const b = fakeAppointment({ scheduled_at: "2026-08-13T02:00:00+00:00", backdated: true });
+    expect(buildDayRowTimes(DIA, [a, b])).toHaveLength(buildDaySlotTimes(DIA).length + 1);
   });
 });

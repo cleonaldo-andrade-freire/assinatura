@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { brDateOnly } from "@/lib/date";
+import { brDateOnly, brDayRangeUtc } from "@/lib/date";
 import { brPhoneVariants } from "@/lib/validation";
 import type { Appointment, AppointmentEventActor, AppointmentStatus } from "@/lib/database.types";
 
@@ -25,6 +25,38 @@ export const AGENDA_END_HOUR = 21;
  */
 export function slotKey(iso: string): string {
   return new Date(iso).toISOString();
+}
+
+/**
+ * Linhas da agenda do dia: a grade de expediente MAIS o horário de qualquer
+ * atendimento do dia que caia fora dela, em ordem cronológica.
+ *
+ * Existe por causa do registro retroativo (`backdated`): urgência atendida de
+ * madrugada ou tarde da noite entra com horário real, fora das 08h–21h. Sem
+ * essa união, o registro ficava no banco e nunca era desenhado — a agenda só
+ * percorre os slots da grade — então sumia da tela depois de salvo.
+ *
+ * Só adiciona linha onde existe atendimento: um registro das 23h não faz a
+ * agenda desenhar 21:00, 21:30 e 22:00 vazias.
+ *
+ * `appointments` pode cobrir a semana/mês inteiros (é a mesma consulta que
+ * alimenta as outras visões) — o que não for do dia é ignorado.
+ */
+export function buildDayRowTimes(
+  dateStr: string,
+  appointments: Pick<Appointment, "scheduled_at">[]
+): string[] {
+  const grade = buildDaySlotTimes(dateStr);
+  const { fromIso, toIso } = brDayRangeUtc(dateStr);
+  const linhas = new Set(grade);
+
+  for (const a of appointments) {
+    const key = slotKey(a.scheduled_at);
+    if (key >= slotKey(fromIso) && key < slotKey(toIso)) linhas.add(key);
+  }
+
+  // Ordem lexicográfica de ISO-8601 em UTC é a ordem cronológica.
+  return [...linhas].sort();
 }
 
 /** Horários (ISO, em UTC) de cada slot de 30min do dia `dateStr` ("YYYY-MM-DD", calendário do Brasil). */

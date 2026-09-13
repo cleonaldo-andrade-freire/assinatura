@@ -94,10 +94,12 @@ export function NewAppointmentForm({
   // abaixo limpa a seleção normalmente.
   const allSlotsForDate = buildDaySlotTimes(date);
   const futureSlots = allSlotsForDate.filter((s) => new Date(s).getTime() > Date.now());
-  // No registro retroativo o dia inteiro é ofertável (o atendimento já
-  // aconteceu); no fluxo normal só os horários que ainda não passaram.
+  // No registro retroativo o dia inteiro é ofertável, das 00:00 às 23:30 e não
+  // só o expediente: o caso típico é justamente a urgência atendida à noite ou
+  // de madrugada, fora do horário normal. No fluxo normal, só os horários da
+  // grade que ainda não passaram.
   const slots = backdated
-    ? allSlotsForDate
+    ? buildDaySlotTimes(date, 0, 24)
     : time && allSlotsForDate.includes(time) && !futureSlots.includes(time)
     ? [time, ...futureSlots].sort()
     : futureSlots;

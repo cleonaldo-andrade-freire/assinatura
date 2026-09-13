@@ -13,6 +13,7 @@ import { PatientAvatar } from "@/components/PatientAvatar";
 import {
   APPOINTMENT_STATUS_CLASS,
   buildContinuationMap,
+  buildDayRowTimes,
   buildDaySlotTimes,
   needsManualFollowUp,
   slotKey,
@@ -83,7 +84,11 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
     bySlot.set(key, list);
   }
 
-  const daySlots = buildDaySlotTimes(date);
+  // A visão diária cresce pra caber atendimento fora do expediente (registro
+  // retroativo de urgência noturna); a grade semanal continua no expediente
+  // fixo — as colunas dos 7 dias compartilham a mesma altura de linha.
+  const daySlots = buildDayRowTimes(date, appointments);
+  const weekSlotsPerDay = buildDaySlotTimes(date).length;
   const continuationSlots = buildContinuationMap(appointments, daySlots);
   const prevDay = addDaysToDateStr(date, -1);
   const nextDay = addDaysToDateStr(date, 1);
@@ -243,7 +248,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
               clinicId={clinic.id}
               professionalName={professionalName}
               weekDays={weekDays}
-              slotsPerDay={daySlots.length}
+              slotsPerDay={weekSlotsPerDay}
               today={today}
               appointments={appointments}
             />
