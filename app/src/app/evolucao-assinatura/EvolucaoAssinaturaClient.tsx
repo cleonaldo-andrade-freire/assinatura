@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { hasScrolledToEnd } from "@/lib/scrollGate";
 import { formatCPF, isValidCPF } from "@/lib/validation";
 import { formatTreatmentsLines } from "@/lib/treatments";
 import { SignatureMark } from "@/components/SignatureMark";
@@ -92,8 +93,23 @@ export function EvolucaoAssinaturaClient() {
   function handleScroll() {
     const el = scrollAreaRef.current;
     if (!el || scrollCompleto) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) setScrollCompleto(true);
+    if (hasScrolledToEnd(el)) setScrollCompleto(true);
   }
+
+  // Reavalia assim que o conteúdo renderiza (e quando a janela muda de
+  // tamanho): evolução curta cabe inteira na caixa, o navegador não dispara
+  // 'scroll' num elemento sem o que rolar, e sem isso o paciente ficava com o
+  // botão desabilitado pra sempre — nada pra rolar e nenhum jeito de avançar.
+  useEffect(() => {
+    if (step !== "review" || scrollCompleto) return;
+    const check = () => {
+      const el = scrollAreaRef.current;
+      if (el && hasScrolledToEnd(el)) setScrollCompleto(true);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [step, scrollCompleto, doc, statusData?.needsConsent]);
 
   async function submitCpf() {
     if (!isValidCPF(cpf)) {

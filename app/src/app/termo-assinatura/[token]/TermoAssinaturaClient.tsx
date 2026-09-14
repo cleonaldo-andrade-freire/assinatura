@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
 import richTextStyles from "@/components/ui/RichTextEditor.module.css";
 import { formatCPF } from "@/lib/validation";
+import { hasScrolledToEnd } from "@/lib/scrollGate";
+
+/** Termo jurídico é texto longo — tolerância um pouco maior que a da evolução. */
+const SCROLL_TOLERANCE = 40;
 
 const onlyDigits = (str: string | null | undefined) => (str || "").replace(/\D/g, "");
 
@@ -27,6 +31,7 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
   const [cpfError, setCpfError] = useState("");
   
   const [scrollCompleto, setScrollCompleto] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [signature, setSignature] = useState<SignatureResult | null>(null);
   const [signError, setSignError] = useState("");
 
@@ -82,11 +87,22 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
   }
 
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
-    const el = e.currentTarget;
-    if (el.scrollHeight - el.scrollTop <= el.clientHeight + 40) {
-      setScrollCompleto(true);
-    }
+    if (hasScrolledToEnd(e.currentTarget, SCROLL_TOLERANCE)) setScrollCompleto(true);
   }
+
+  // Um termo curto cabe inteiro na caixa; o navegador não dispara 'scroll' em
+  // elemento sem o que rolar, e sem reavaliar aqui o botão nunca liberava
+  // (mesma causa raiz do bug da evolução — ver lib/scrollGate.ts).
+  useEffect(() => {
+    if (step !== "review" || scrollCompleto) return;
+    const check = () => {
+      const el = scrollAreaRef.current;
+      if (el && hasScrolledToEnd(el, SCROLL_TOLERANCE)) setScrollCompleto(true);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [step, scrollCompleto, htmlContent]);
 
   async function handleSign() {
     if (!signature) return;
@@ -187,7 +203,7 @@ export function TermoAssinaturaClient({ token }: { token: string }) {
             <p style={{ color: "var(--ink-soft)", fontSize: 13, margin: "4px 0 0" }}>Leia o documento até o final para assinar.</p>
           </div>
           
-          <div onScroll={handleScroll} style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px", background: "var(--bg)" }}>
+          <div ref={scrollAreaRef} onScroll={handleScroll} style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px", background: "var(--bg)" }}>
             <div className={richTextStyles.richContent} dangerouslySetInnerHTML={{ __html: htmlContent }} style={{ fontSize: 14, color: "var(--ink-soft)", background: "#fff", padding: 15, borderRadius: 8, border: "1px solid var(--line)" }} />
           </div>
 
