@@ -282,9 +282,14 @@ th {
    quanto conteúdo tem acima. */
 .sticky-actions {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Ancorada na viewport VISUAL, não na de layout: com zoom de pinça no iOS,
+     `fixed` mantém a largura original e os botões saem cortados nas duas
+     bordas. As variáveis são publicadas por <StickyActionsViewport />; sem
+     ela (ou sem suporte a visualViewport) os valores de reserva devolvem o
+     comportamento antigo, de borda a borda. */
+  left: var(--action-bar-left, 0px);
+  width: var(--action-bar-width, 100%);
+  bottom: var(--action-bar-bottom, 0px);
   z-index: 50;
   background: var(--surface);
   border-top: 1px solid var(--line);

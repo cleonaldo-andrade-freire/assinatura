@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { jsPDF } from "jspdf";
 import { formatCPF, isValidCPF } from "@/lib/validation";
+import { StickyActionsViewport } from "@/components/StickyActionsViewport";
 import { SignatureMark } from "@/components/SignatureMark";
 
 function draftKey(token: string) {
@@ -498,6 +499,7 @@ export function AssinaturaClient() {
 
   return (
     <div className="wrap">
+      <StickyActionsViewport />
       <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
         {record?.clinic_logo_url && (
           // eslint-disable-next-line @next/next/no-img-element

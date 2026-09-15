@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { hasScrolledToEnd } from "@/lib/scrollGate";
+import { StickyActionsViewport } from "@/components/StickyActionsViewport";
 import { formatCPF, isValidCPF } from "@/lib/validation";
 import { formatTreatmentsLines } from "@/lib/treatments";
 import { SignatureMark } from "@/components/SignatureMark";
@@ -212,6 +213,7 @@ export function EvolucaoAssinaturaClient() {
 
   return (
     <div className="wrap">
+      <StickyActionsViewport />
       <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
         {(doc?.clinicLogoUrl || statusData?.clinicLogoUrl) && (
           // eslint-disable-next-line @next/next/no-img-element
