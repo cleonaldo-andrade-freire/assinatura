@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
-import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
+import { formatTimestampBR, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { ConfirmationActions } from "@/components/ConfirmationActions";
 import type { Appointment } from "@/lib/database.types";
 
@@ -50,7 +50,7 @@ export default async function ConfirmacaoPage({ params }: { params: { token: str
         <div className="card" style={{ textAlign: "center" }}>
           <h1>Você já confirmou</h1>
           <p style={{ color: "var(--ink-soft)" }}>
-            Sua presença já está confirmada pra {formatBRWeekday(a.scheduled_at, "long")}, {formatBRDate(a.scheduled_at)} às{" "}
+            Sua presença já está confirmada pra {formatBRWeekday(a.scheduled_at, "long")}, {formatTimestampBR(a.scheduled_at)} às{" "}
             {formatBRTime(a.scheduled_at)}.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default async function ConfirmacaoPage({ params }: { params: { token: str
               <strong style={{ color: "var(--brand-deep)" }}>{a.patient_name}</strong>
             </p>
             <p style={{ color: "var(--ink-soft)", fontSize: 14.5 }}>
-              {formatBRWeekday(a.scheduled_at, "long")}, {formatBRDate(a.scheduled_at)} às {formatBRTime(a.scheduled_at)}
+              {formatBRWeekday(a.scheduled_at, "long")}, {formatTimestampBR(a.scheduled_at)} às {formatBRTime(a.scheduled_at)}
               {a.professional_name && ` — ${a.professional_name}`}
             </p>
           </div>

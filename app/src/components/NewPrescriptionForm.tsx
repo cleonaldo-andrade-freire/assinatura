@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, isValidCPF, toE164BR } from "@/lib/validation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PrescriptionItemsEditor } from "@/components/PrescriptionItemsEditor";
 import { ExamRequestsEditor } from "@/components/ExamRequestsEditor";

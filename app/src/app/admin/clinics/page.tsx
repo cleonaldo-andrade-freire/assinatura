@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { getAllPlans } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
 
@@ -146,8 +146,8 @@ export default async function AdminClinicsPage() {
                     <td>
                       <span className={`${styles.statusDot} ${status.className}`}>{status.label}</span>
                     </td>
-                    <td>{c.trial_ends_at ? formatBRDate(c.trial_ends_at) : "—"}</td>
-                    <td>{formatBRDate(c.created_at)}</td>
+                    <td>{c.trial_ends_at ? formatTimestampBR(c.trial_ends_at) : "—"}</td>
+                    <td>{formatTimestampBR(c.created_at)}</td>
                   </tr>
                 );
               })}

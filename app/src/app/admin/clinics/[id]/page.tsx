@@ -10,7 +10,7 @@ import { CancelClinicButton } from "@/components/CancelClinicButton";
 import { ClinicBillingAdjustments } from "@/components/ClinicBillingAdjustments";
 import { LogoUpload } from "@/components/LogoUpload";
 import { WhatsappConfigForm } from "@/components/WhatsappConfigForm";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { Clinic } from "@/lib/database.types";
 import styles from "@/components/admin/admin.module.css";
 
@@ -145,12 +145,12 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
             <div className={styles.defItem}>
               <span className={styles.defLabel}>Trial até</span>
               <span className={styles.defValue}>
-                {typedClinic.trial_ends_at ? formatBRDate(typedClinic.trial_ends_at) : "—"}
+                {typedClinic.trial_ends_at ? formatTimestampBR(typedClinic.trial_ends_at) : "—"}
               </span>
             </div>
             <div className={styles.defItem}>
               <span className={styles.defLabel}>Criada em</span>
-              <span className={styles.defValue}>{formatBRDate(typedClinic.created_at)}</span>
+              <span className={styles.defValue}>{formatTimestampBR(typedClinic.created_at)}</span>
             </div>
             {typedClinic.asaas_customer_id && (
               <div className={styles.defItem}>
@@ -198,7 +198,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
               {recentAnamneses.map((a) => (
                 <tr key={a.id}>
                   <td>{a.patient_name}</td>
-                  <td>{formatBRDate(a.created_at)}</td>
+                  <td>{formatTimestampBR(a.created_at)}</td>
                   <td>
                     {signedAnamnesisIds.has(a.id) ? (
                       <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>
@@ -232,7 +232,7 @@ export default async function AdminClinicDetailPage({ params }: { params: { id: 
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td>{formatBRDate(`${p.dueDate}T12:00:00-03:00`)}</td>
+                  <td>{formatDateOnlyBR(p.dueDate)}</td>
                   <td>R$ {p.value.toFixed(2)}</td>
                   <td>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
                   <td>

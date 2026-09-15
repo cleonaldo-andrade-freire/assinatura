@@ -72,10 +72,12 @@ export function drawClinicLetterhead(
   return y - 12;
 }
 
-export function formatDateBR(iso: string): string {
-  const [year, month, day] = iso.slice(0, 10).split("-");
-  return `${day}/${month}/${year}`;
-}
+// `formatDateBR` vivia aqui e era um recorte cru da string ISO: certo pra
+// coluna `date`, errado pra `timestamptz`, que chegava em UTC e imprimia o dia
+// seguinte a partir das 21h de Brasília. Como o nome era quase igual ao
+// `formatBRDate` de lib/date.ts, que tem o contrato oposto, trocar um pelo
+// outro passava despercebido. Agora os dois moram em lib/date.ts com nomes que
+// dizem o que recebem: `formatDateOnlyBR` e `formatTimestampBR`.
 
 export function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);

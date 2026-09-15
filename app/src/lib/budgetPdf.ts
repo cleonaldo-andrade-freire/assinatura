@@ -1,5 +1,6 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { drawClinicLetterhead, formatDateBR, wrapText, type LetterheadClinic, type LetterheadDentist } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, wrapText, type LetterheadClinic, type LetterheadDentist } from "@/lib/pdfTextLayout";
+import { formatDateOnlyBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Budget, BudgetItem } from "@/lib/database.types";
 
@@ -66,7 +67,7 @@ export async function buildBudgetPdf(
   field("Paciente:", budget.patient_name);
   field("Descrição:", budget.description);
   field("Responsável:", budget.responsible_name);
-  field("Data:", formatDateBR(budget.budget_date));
+  field("Data:", formatDateOnlyBR(budget.budget_date));
 
   ensureSpace(20);
   y -= 6;

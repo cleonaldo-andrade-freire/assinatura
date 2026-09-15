@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { lookupDocumentValidation } from "@/lib/documentValidation";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { formatValidationCode } from "@/lib/validationCode";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime } from "@/lib/date";
 
 export default async function ValidarCodePage({ params }: { params: { code: string } }) {
   const supabase = createSupabaseAdminClient();
@@ -126,7 +126,7 @@ async function ValidationResult({
           </div>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data de emissão</dt>
-            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{result.issuedAt && formatBRDate(result.issuedAt)}</dd>
+            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{result.issuedAt && formatTimestampBR(result.issuedAt)}</dd>
           </div>
           <div style={{ padding: "12px 0" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Código verificado</dt>

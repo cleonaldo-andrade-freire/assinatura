@@ -1,7 +1,7 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { drawClinicLetterhead, wrapText, type LetterheadClinic, type LetterheadDentist } from "@/lib/pdfTextLayout";
 import { formatMoneyDisplay } from "@/lib/money";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import type { Receipt, TreatmentDebit } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -21,8 +21,7 @@ function formatMoney(value: number): string {
  * Monta o PDF do recibo — mesmo estilo de `budgetPdf.ts`. Diferente do
  * orçamento (uma data/forma de pagamento só pro documento inteiro), aqui
  * cada débito pode ter sido pago em data/forma diferente, então isso entra
- * como subtítulo de cada linha. `formatBRDate` (não `formatDateBR` do
- * pdfTextLayout) porque `paid_at`/`created_at` são timestamptz, não uma
+ * como subtítulo de cada linha. `formatTimestampBR` (não `formatDateOnlyBR`) porque `paid_at`/`created_at` são timestamptz, não uma
  * data pura — precisa converter pro fuso de Brasília, não só fatiar a
  * string.
  */
@@ -71,7 +70,7 @@ export async function buildReceiptPdf(
   }
 
   field("Paciente:", receipt.patient_name);
-  field("Data de emissão:", formatBRDate(receipt.created_at));
+  field("Data de emissão:", formatTimestampBR(receipt.created_at));
   field("Recibo nº:", receipt.id.slice(0, 8).toUpperCase());
 
   ensureSpace(20);
@@ -90,7 +89,7 @@ export async function buildReceiptPdf(
     const priceWidth = font.widthOfTextAtSize(priceText, 11);
     page.drawText(priceText, { x: PAGE_WIDTH - MARGIN - priceWidth, y: y + 15, size: 11, font, color: rgb(0.08, 0.08, 0.08) });
 
-    const subtitle = [debit.payment_method, debit.paid_at ? formatBRDate(debit.paid_at) : null].filter(Boolean).join(" — ");
+    const subtitle = [debit.payment_method, debit.paid_at ? formatTimestampBR(debit.paid_at) : null].filter(Boolean).join(" — ");
     if (subtitle) {
       page.drawText(subtitle, { x: MARGIN, y, size: 9.5, font, color: rgb(0.45, 0.45, 0.45) });
       y -= 14;

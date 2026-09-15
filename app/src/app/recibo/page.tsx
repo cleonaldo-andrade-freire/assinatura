@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Receipt, TreatmentDebit } from "@/lib/database.types";
 
@@ -44,7 +44,7 @@ export default async function ReciboPage({ searchParams }: { searchParams: { tok
         <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data de emissão</dt>
-            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(r.created_at)}</dd>
+            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatTimestampBR(r.created_at)}</dd>
           </div>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Tratamentos pagos</dt>
@@ -56,7 +56,7 @@ export default async function ReciboPage({ searchParams }: { searchParams: { tok
                     <span style={{ fontWeight: 600, flexShrink: 0 }}>{formatMoney(d.amount)}</span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                    {[d.payment_method, d.paid_at ? formatBRDate(d.paid_at) : null].filter(Boolean).join(" — ")}
+                    {[d.payment_method, d.paid_at ? formatTimestampBR(d.paid_at) : null].filter(Boolean).join(" — ")}
                   </div>
                 </div>
               ))}

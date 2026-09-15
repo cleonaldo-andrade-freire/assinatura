@@ -12,7 +12,7 @@ import {
   buildDaySlotTimes,
   slotKey,
 } from "@/lib/appointments";
-import { formatBRDate, formatBRTime } from "@/lib/date";
+import { formatTimestampBR, formatBRTime } from "@/lib/date";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import type { Appointment } from "@/lib/database.types";
@@ -237,7 +237,7 @@ export function AgendaWeekGrid({
                     onDoubleClick={interactive && !draggingId ? () => setOpenSlot({ date: d, time: slot }) : undefined}
                     role={interactive ? "button" : undefined}
                     tabIndex={interactive ? 0 : undefined}
-                    aria-label={interactive ? `Agendar em ${formatBRDate(slot)} às ${formatBRTime(slot)}` : undefined}
+                    aria-label={interactive ? `Agendar em ${formatTimestampBR(slot)} às ${formatBRTime(slot)}` : undefined}
                     onKeyDown={
                       interactive && !draggingId
                         ? (e) => {

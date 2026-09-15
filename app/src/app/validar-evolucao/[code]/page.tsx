@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { lookupEvolutionValidation } from "@/lib/documentValidation";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { formatValidationCode } from "@/lib/validationCode";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/date";
 
 export default async function ValidarEvolucaoCodePage({ params }: { params: { code: string } }) {
   const supabase = createSupabaseAdminClient();
@@ -99,7 +99,7 @@ async function ValidationResult({ code, supabase }: { code: string; supabase: Re
           </div>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data da evolução</dt>
-            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{result.evolutionDate && formatBRDate(result.evolutionDate)}</dd>
+            <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{result.evolutionDate && formatDateOnlyBR(result.evolutionDate)}</dd>
           </div>
           <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
             <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Assinado em</dt>

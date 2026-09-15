@@ -12,7 +12,7 @@ import { AgentCertificateSelector, useAgent } from "@/components/AgentDetector";
 import { signEvolutionAsDentist } from "@/lib/evolutionDentistSigningClient";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { formatMoneyDisplay, formatMoneyInput, parseMoneyInput } from "@/lib/money";
-import { formatBRDate, formatBRTime } from "@/lib/date";
+import { formatTimestampBR, formatBRTime, formatDateOnlyBR } from "@/lib/date";
 import { sortFavoritesFirst, treatmentOptionLabel } from "@/lib/priceTables";
 import { formatTreatmentsLines } from "@/lib/treatments";
 import type { PriceTable, PriceTableItem, Treatment, TreatmentEvolution } from "@/lib/database.types";
@@ -556,7 +556,7 @@ export function TreatmentDetailModal({
                           <div key={e.id} className={tp.evolutionCard}>
                             <div className={tp.evolutionHeader}>
                               <span className={tp.evolutionDate}>
-                                {formatBRDate(`${e.evolution_date}T12:00:00-03:00`)} · {formatBRTime(e.created_at)}
+                                {formatDateOnlyBR(e.evolution_date)} · {formatBRTime(e.created_at)}
                               </span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 {e.dentist_signature_status === "assinada" ? (

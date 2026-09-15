@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
 import { signEvolutionAsDentist } from "@/lib/evolutionDentistSigningClient";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import styles from "@/styles/shell.module.css";
 
 interface EvolutionRow {
@@ -162,7 +162,7 @@ export function EvolucoesPendentesClient({
                     {r.patient_name}
                   </td>
                   <td data-label="Tratamento">{r.tooth_region ? `${r.tooth_region} — ${r.treatment_name}` : r.treatment_name}</td>
-                  <td data-label="Data">{formatBRDate(`${r.evolution_date}T12:00:00-03:00`)}</td>
+                  <td data-label="Data">{formatDateOnlyBR(r.evolution_date)}</td>
                   <td data-label="Evolução" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
                     {preview}
                   </td>

@@ -6,7 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { StopPropagationTd } from "@/components/ui/StopPropagation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
 import type { Certificate, CertificateTemplate } from "@/lib/database.types";
@@ -159,7 +159,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                         <span className={styles.rowTitle}>{c.patient_name}</span>
                       </span>
                     </td>
-                    <td data-label="Data">{formatBRDate(c.created_at)}</td>
+                    <td data-label="Data">{formatTimestampBR(c.created_at)}</td>
                     <td data-label="Dias de afastamento">{c.rest_days}</td>
                     <td data-label="Status">
                       <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>

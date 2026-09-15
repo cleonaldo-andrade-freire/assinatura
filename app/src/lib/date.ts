@@ -7,8 +7,34 @@
  */
 const BR_TIMEZONE = "America/Sao_Paulo";
 
-export function formatBRDate(iso: string): string {
+/**
+ * Formata um **timestamp** (`timestamptz`, gravado em UTC) como dd/mm/aaaa no
+ * dia do Brasil.
+ *
+ * Use isto para `created_at`, `signed_at`, `paid_at` e afins. Não use para
+ * coluna `date` — veja `formatDateOnlyBR` e a nota abaixo.
+ *
+ * O nome diz o que a função recebe de propósito: antes existiam um
+ * `formatBRDate` (aqui) e um `formatDateBR` (em pdfTextLayout), de nomes quase
+ * idênticos e contratos opostos, e trocar um pelo outro deslocava um dia em
+ * silêncio — um atestado emitido às 21:30 saía com a data do dia seguinte no
+ * PDF enquanto a tela mostrava a correta.
+ */
+export function formatTimestampBR(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { timeZone: BR_TIMEZONE });
+}
+
+/**
+ * Formata uma **data pura** ("YYYY-MM-DD", coluna `date`) como dd/mm/aaaa.
+ *
+ * Não passa por `Date`: `new Date("2026-09-14")` é meia-noite **UTC**, que no
+ * Brasil ainda é dia 13 — era assim que a data do atendimento aparecia um dia
+ * atrás na tela do paciente. Data de calendário não tem fuso; o certo é não
+ * convertê-la para instante nenhum.
+ */
+export function formatDateOnlyBR(dateStr: string): string {
+  const [year, month, day] = dateStr.slice(0, 10).split("-");
+  return `${day}/${month}/${year}`;
 }
 
 export function formatBRDateTime(iso: string, timeStyle: "short" | "medium" = "short"): string {
@@ -90,7 +116,7 @@ const MONTH_NAMES_PT = [
   "dezembro",
 ];
 
-/** "2026-08" (ou "2026-08-01") → "agosto de 2026" — string pura, sem passar por `Date` (mesmo cuidado de `formatDateBR` em pdfTextLayout.ts: evita o dia voltar por causa do fuso). */
+/** "2026-08" (ou "2026-08-01") → "agosto de 2026" — string pura, sem passar por `Date` (mesmo cuidado de `formatDateOnlyBR`: evita o dia voltar por causa do fuso). */
 export function formatBRMonthLabel(monthStr: string): string {
   const [year, month] = monthStr.slice(0, 7).split("-").map(Number);
   return `${MONTH_NAMES_PT[month - 1]} de ${year}`;

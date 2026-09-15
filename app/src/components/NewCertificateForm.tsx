@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, formatCPF, isValidCPF, toE164BR } from "@/lib/validation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";

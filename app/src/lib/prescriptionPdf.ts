@@ -1,5 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { drawClinicLetterhead, formatDateBR, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
+import { formatTimestampBR } from "@/lib/date";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
 import { isExamsOnly, prescriptionDocTitle } from "@/lib/prescriptionExams";
@@ -86,7 +87,7 @@ export async function buildPrescriptionPdf(
     "Dentista responsável:",
     `${prescription.dentist_name} — CRO ${prescription.dentist_cro}/${prescription.dentist_cro_uf}`
   );
-  field("Data de emissão:", formatDateBR(prescription.created_at));
+  field("Data de emissão:", formatTimestampBR(prescription.created_at));
 
   ensureSpace(20);
   y -= 6;
@@ -170,7 +171,7 @@ export async function buildPrescriptionPdf(
     const notesValues: Record<string, string> = {
       paciente_nome: prescription.patient_name,
       paciente_cpf: prescription.patient_cpf ?? "",
-      data_emissao: formatDateBR(prescription.created_at),
+      data_emissao: formatTimestampBR(prescription.created_at),
     };
     const notesWords = reasonToWords(prescription.notes, notesValues);
     const spaceWidth = font.widthOfTextAtSize(" ", 11);

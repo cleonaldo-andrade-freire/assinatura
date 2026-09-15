@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { Certificate } from "@/lib/database.types";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
 
@@ -76,11 +76,11 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
               </div>
               <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data do atendimento</dt>
-                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(`${c.care_date}T12:00:00-03:00`)}</dd>
+                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(c.care_date)}</dd>
               </div>
               <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Início do afastamento</dt>
-                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatBRDate(`${c.starts_on}T12:00:00-03:00`)}</dd>
+                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(c.starts_on)}</dd>
               </div>
               <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Dias de afastamento</dt>

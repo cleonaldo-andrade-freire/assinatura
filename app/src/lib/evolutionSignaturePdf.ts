@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { drawClinicLetterhead, formatDateBR, wrapText } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, wrapText } from "@/lib/pdfTextLayout";
+import { formatDateOnlyBR } from "@/lib/date";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import { formatTreatmentsLines } from "@/lib/treatments";
@@ -111,7 +112,7 @@ export async function buildEvolutionSignedPdf(
   field("Paciente:", snapshot.patient.name);
   if (snapshot.patient.cpf) field("CPF:", snapshot.patient.cpf);
   field("Dentista responsável:", `${snapshot.dentist.name} — CRO ${snapshot.dentist.cro}/${snapshot.dentist.croUf}`);
-  field("Data do atendimento:", formatDateBR(snapshot.evolutionDate));
+  field("Data do atendimento:", formatDateOnlyBR(snapshot.evolutionDate));
   fieldLines(snapshot.treatments.length > 1 ? "Tratamentos:" : "Tratamento:", formatTreatmentsLines(snapshot.treatments));
 
   ensureSpace(20);

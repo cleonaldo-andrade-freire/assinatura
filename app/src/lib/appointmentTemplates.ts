@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
+import { formatTimestampBR, formatBRTime, formatBRWeekday, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Appointment, AppointmentMessageTemplateType, Clinic } from "@/lib/database.types";
 
@@ -79,14 +79,14 @@ export function buildAppointmentTemplateVars(clinic: Clinic, appointment: Appoin
     paciente_nome: appointment.patient_name,
     clinica_nome: clinic.name,
     profissional_nome: appointment.professional_name,
-    data_consulta: `${formatBRWeekday(appointment.scheduled_at, "long")}, ${formatBRDate(appointment.scheduled_at)}`,
+    data_consulta: `${formatBRWeekday(appointment.scheduled_at, "long")}, ${formatTimestampBR(appointment.scheduled_at)}`,
     hora_consulta: formatBRTime(appointment.scheduled_at),
     duracao_consulta: `${appointment.duration_minutes} min`,
     status_consulta: appointment.status,
     link_confirmacao: confirmationLink(appointment.confirm_token),
     endereco_clinica: clinic.clinic_address ?? "",
     celular_clinica: clinic.whatsapp_number ? formatBRPhoneLocal(clinic.whatsapp_number) : clinic.dentist_phone ?? "",
-    data_retorno: appointment.return_due_date ? formatBRDate(`${appointment.return_due_date}T12:00:00-03:00`) : "",
+    data_retorno: appointment.return_due_date ? formatDateOnlyBR(appointment.return_due_date) : "",
   };
 }
 

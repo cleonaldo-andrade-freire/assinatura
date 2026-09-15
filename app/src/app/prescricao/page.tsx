@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import type { Prescription } from "@/lib/database.types";
 import { isExamsOnly } from "@/lib/prescriptionExams";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
@@ -26,7 +26,7 @@ export default async function PrescricaoPage({ searchParams }: { searchParams: {
     ? resolveReasonSegments(p.notes, {
         paciente_nome: p.patient_name,
         paciente_cpf: p.patient_cpf ?? "",
-        data_emissao: formatBRDate(p.created_at),
+        data_emissao: formatTimestampBR(p.created_at),
       })
     : null;
 

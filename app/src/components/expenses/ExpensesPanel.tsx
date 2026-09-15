@@ -10,8 +10,8 @@ import { ExpenseFormModal } from "@/components/expenses/ExpenseFormModal";
 import { ExpenseReceiptButton } from "@/components/expenses/ExpenseReceiptButton";
 import { EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
 import { formatMoneyDisplay } from "@/lib/money";
-import { formatBRDateTime, addMonthsToDateStr } from "@/lib/date";
-import { formatDateBR } from "@/lib/pdfTextLayout";
+import { formatBRDateTime, addMonthsToDateStr, formatDateOnlyBR } from "@/lib/date";
+
 import type { Expense } from "@/lib/database.types";
 import { TrashIcon, UndoIcon } from "@/components/expenses/icons";
 import styles from "@/styles/shell.module.css";
@@ -260,10 +260,10 @@ export function ExpensesPanel({
                         {e.category && <span className={ex.categoryTag}>{e.category}</span>}
                         {e.due_date < todayStr ? (
                           <span className={ex.dueTag} style={{ background: "var(--danger-tint)", color: "var(--danger)" }}>
-                            Venceu {formatDateBR(e.due_date)}
+                            Venceu {formatDateOnlyBR(e.due_date)}
                           </span>
                         ) : (
-                          <span className={ex.dueTag}>Vence {formatDateBR(e.due_date)}</span>
+                          <span className={ex.dueTag}>Vence {formatDateOnlyBR(e.due_date)}</span>
                         )}
                       </div>
                     </div>

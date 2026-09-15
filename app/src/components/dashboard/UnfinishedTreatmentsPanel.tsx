@@ -1,5 +1,5 @@
 import { ClickableRow } from "@/components/ui/ClickableRow";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import styles from "@/styles/shell.module.css";
 
 export interface UnfinishedTreatmentGroup {
@@ -36,7 +36,7 @@ export function UnfinishedTreatmentsPanel({ groups }: { groups: UnfinishedTreatm
                 <td data-label="Em aberto">
                   {g.count} tratamento{g.count === 1 ? "" : "s"}
                 </td>
-                <td data-label="Desde">{formatBRDate(g.oldestCreatedAt)}</td>
+                <td data-label="Desde">{formatTimestampBR(g.oldestCreatedAt)}</td>
                 <td style={{ textAlign: "right" }}>
                   <span className={`${styles.btn} ${styles.btnGhost}`}>Ver</span>
                 </td>

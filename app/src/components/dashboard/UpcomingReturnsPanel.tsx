@@ -6,12 +6,12 @@ import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, brDateOnly, formatDateOnlyBR } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 function daysFromToday(dateStr: string): number {
-  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00-03:00`);
+  const today = new Date(`${brDateOnly()}T00:00:00-03:00`);
   const target = new Date(`${dateStr}T00:00:00-03:00`);
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
@@ -129,7 +129,7 @@ export function UpcomingReturnsPanel({
                     </td>
                     <td data-label="Último agendamento">{formatBRDateTime(a.scheduled_at, "medium")}</td>
                     <td data-label="Data de retorno">
-                      {formatBRDate(`${a.return_due_date}T12:00:00-03:00`)}{" "}
+                      {formatDateOnlyBR(a.return_due_date!)}{" "}
                       <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>({dueLabel(a.return_due_date!)})</span>
                     </td>
                     <td>

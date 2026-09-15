@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { formatDateOnlyBR } from "@/lib/date";
 import { hasScrolledToEnd } from "@/lib/scrollGate";
 import { StickyActionsViewport } from "@/components/StickyActionsViewport";
 import { formatCPF, isValidCPF } from "@/lib/validation";
@@ -39,13 +40,11 @@ interface DocumentResponse {
 
 type Step = "loading" | "not-found" | "terminal" | "identify" | "verifying" | "review" | "sign" | "submitting" | "success" | "refuse" | "refusing" | "refused";
 
-function formatDateBR(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("pt-BR");
-  } catch {
-    return iso;
-  }
-}
+// `evolutionDate` é coluna `date` ("YYYY-MM-DD"). Aqui havia um
+// `new Date(iso).toLocaleDateString("pt-BR")`, que interpretava a string como
+// meia-noite UTC e, no fuso do aparelho do paciente, mostrava sempre o dia
+// anterior ao atendimento. Data de calendário não vira instante — ver
+// `formatDateOnlyBR`.
 
 export function EvolucaoAssinaturaClient() {
   const params = useSearchParams();
@@ -355,7 +354,7 @@ export function EvolucaoAssinaturaClient() {
                 </div>
                 <div>
                   <dt style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Data</dt>
-                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateBR(doc.snapshot.evolutionDate)}</dd>
+                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(doc.snapshot.evolutionDate)}</dd>
                 </div>
               </dl>
 

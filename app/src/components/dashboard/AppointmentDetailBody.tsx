@@ -5,7 +5,7 @@ import { AppointmentActions } from "@/components/AppointmentActions";
 import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";
 import { OpenTreatmentsSummary } from "@/components/dashboard/OpenTreatmentsSummary";
 import { PatientAvatar } from "@/components/PatientAvatar";
-import { formatBRDate, formatBRDateTime, formatBRTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, formatBRTime, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { Appointment, AppointmentEvent } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -92,7 +92,7 @@ export function AppointmentDetailBody({
               {/* Círculo de Data */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: "50%", background: "var(--surface-sunken)", color: "var(--ink)", flexShrink: 0 }}>
                 <span style={{ fontSize: 13.5, fontWeight: 700 }}>
-                  {formatBRDate(a.scheduled_at).substring(0, 5)}
+                  {formatTimestampBR(a.scheduled_at).substring(0, 5)}
                 </span>
               </div>
               {/* Círculo de Horário */}
@@ -119,7 +119,7 @@ export function AppointmentDetailBody({
           {a.return_due_date &&
             detailRow(
               "Retorno previsto",
-              `${formatBRDate(`${a.return_due_date}T12:00:00-03:00`)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
+              `${formatDateOnlyBR(a.return_due_date)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
             )}
           <AppointmentNotesField clinicId={clinicId} appointmentId={a.id} notes={a.notes} onChanged={onChanged} />
         </div>

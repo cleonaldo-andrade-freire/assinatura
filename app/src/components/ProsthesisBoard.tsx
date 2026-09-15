@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { PROSTHESIS_STAGES, PROSTHESIS_STAGE_LABEL } from "@/lib/prosthesisTemplates";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { ProsthesisOrder, ProsthesisStage } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -179,7 +179,7 @@ export function ProsthesisBoard({ clinicId, orders }: { clinicId: string; orders
                       </div>
                     </div>
                     <div className={styles.kanbanCardMeta}>
-                      {o.expected_delivery_date && <span>Previsão {formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`)}</span>}
+                      {o.expected_delivery_date && <span>Previsão {formatDateOnlyBR(o.expected_delivery_date)}</span>}
                       <span>{daysInStage(o.stage_since)}d neste estágio</span>
                     </div>
                   </Link>

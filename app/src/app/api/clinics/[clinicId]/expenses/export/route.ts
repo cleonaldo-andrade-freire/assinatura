@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { EXPENSE_NATURE_LABEL } from "@/lib/expenseNature";
-import { firstOfNextMonth, brDateOnly } from "@/lib/date";
-import { formatDateBR } from "@/lib/pdfTextLayout";
+import { firstOfNextMonth, brDateOnly, formatDateOnlyBR, formatTimestampBR } from "@/lib/date";
+
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Expense } from "@/lib/database.types";
 
@@ -57,8 +57,8 @@ export async function GET(req: NextRequest, { params }: { params: { clinicId: st
         e.category ?? "",
         e.nature ? EXPENSE_NATURE_LABEL[e.nature] : "",
         e.status === "pago" ? "Pago" : "Pendente",
-        formatDateBR(e.due_date),
-        e.paid_at ? formatDateBR(e.paid_at) : "",
+        formatDateOnlyBR(e.due_date),
+        e.paid_at ? formatTimestampBR(e.paid_at) : "",
         e.payment_method ?? "",
         formatMoneyDisplay(Number(e.amount)),
       ]

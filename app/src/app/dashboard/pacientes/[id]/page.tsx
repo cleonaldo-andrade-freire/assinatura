@@ -22,7 +22,7 @@ import { PatientAppointmentsTable } from "@/components/dashboard/PatientAppointm
 import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
 import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
 import { NewPrescriptionTrigger } from "@/components/NewPrescriptionTrigger";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
@@ -327,7 +327,7 @@ export default async function EditPatientPage({
                 const signatureInfo = signatureIdByAnamnesis.get(a.id);
                 return (
                   <ClickableRow key={a.id} href={`/dashboard/anamneses/${a.id}`}>
-                    <td>{formatBRDate(a.created_at)}</td>
+                    <td>{formatTimestampBR(a.created_at)}</td>
                     <td>
                       {signatureInfo ? (
                         <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
@@ -413,7 +413,7 @@ export default async function EditPatientPage({
             <tbody>
               {budgets.map((b) => (
                 <tr key={b.id}>
-                  <td>{formatBRDate(`${b.budget_date}T12:00:00-03:00`)}</td>
+                  <td>{formatDateOnlyBR(b.budget_date)}</td>
                   <td className={styles.rowTitle}>{b.description}</td>
                   <td data-label="Valor">{formatMoney(budgetTotalById.get(b.id) ?? 0)}</td>
                   <td data-label="Status">
@@ -509,7 +509,7 @@ export default async function EditPatientPage({
             <tbody>
               {certificates.map((c) => (
                 <ClickableRow key={c.id} href={`/dashboard/atestados/${c.id}`}>
-                  <td>{formatBRDate(c.created_at)}</td>
+                  <td>{formatTimestampBR(c.created_at)}</td>
                   <td>{c.rest_days}</td>
                   <td>
                     <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
@@ -570,7 +570,7 @@ export default async function EditPatientPage({
             <tbody>
               {prescriptions.map((p) => (
                 <ClickableRow key={p.id} href={`/dashboard/prescricoes/${p.id}`}>
-                  <td>{formatBRDate(p.created_at)}</td>
+                  <td>{formatTimestampBR(p.created_at)}</td>
                   <td>{p.items.length}</td>
                   <td>
                     <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>

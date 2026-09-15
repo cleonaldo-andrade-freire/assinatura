@@ -13,7 +13,7 @@ import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, type AsaasPaymen
 import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
 import { countMonthlyAnamneses, countTotalAnamneses } from "@/lib/usage";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import styles from "@/styles/shell.module.css";
 
@@ -267,7 +267,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
           <div className={styles.panelBody}>
             {clinic.subscription_status === "trialing" && clinic.trial_ends_at && (
               <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: invoiceUrl ? "0 0 16px" : 0 }}>
-                Teste gratuito até {formatBRDate(clinic.trial_ends_at)}.
+                Teste gratuito até {formatTimestampBR(clinic.trial_ends_at)}.
               </p>
             )}
             {invoiceUrl ? (
@@ -299,7 +299,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td className={styles.rowTitle}>{formatBRDate(`${p.dueDate}T12:00:00-03:00`)}</td>
+                    <td className={styles.rowTitle}>{formatDateOnlyBR(p.dueDate)}</td>
                     <td data-label="Valor">R$ {p.value.toFixed(2).replace(".", ",")}</td>
                     <td data-label="Status">{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</td>
                     <td>

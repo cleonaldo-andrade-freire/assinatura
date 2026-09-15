@@ -1,5 +1,6 @@
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { drawClinicLetterhead, formatDateBR, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, reasonToWords, wrapReasonWords, wrapText, type LetterheadClinic } from "@/lib/pdfTextLayout";
+import { formatDateOnlyBR, formatTimestampBR } from "@/lib/date";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
 import type { Certificate } from "@/lib/database.types";
@@ -79,9 +80,9 @@ export async function buildCertificatePdf(
     "Dentista responsável:",
     `${certificate.dentist_name} — CRO ${certificate.dentist_cro}/${certificate.dentist_cro_uf}`
   );
-  field("Data de emissão:", formatDateBR(certificate.created_at));
-  field("Data do atendimento:", formatDateBR(certificate.care_date));
-  field("Início do afastamento:", formatDateBR(certificate.starts_on));
+  field("Data de emissão:", formatTimestampBR(certificate.created_at));
+  field("Data do atendimento:", formatDateOnlyBR(certificate.care_date));
+  field("Início do afastamento:", formatDateOnlyBR(certificate.starts_on));
   field("Dias de afastamento:", String(certificate.rest_days));
 
 
@@ -101,9 +102,9 @@ export async function buildCertificatePdf(
   const reasonValues: Record<string, string> = {
     paciente_nome: certificate.patient_name,
     paciente_cpf: certificate.patient_cpf ?? "",
-    data_emissao: formatDateBR(certificate.created_at),
-    data_atendimento: formatDateBR(certificate.care_date),
-    data_inicio: formatDateBR(certificate.starts_on),
+    data_emissao: formatTimestampBR(certificate.created_at),
+    data_atendimento: formatDateOnlyBR(certificate.care_date),
+    data_inicio: formatDateOnlyBR(certificate.starts_on),
     dias_afastamento: String(certificate.rest_days),
   };
   const reasonWords = reasonToWords(certificate.reason, reasonValues);

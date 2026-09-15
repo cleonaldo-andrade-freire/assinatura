@@ -1,7 +1,7 @@
 import { ProsthesisOrderActions } from "@/components/ProsthesisOrderActions";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { PROSTHESIS_STAGE_LABEL } from "@/lib/prosthesisTemplates";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { ProsthesisOrder, ProsthesisOrderEvent } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
@@ -58,7 +58,7 @@ export function ProsthesisOrderDetailBody({
           {detailRow("Descrição", o.description)}
           {detailRow("Estágio atual", PROSTHESIS_STAGE_LABEL[o.stage])}
           {detailRow("Neste estágio desde", formatBRDateTime(o.stage_since, "medium"))}
-          {detailRow("Previsão de entrega", o.expected_delivery_date ? formatBRDate(`${o.expected_delivery_date}T12:00:00-03:00`) : "Não informada")}
+          {detailRow("Previsão de entrega", o.expected_delivery_date ? formatDateOnlyBR(o.expected_delivery_date) : "Não informada")}
           {o.notes && detailRow("Observação", o.notes)}
         </div>
       </div>

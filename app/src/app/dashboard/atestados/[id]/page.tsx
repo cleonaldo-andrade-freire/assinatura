@@ -4,7 +4,7 @@ import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { CertificateActions } from "@/components/CertificateActions";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatValidationCode } from "@/lib/validationCode";
@@ -40,9 +40,9 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
   const reasonSegments = resolveReasonSegments(c.reason, {
     paciente_nome: c.patient_name,
     paciente_cpf: c.patient_cpf ?? "",
-    data_emissao: formatBRDate(c.created_at),
-    data_atendimento: formatBRDate(`${c.care_date}T12:00:00-03:00`),
-    data_inicio: formatBRDate(`${c.starts_on}T12:00:00-03:00`),
+    data_emissao: formatTimestampBR(c.created_at),
+    data_atendimento: formatDateOnlyBR(c.care_date),
+    data_inicio: formatDateOnlyBR(c.starts_on),
     dias_afastamento: String(c.rest_days),
   });
 
@@ -51,7 +51,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title={c.patient_name}
-      subtitle={`Atestado emitido em ${formatBRDate(c.created_at)}`}
+      subtitle={`Atestado emitido em ${formatTimestampBR(c.created_at)}`}
       role={role}
       userEmail={userEmail}
       userName={userName}
@@ -71,8 +71,8 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           {c.patient_cpf && detailRow("CPF", c.patient_cpf)}
           {c.patient_phone && detailRow("WhatsApp", `+55 ${formatBRPhoneLocal(c.patient_phone)}`)}
           {detailRow("Dentista responsável", `${c.dentist_name} — CRO ${c.dentist_cro}/${c.dentist_cro_uf}`)}
-          {detailRow("Data do atendimento", formatBRDate(`${c.care_date}T12:00:00-03:00`))}
-          {detailRow("Início do afastamento", formatBRDate(`${c.starts_on}T12:00:00-03:00`))}
+          {detailRow("Data do atendimento", formatDateOnlyBR(c.care_date))}
+          {detailRow("Início do afastamento", formatDateOnlyBR(c.starts_on))}
           {detailRow("Dias de afastamento", String(c.rest_days))}
           {/* CID sempre visível aqui pra clínica — a flag `hide_cid_on_patient_pdf`
               só controla o que aparece no PDF entregue ao paciente. */}

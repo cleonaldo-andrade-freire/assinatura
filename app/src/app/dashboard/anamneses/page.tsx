@@ -7,7 +7,7 @@ import { ClickableRow } from "@/components/ui/ClickableRow";
 import { StopPropagationTd } from "@/components/ui/StopPropagation";
 import { ConversationRowActions } from "@/components/ConversationRowActions";
 import { countMonthlyAnamneses } from "@/lib/usage";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime } from "@/lib/date";
 import type { Conversation, QuestionTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewAnamnesisTrigger } from "@/components/NewAnamnesisTrigger";
@@ -297,7 +297,7 @@ export default async function AnamnesesPage({
                           <span className={styles.rowTitle}>{a.patient_name}</span>
                         </span>
                       </td>
-                      <td data-label="Data">{formatBRDate(a.created_at)}</td>
+                      <td data-label="Data">{formatTimestampBR(a.created_at)}</td>
                       <td data-label="Status">
                         {signatureId ? (
                           <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>

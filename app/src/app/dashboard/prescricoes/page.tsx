@@ -6,7 +6,7 @@ import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { StopPropagationTd } from "@/components/ui/StopPropagation";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { startOfCurrentMonth } from "@/lib/usage";
 import type { Prescription, PrescriptionTemplate } from "@/lib/database.types";
@@ -159,7 +159,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
                         <span className={styles.rowTitle}>{p.patient_name}</span>
                       </span>
                     </td>
-                    <td data-label="Data">{formatBRDate(p.created_at)}</td>
+                    <td data-label="Data">{formatTimestampBR(p.created_at)}</td>
                     <td data-label="Itens">{p.items.length + (p.exam_requests ?? []).length}</td>
                     <td data-label="Status">
                       <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[p.status]]}`}>

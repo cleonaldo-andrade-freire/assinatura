@@ -4,7 +4,7 @@ import { getClinicAndRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { PrescriptionActions } from "@/components/PrescriptionActions";
-import { formatBRDate, formatBRDateTime } from "@/lib/date";
+import { formatTimestampBR, formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { formatValidationCode } from "@/lib/validationCode";
@@ -43,7 +43,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
     ? resolveReasonSegments(p.notes, {
         paciente_nome: p.patient_name,
         paciente_cpf: p.patient_cpf ?? "",
-        data_emissao: formatBRDate(p.created_at),
+        data_emissao: formatTimestampBR(p.created_at),
       })
     : null;
 
@@ -52,7 +52,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title={p.patient_name}
-      subtitle={`Receituário emitido em ${formatBRDate(p.created_at)}`}
+      subtitle={`Receituário emitido em ${formatTimestampBR(p.created_at)}`}
       role={role}
       userEmail={userEmail}
       userName={userName}

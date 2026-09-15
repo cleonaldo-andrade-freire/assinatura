@@ -7,6 +7,8 @@ import {
   firstOfMonth,
   firstOfNextMonth,
   formatBRMonthLabel,
+  formatDateOnlyBR,
+  formatTimestampBR,
   mondayOfWeek,
   monthGridDays,
 } from "./date";
@@ -20,7 +22,7 @@ describe("formatBRMonthLabel", () => {
     expect(formatBRMonthLabel("2026-01-15")).toBe("janeiro de 2026");
   });
 
-  it("não passa por Date/fuso — mesmo cuidado de formatDateBR", () => {
+  it("não passa por Date/fuso — mesmo cuidado de formatDateOnlyBR", () => {
     expect(formatBRMonthLabel("2026-12")).toBe("dezembro de 2026");
   });
 });
@@ -123,5 +125,41 @@ describe("monthGridDays", () => {
   it("tamanho é sempre múltiplo de 7 (semanas completas)", () => {
     expect(monthGridDays("2026-08-19").length % 7).toBe(0);
     expect(monthGridDays("2026-02-10").length % 7).toBe(0);
+  });
+});
+
+describe("formatTimestampBR", () => {
+  it("usa o dia do Brasil, não o UTC, depois das 21h", () => {
+    // Regressão: atestado emitido 21:30 de 15/09 vira 16/09T00:30Z no banco.
+    // O PDF recortava a string ISO e imprimia 16/09 — um dia à frente da
+    // tela do painel, no mesmo documento.
+    expect(formatTimestampBR("2026-09-16T00:30:00.000Z")).toBe("15/09/2026");
+  });
+
+  it("vira o dia só às 21h de Brasília (00h UTC)", () => {
+    expect(formatTimestampBR("2026-09-15T23:59:00-03:00")).toBe("15/09/2026");
+    expect(formatTimestampBR("2026-09-16T00:00:00-03:00")).toBe("16/09/2026");
+  });
+
+  it("de dia, quando UTC e Brasil coincidem, não muda nada", () => {
+    expect(formatTimestampBR("2026-09-15T14:00:00-03:00")).toBe("15/09/2026");
+  });
+});
+
+describe("formatDateOnlyBR", () => {
+  it("não desloca uma coluna DATE", () => {
+    // Regressão: `new Date("2026-09-14")` é meia-noite UTC; formatado no fuso
+    // do aparelho virava 13/09 na tela do paciente — errado o dia inteiro,
+    // todo dia, não só depois das 21h.
+    expect(formatDateOnlyBR("2026-09-14")).toBe("14/09/2026");
+  });
+
+  it("aguenta o primeiro e o último dia do ano sem escorregar", () => {
+    expect(formatDateOnlyBR("2026-01-01")).toBe("01/01/2026");
+    expect(formatDateOnlyBR("2026-12-31")).toBe("31/12/2026");
+  });
+
+  it("ignora hora se vier junto — a coluna é data, o resto é ruído", () => {
+    expect(formatDateOnlyBR("2026-09-14T00:00:00.000Z")).toBe("14/09/2026");
   });
 });

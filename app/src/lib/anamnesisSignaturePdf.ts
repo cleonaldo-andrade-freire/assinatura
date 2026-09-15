@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { drawClinicLetterhead, formatDateBR, type LetterheadDentist } from "@/lib/pdfTextLayout";
+import { drawClinicLetterhead, type LetterheadDentist } from "@/lib/pdfTextLayout";
+import { formatDateOnlyBR, formatTimestampBR } from "@/lib/date";
 import { formatBRPhoneLocal, formatCPF } from "@/lib/validation";
 
 interface AnamnesisPdfData {
@@ -49,7 +50,7 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
 
   // Header
   page.drawText("FICHA DE ANAMNESE", { x: MARGIN, y, size: 16, font: bold });
-  page.drawText(`Data: ${formatDateBR(new Date().toISOString())}`, { 
+  page.drawText(`Data: ${formatTimestampBR(new Date().toISOString())}`, { 
     x: PAGE_WIDTH - MARGIN - 100, 
     y, 
     size: 10, 
@@ -87,7 +88,7 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   y -= 40;
 
   drawField("CPF", data.patient.cpf ? formatCPF(data.patient.cpf) : "-", MARGIN, y);
-  drawField("DATA DE NASCIMENTO", data.patient.birthDate ? formatDateBR(data.patient.birthDate) : "-", MARGIN + 250, y);
+  drawField("DATA DE NASCIMENTO", data.patient.birthDate ? formatDateOnlyBR(data.patient.birthDate) : "-", MARGIN + 250, y);
   y -= 40;
 
   drawField("RG", data.patient.rg || "-", MARGIN, y);
@@ -165,7 +166,7 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
   y -= 15;
   page.drawText(`Documento assinado eletronicamente (Assinatura Eletrônica Avançada — Lei nº 14.063/2020). IP: ${data.signature.ip}`, { x: MARGIN, y, size: 8, font: italic });
   y -= 12;
-  page.drawText(`Data/Hora: ${formatDateBR(data.signature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
+  page.drawText(`Data/Hora: ${formatTimestampBR(data.signature.signedAt)}`, { x: MARGIN, y, size: 8, font: italic });
 
   // Assinatura do Cirurgião-Dentista: PDF próprio, separado deste — ver
   // lib/anamnesisDentistPdf.ts / lib/anamnesisDentistSignature.ts.
@@ -186,7 +187,7 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
 
   drawAuditField("Assinado por (Paciente):", `${data.signature.signerName} (CPF: ${formatCPF(data.signature.signerCpf)})`, y);
   y -= 20;
-  drawAuditField("Data/hora (servidor):", formatDateBR(data.signature.signedAt), y);
+  drawAuditField("Data/hora (servidor):", formatTimestampBR(data.signature.signedAt), y);
   y -= 20;
   drawAuditField("Endereço IP:", data.signature.ip, y);
   y -= 20;

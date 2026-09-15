@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveTemplate } from "@/lib/appointmentTemplates";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { Clinic, ProsthesisOrder, ProsthesisStage } from "@/lib/database.types";
 
 export const PROSTHESIS_STAGES: ProsthesisStage[] = ["pre_laboratorio", "laboratorio", "agenda", "realizado"];
@@ -26,7 +26,7 @@ export function buildProsthesisTemplateVars(clinic: Clinic, order: ProsthesisOrd
     clinica_nome: clinic.name,
     descricao_protese: order.description,
     estagio: PROSTHESIS_STAGE_LABEL[order.stage],
-    data_prevista: order.expected_delivery_date ? `, previsão ${formatBRDate(`${order.expected_delivery_date}T12:00:00-03:00`)}` : "",
+    data_prevista: order.expected_delivery_date ? `, previsão ${formatDateOnlyBR(order.expected_delivery_date)}` : "",
   };
 }
 

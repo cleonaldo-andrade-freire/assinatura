@@ -8,7 +8,7 @@ import { formatCNPJ, formatCPF } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { sendText, notifyClinicEvolutionSigned, notifyClinicEvolutionRefused } from "@/lib/evolution";
 import { clinicHasConfiguredConsentTerm, hashConsentText, patientHasActiveConsent, recordConsentAcceptance } from "@/lib/electronicConsent";
-import { formatDateBR } from "@/lib/pdfTextLayout";
+import { formatDateOnlyBR } from "@/lib/date";
 import type { SignatureResult } from "@/components/SignatureCanvas";
 import type { Clinic, TreatmentEvolution } from "@/lib/database.types";
 
@@ -144,10 +144,10 @@ export async function requestEvolutionSignature(
 
   const link = `${process.env.NEXT_PUBLIC_APP_URL}/evolucao-assinatura?token=${refreshed.signature_token}`;
   const message = isFollowup
-    ? `📋 Olá, ${firstName(patient.name)}! Ainda não recebemos sua confirmação sobre o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
+    ? `📋 Olá, ${firstName(patient.name)}! Ainda não recebemos sua confirmação sobre o registro do seu atendimento de ${formatDateOnlyBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
       `O link anterior expirou — segue um novo, leva menos de 1 minuto:\n${link}\n\n` +
       `O link expira em 48 horas. Qualquer dúvida, é só responder esta mensagem.`
-    : `📋 Olá, ${firstName(patient.name)}! Segue o registro do seu atendimento de ${formatDateBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
+    : `📋 Olá, ${firstName(patient.name)}! Segue o registro do seu atendimento de ${formatDateOnlyBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
       `Por favor, leia e confirme sua ciência assinando no link abaixo — leva menos de 1 minuto:\n${link}\n\n` +
       `O link expira em 48 horas. Qualquer dúvida, é só responder esta mensagem.`;
   const sent = await sendText(clinic, patient.phone, message);

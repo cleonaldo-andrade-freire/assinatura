@@ -9,7 +9,7 @@ import { FinalizeTreatmentModal } from "@/components/treatments/FinalizeTreatmen
 import { TreatmentDetailModal } from "@/components/treatments/TreatmentDetailModal";
 import { NewTreatmentModal } from "@/components/treatments/NewTreatmentModal";
 import { formatMoneyDisplay } from "@/lib/money";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import type { Treatment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 import tp from "./treatments.module.css";
@@ -176,7 +176,7 @@ export function TreatmentsPanel({
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {treatments.map((t) => {
-              const subtitleParts = [t.price_table_name, t.status === "finalizado" && t.finalized_at ? `finalizado em ${formatBRDate(t.finalized_at)}` : null].filter(
+              const subtitleParts = [t.price_table_name, t.status === "finalizado" && t.finalized_at ? `finalizado em ${formatTimestampBR(t.finalized_at)}` : null].filter(
                 Boolean
               );
               return (

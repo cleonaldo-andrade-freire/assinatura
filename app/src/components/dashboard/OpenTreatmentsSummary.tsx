@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
-import { formatBRDate } from "@/lib/date";
+import { formatTimestampBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import uiStyles from "@/components/ui/ui.module.css";
 import styles from "@/styles/shell.module.css";
@@ -112,7 +112,7 @@ export function OpenTreatmentsSummary({ clinicId, patientId }: { clinicId: strin
                       {t.treatment_name}
                     </div>
                     <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>
-                      R$ {formatMoneyDisplay(t.price)} · em aberto desde {formatBRDate(t.created_at)}
+                      R$ {formatMoneyDisplay(t.price)} · em aberto desde {formatTimestampBR(t.created_at)}
                     </div>
                   </div>
                 ))}

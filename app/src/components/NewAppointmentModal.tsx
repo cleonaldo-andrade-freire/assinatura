@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { formatBRDate, formatBRTime, formatBRWeekday } from "@/lib/date";
+import { formatTimestampBR, formatBRTime, formatBRWeekday, formatDateOnlyBR } from "@/lib/date";
 import { NewAppointmentForm } from "@/components/NewAppointmentForm";
 import type { Appointment } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
@@ -66,7 +66,7 @@ export function NewAppointmentModal({
           <div>
             <h3 className={uiStyles.dialogTitle}>Novo agendamento</h3>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
-              {formatBRWeekday(`${date}T12:00:00-03:00`, "long")}, {formatBRDate(`${date}T12:00:00-03:00`)}
+              {formatBRWeekday(`${date}T12:00:00-03:00`, "long")}, {formatDateOnlyBR(date)}
               {time ? ` às ${formatBRTime(time)}` : ""}
             </p>
           </div>
