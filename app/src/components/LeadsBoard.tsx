@@ -13,7 +13,7 @@ import {
   compareLeadsByRecency,
   isStaleWaiting,
 } from "@/lib/leads";
-import { formatBRTime, formatBRWeekday } from "@/lib/date";
+import { formatBRTime, formatBRWeekday, formatTimestampBR } from "@/lib/date";
 import type { Lead, LeadMessage, LeadStatus } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 import chat from "@/components/leads.module.css";
@@ -157,6 +157,11 @@ export function LeadsBoard({
   const visibleScheduled = localScheduled.filter(matchesSearch);
   const staleCount = localOpen.filter((l) => isStaleWaiting(l, STALE_WAITING_DAYS)).length;
 
+  /** A única lista do quadro que tem seção própria hoje. Os outros status
+   * continuam existindo e sendo gravados — só não estão na tela. */
+  const waitingLeads = byStatus.get("waiting_reply") ?? [];
+  const hiddenStatusCount = localOpen.filter((l) => l.status !== "waiting_reply").length;
+
   /** Move um lead entre as colunas do quadro e a lista de agendados. */
   async function moveLead(leadId: string, status: LeadStatus) {
     setDragOverStatus(null);
@@ -284,77 +289,69 @@ export function LeadsBoard({
         </button>
       </div>
 
-      <div className={styles.kanbanBoard}>
-        {LEAD_BOARD_STATUSES.map((status) => {
-          const items = byStatus.get(status) ?? [];
-          return (
-            <div
-              key={status}
-              className={styles.kanbanColumn}
-              {...dropHandlers(status)}
-              style={{
-                background: dragOverStatus === status ? "var(--brand-tint)" : undefined,
-                outline: dragOverStatus === status ? "2px dashed var(--brand)" : undefined,
-              }}
-            >
-              <div className={styles.kanbanColumnHeader}>
-                <span>{LEAD_STATUS_LABEL[status]}</span>
-                <span className={styles.kanbanColumnCount}>{items.length}</span>
-              </div>
-
-              <div className={styles.kanbanColumnBody}>
-                {items.map((lead) => (
+      {/* Aguardando resposta — vira lista de largura cheia, no mesmo formato de
+          "Agendados", em vez de coluna estreita do quadro. "Bot atendendo" e
+          "Urgente" seguem existindo como status (nada mudou na regra de
+          negócio), só não têm coluna própria por enquanto — o aviso logo
+          abaixo evita que um lead nesses estados suma da tela sem rastro. */}
+      <section
+        {...dropHandlers("waiting_reply")}
+        className={styles.panel}
+        style={{
+          background: dragOverStatus === "waiting_reply" ? "var(--brand-tint)" : undefined,
+          outline: dragOverStatus === "waiting_reply" ? "2px dashed var(--brand)" : undefined,
+        }}
+      >
+        <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p className={styles.panelHeaderTitle}>{LEAD_STATUS_LABEL.waiting_reply}</p>
+          <span className={styles.kanbanColumnCount}>{waitingLeads.length}</span>
+        </div>
+        <div className={styles.panelBody} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {waitingLeads.length === 0 ? (
+            <p className={styles.kanbanEmptyColumn} style={{ padding: "8px 0" }}>Nada por aqui</p>
+          ) : (
+            waitingLeads.map((lead) => (
+              <LeadRow
+                key={lead.id}
+                clinicId={clinicId}
+                lead={lead}
+                draggable={!moving}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", lead.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  setDraggingId(lead.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverStatus(null);
+                }}
+                onClick={() => setOpenLead(lead)}
+                action={
                   <button
-                    key={lead.id}
                     type="button"
-                    draggable={!moving}
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("text/plain", lead.id);
-                      e.dataTransfer.effectAllowed = "move";
-                      setDraggingId(lead.id);
+                    disabled={moving}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveLead(lead.id, "scheduled");
                     }}
-                    onDragEnd={() => {
-                      setDraggingId(null);
-                      setDragOverStatus(null);
-                    }}
-                    onClick={() => setOpenLead(lead)}
-                    className={`${styles.kanbanCard} ${lead.status === "urgent" ? styles.kanbanCardUrgent : ""}`}
-                    style={{ cursor: moving ? "default" : "grab" }}
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    style={{ fontSize: 12.5, whiteSpace: "nowrap" }}
                   >
-                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                      <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={28} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
-                          <div
-                            className={styles.kanbanCardTitle}
-                            style={{ marginBottom: 0, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                          >
-                            {lead.patient_name || "Sem nome ainda"}
-                          </div>
-                          <div
-                            className={styles.kanbanCardTitle}
-                            style={{ marginBottom: 0, flex: "none", whiteSpace: "nowrap" }}
-                            title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${new Date(lead.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${formatBRTime(lead.created_at)}`}
-                          >
-                            {leadDateLabel(lead.last_message_at ?? lead.created_at)}
-                          </div>
-                        </div>
-                        <div className={styles.kanbanCardSubtitle}>{lead.patient_phone}</div>
-                      </div>
-                    </div>
-                    {lead.clinical_summary && (
-                      <div className={styles.kanbanCardMeta}>
-                        <span>{lead.clinical_summary}</span>
-                      </div>
-                    )}
+                    Marcar agendado
                   </button>
-                ))}
-                {items.length === 0 && <p className={styles.kanbanEmptyColumn}>Nada por aqui</p>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                }
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      {hiddenStatusCount > 0 && (
+        <p className={styles.hint} style={{ margin: "8px 0 0" }}>
+          {hiddenStatusCount} lead{hiddenStatusCount > 1 ? "s" : ""} em Bot atendendo ou Urgente — essas colunas estão
+          ocultas no momento.
+        </p>
+      )}
 
       {/* Agendados — lista, não coluna: lead agendado é caso encerrado. Continua
           aceitando drop pra marcar um card como agendado. */}
@@ -491,6 +488,74 @@ export function LeadsBoard({
 /** Substitui um lead na lista pelo id, ou adiciona no início se não estiver lá. */
 function upsert(list: Lead[], lead: Lead): Lead[] {
   return list.some((l) => l.id === lead.id) ? list.map((l) => (l.id === lead.id ? lead : l)) : [lead, ...list];
+}
+
+/**
+ * Linha de lead com a largura de "Agendados" e a informação que o card do
+ * quadro mostrava: nome, data da última mensagem, telefone e o resumo do que a
+ * pessoa escreveu. `action` fica à direita, fora do clique que abre a conversa.
+ */
+function LeadRow({
+  clinicId,
+  lead,
+  action,
+  onClick,
+  draggable,
+  onDragStart,
+  onDragEnd,
+}: {
+  clinicId: string;
+  lead: Lead;
+  action?: React.ReactNode;
+  onClick: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`${styles.kanbanCard} ${lead.status === "urgent" ? styles.kanbanCardUrgent : ""}`}
+      style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: draggable ? "grab" : "pointer" }}
+    >
+      <PatientAvatar clinicId={clinicId} patientId={null} name={lead.patient_name || lead.patient_phone} size={28} />
+      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+          <div
+            className={styles.kanbanCardTitle}
+            style={{ marginBottom: 0, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {lead.patient_name || "Sem nome ainda"}
+          </div>
+          <div
+            className={styles.kanbanCardTitle}
+            style={{ marginBottom: 0, flex: "none", whiteSpace: "nowrap" }}
+            title={`Lead criado em ${formatBRWeekday(lead.created_at, "long")}, ${formatTimestampBR(lead.created_at)} às ${formatBRTime(lead.created_at)}`}
+          >
+            {leadDateLabel(lead.last_message_at ?? lead.created_at)}
+          </div>
+        </div>
+        <div className={styles.kanbanCardSubtitle}>{lead.patient_phone}</div>
+        {lead.clinical_summary && (
+          <div className={styles.kanbanCardMeta}>
+            <span>{lead.clinical_summary}</span>
+          </div>
+        )}
+      </div>
+      {action && <div style={{ flex: "none", alignSelf: "center" }}>{action}</div>}
+    </div>
+  );
 }
 
 function MiniLeadRow({
