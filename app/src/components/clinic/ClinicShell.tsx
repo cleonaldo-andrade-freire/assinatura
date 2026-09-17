@@ -219,7 +219,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
   { href: "/dashboard/leads", label: "Leads", icon: LeadsIcon },
-  { href: "/dashboard/despesas", label: "Despesas", icon: ExpensesIcon },
+  { href: "/dashboard/financeiro", label: "Financeiro", icon: ExpensesIcon },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 

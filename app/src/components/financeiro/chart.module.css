@@ -1,0 +1,93 @@
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+/* 12 meses não cabem num celular. Rola de lado AQUI, nunca a página inteira —
+   o resto do app usa overflow-x: hidden no .wrap justamente pra isso. */
+.scroller {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 4px;
+}
+
+.axisText {
+  font-size: 11px;
+  fill: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(30, 43, 39, 0.14);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.negative {
+  color: var(--danger);
+}
+
+/* Barras horizontais por categoria: uma série só, então uma cor só —
+   o comprimento já codifica a magnitude, cor por valor seria redundante. */
+.catRow {
+  display: grid;
+  grid-template-columns: minmax(80px, 148px) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.catName {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catTrack {
+  background: var(--surface-sunken);
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.catFill {
+  height: 100%;
+  background: var(--chart-expense);
+  border-radius: 0 4px 4px 0;
+}
+
+.catValue {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

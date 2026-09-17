@@ -74,7 +74,7 @@ export function ExpensesPanel({
       if (v === "" || v == null) params.delete(k);
       else params.set(k, String(v));
     }
-    return `/dashboard/despesas?${params.toString()}`;
+    return `/dashboard/financeiro?${params.toString()}`;
   }
   function pendingHrefFor(p: number) {
     return hrefWith({ expPage: p });

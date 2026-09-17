@@ -25,6 +25,11 @@
   --sign-line: #c3d2e6;
   --warn: #a15a16;
   --warn-tint: #f7ecd9;
+  /* Séries de gráfico. Azul/laranja, e não verde/vermelho: o par intuitivo pra
+     dinheiro reprova no teste de daltonismo (ΔE 5,1 sob protanopia — as duas
+     séries viram a mesma cor); este mede ΔE 24,7. Ver components/financeiro. */
+  --chart-revenue: #2a78d6;
+  --chart-expense: #eb6834;
   --danger: #b23b3b;
   --danger-tint: #fbeaea;
   /* Ameixa/violeta — só pra urgência (agenda). De propósito o mais distante
