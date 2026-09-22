@@ -9,7 +9,16 @@ param(
     [string]$ProductionUrl = "__DEFAULT_PRODUCTION_URL__"
 )
 
-if ($ProductionUrl -eq "__DEFAULT_PRODUCTION_URL__") {
+# Comparado contra o placeholder montado em runtime (concatenado), nao contra
+# o literal "__DEFAULT_PRODUCTION_URL__" direto: o pack.ps1 faz um Replace()
+# de texto que troca QUALQUER ocorrencia literal desse placeholder no arquivo
+# inteiro, inclusive dentro deste if -- se o literal estivesse aqui tambem,
+# o pack.ps1 embutiria a URL de producao dos dois lados da comparacao, ela
+# sempre bateria igual, e a URL virava $null em todo pacote gerado (bug ja
+# visto em producao). Concatenar em runtime evita que o Replace() enxergue
+# esta ocorrencia.
+$placeholderMarker = "__DEFAULT" + "_PRODUCTION_URL__"
+if ($ProductionUrl -eq $placeholderMarker) {
     $ProductionUrl = $null
 }
 
