@@ -6,6 +6,7 @@ import { isValidBRPhone } from "@/lib/validation";
 import { findOverlappingAppointment, recordAppointmentEvent, APPOINTMENT_SLOT_MINUTES } from "@/lib/appointments";
 import { sendAppointmentRequest } from "@/lib/appointmentNotifications";
 import { upsertPatientFromContact } from "@/lib/patients";
+import { resolveAppointmentLocation } from "@/lib/locations";
 
 const bodySchema = z.object({
   scheduled_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), { message: "data/hora inválida" }),
@@ -21,6 +22,8 @@ const bodySchema = z.object({
   // entra como 'atendido', não notifica o paciente e não é barrado por
   // horário no passado nem por sobreposição com outra consulta.
   backdated: z.boolean().optional(),
+  // Omitido = local padrão da clínica (se houver); null = sem local.
+  location_id: z.string().uuid().nullable().optional(),
 });
 
 /**
@@ -81,6 +84,11 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   const supabase = await createSupabaseServerClient();
 
+  const locationId = await resolveAppointmentLocation(supabase, clinic.id, input.location_id);
+  if (locationId === false) {
+    return NextResponse.json({ error: "invalid_location", message: "Local de atendimento inválido ou desativado." }, { status: 400 });
+  }
+
   if (!backdated) {
     const conflict = await findOverlappingAppointment(supabase, {
       clinicId: clinic.id,
@@ -116,6 +124,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       notes: input.notes ?? null,
       return_due_date: input.return_due_date ?? null,
       backdated,
+      location_id: locationId,
       ...(backdated ? { status: "atendido" } : {}),
     })
     .select("*")

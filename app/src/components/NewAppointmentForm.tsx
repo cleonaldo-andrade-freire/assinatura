@@ -6,6 +6,7 @@ import { formatBRPhoneLocal, formatCPF, toE164BR } from "@/lib/validation";
 import { buildDaySlotTimes } from "@/lib/appointments";
 import { addMonthsToDateStr, brDateOnly, formatBRTime } from "@/lib/date";
 import type { Appointment } from "@/lib/database.types";
+import { LocationSelect, defaultLocationId, useClinicLocations } from "@/components/LocationSelect";
 import styles from "@/styles/shell.module.css";
 
 interface PatientSuggestion {
@@ -73,6 +74,12 @@ export function NewAppointmentForm({
   // marcação prévia, lançada depois): libera data/horário no passado, entra
   // como "Atendido" e não dispara nada pro paciente.
   const [backdated, setBackdated] = useState(false);
+
+  const locations = useClinicLocations(clinicId);
+  const [locationId, setLocationId] = useState("");
+  useEffect(() => {
+    if (locations) setLocationId(defaultLocationId(locations));
+  }, [locations]);
 
   const [returnOption, setReturnOption] = useState<ReturnOption>("none");
   const [returnCustomMonths, setReturnCustomMonths] = useState(2);
@@ -197,6 +204,9 @@ export function NewAppointmentForm({
           notes: notes.trim() || undefined,
           return_due_date: computeReturnDueDate() ?? undefined,
           backdated: backdated || undefined,
+          // Só manda quando a lista já carregou — antes disso, omitir deixa o
+          // servidor usar o local padrão (mesmo resultado do seletor).
+          location_id: locations && locations.length > 0 ? locationId || null : undefined,
         }),
       });
       const data = await res.json();
@@ -417,6 +427,8 @@ export function NewAppointmentForm({
               {showErrors && !time && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 5 }}>Escolha um horário.</div>}
             </div>
           </div>
+
+          <LocationSelect locations={locations} value={locationId} onChange={setLocationId} />
 
           <div className={styles.formRow}>
             <div className={styles.field}>

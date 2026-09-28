@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRPhoneLocal, toE164BR } from "@/lib/validation";
 import type { QuestionTemplate } from "@/lib/database.types";
@@ -8,6 +8,7 @@ import { useDraftAutosave } from "@/lib/useDraftAutosave";
 import { useMobileV2Active } from "@/lib/useMobileV2Active";
 import { DraftBanner } from "@/components/mobile/DraftBanner";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
+import { LocationSelect, defaultLocationId, useClinicLocations } from "@/components/LocationSelect";
 import styles from "@/styles/shell.module.css";
 
 export function NewAnamnesisForm({
@@ -38,6 +39,11 @@ export function NewAnamnesisForm({
   // cadastro (ver onChangeName/onChange do telefone abaixo).
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const locations = useClinicLocations(clinicId);
+  const [locationId, setLocationId] = useState("");
+  useEffect(() => {
+    if (locations) setLocationId(defaultLocationId(locations));
+  }, [locations]);
   const [error, setError] = useState<string | null>(null);
   const [billingBlocked, setBillingBlocked] = useState(false);
   const [sending, setSending] = useState(false);
@@ -87,6 +93,7 @@ export function NewAnamnesisForm({
           patient_phone: toE164BR(patientPhone),
           template_id: templateId,
           patient_id: selectedPatientId ?? undefined,
+          location_id: locationId || undefined,
         }),
       });
       const data = await res.json();
@@ -221,6 +228,14 @@ export function NewAnamnesisForm({
           ))}
         </select>
       </div>
+
+      <LocationSelect
+        locations={locations}
+        value={locationId}
+        onChange={setLocationId}
+        allowNone
+        hint="A mensagem vai sem endereço."
+      />
     </>
   );
 

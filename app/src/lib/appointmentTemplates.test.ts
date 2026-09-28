@@ -16,6 +16,14 @@ describe("resolveTemplate", () => {
     expect(resolveTemplate("{{ paciente_nome }}", { paciente_nome: "Ana" })).toBe("Ana");
   });
 
+  it("bloco vazio no fim (consulta sem local) não deixa linhas em branco sobrando", () => {
+    expect(resolveTemplate("Toque aqui: {{link}}\n\n{{local_atendimento}}", { link: "x" })).toBe("Toque aqui: x");
+  });
+
+  it("bloco vazio no meio vira uma linha em branco só", () => {
+    expect(resolveTemplate("A\n\n{{local_atendimento}}\n\nB", {})).toBe("A\n\nB");
+  });
+
   it("texto sem nenhuma variável passa direto", () => {
     expect(resolveTemplate("Tudo bem, cancelado.", {})).toBe("Tudo bem, cancelado.");
   });

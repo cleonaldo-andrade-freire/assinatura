@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatTimestampBR, formatBRTime, formatBRWeekday, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
-import type { Appointment, AppointmentMessageTemplateType, Clinic } from "@/lib/database.types";
+import { formatLocationAddress, locationMapsUrl, locationMessageBlock } from "@/lib/locations";
+import type { Appointment, AppointmentMessageTemplateType, Clinic, ClinicLocation } from "@/lib/database.types";
 
 export const TEMPLATE_TYPES: AppointmentMessageTemplateType[] = [
   "solicitacao",
@@ -40,7 +41,11 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
   { key: "duracao_consulta", label: "Duração da consulta" },
   { key: "status_consulta", label: "Status da consulta" },
   { key: "link_confirmacao", label: "Link de confirmação" },
-  { key: "endereco_clinica", label: "Endereço da clínica" },
+  { key: "endereco_clinica", label: "Endereço (do local da consulta ou, sem local, da clínica)" },
+  { key: "local_atendimento", label: "Local completo (nome, endereço e link do mapa)" },
+  { key: "local_nome", label: "Nome do local de atendimento" },
+  { key: "local_endereco", label: "Endereço do local de atendimento" },
+  { key: "local_mapa", label: "Link de como chegar (Google Maps)" },
   { key: "celular_clinica", label: "Celular da clínica" },
   { key: "data_retorno", label: "Data prevista de retorno" },
 ];
@@ -49,18 +54,18 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
 export const DEFAULT_TEMPLATE_BODY: Record<AppointmentMessageTemplateType, string> = {
   solicitacao:
     "Olá! Sua consulta na {{clinica_nome}} está marcada pra {{data_consulta}} às {{hora_consulta}}.\n\n" +
-    "Pra confirmar ou cancelar, toque aqui: {{link_confirmacao}}",
+    "Pra confirmar ou cancelar, toque aqui: {{link_confirmacao}}\n\n{{local_atendimento}}",
   lembrete_24h:
     "Lembrete: você tem consulta amanhã, {{data_consulta}} às {{hora_consulta}}, na {{clinica_nome}}. " +
-    "Ainda não vimos sua confirmação — pra confirmar ou cancelar, toque aqui: {{link_confirmacao}}",
+    "Ainda não vimos sua confirmação — pra confirmar ou cancelar, toque aqui: {{link_confirmacao}}\n\n{{local_atendimento}}",
   lembrete_final:
     "Sua consulta na {{clinica_nome}} é hoje às {{hora_consulta}}. " +
-    "Ainda não recebemos sua confirmação — toque aqui: {{link_confirmacao}}",
-  confirmado: "Combinado! Te esperamos {{data_consulta}} às {{hora_consulta}}.",
+    "Ainda não recebemos sua confirmação — toque aqui: {{link_confirmacao}}\n\n{{local_atendimento}}",
+  confirmado: "Combinado! Te esperamos {{data_consulta}} às {{hora_consulta}}.\n\n{{local_atendimento}}",
   cancelado: "Tudo bem, seu agendamento foi cancelado. Se quiser remarcar, é só chamar a gente por aqui.",
   remarcado:
     "Sua consulta na {{clinica_nome}} foi remarcada — novo horário: {{data_consulta}} às {{hora_consulta}}.\n\n" +
-    "Se precisar confirmar ou cancelar, toque aqui: {{link_confirmacao}}",
+    "Se precisar confirmar ou cancelar, toque aqui: {{link_confirmacao}}\n\n{{local_atendimento}}",
   retorno_lembrete:
     "Olá, {{paciente_nome}}! Já faz um tempo desde sua última consulta na {{clinica_nome}} — " +
     "chegou perto da data que a gente combinou pro seu retorno ({{data_retorno}}). " +
@@ -74,7 +79,12 @@ function confirmationLink(token: string): string {
   return `${process.env.NEXT_PUBLIC_APP_URL}/confirmacao/${token}`;
 }
 
-export function buildAppointmentTemplateVars(clinic: Clinic, appointment: Appointment): Record<string, string> {
+/** `location` é o local da consulta (appointment.location_id já resolvido) — `null` cai no endereço cadastrado da clínica. */
+export function buildAppointmentTemplateVars(
+  clinic: Clinic,
+  appointment: Appointment,
+  location: ClinicLocation | null = null
+): Record<string, string> {
   return {
     paciente_nome: appointment.patient_name,
     clinica_nome: clinic.name,
@@ -84,15 +94,26 @@ export function buildAppointmentTemplateVars(clinic: Clinic, appointment: Appoin
     duracao_consulta: `${appointment.duration_minutes} min`,
     status_consulta: appointment.status,
     link_confirmacao: confirmationLink(appointment.confirm_token),
-    endereco_clinica: clinic.clinic_address ?? "",
+    endereco_clinica: location ? formatLocationAddress(location) : clinic.clinic_address ?? "",
+    local_atendimento: location ? locationMessageBlock(location) : "",
+    local_nome: location?.name ?? "",
+    local_endereco: location ? formatLocationAddress(location) : "",
+    local_mapa: location ? locationMapsUrl(location) : "",
     celular_clinica: clinic.whatsapp_number ? formatBRPhoneLocal(clinic.whatsapp_number) : clinic.dentist_phone ?? "",
     data_retorno: appointment.return_due_date ? formatDateOnlyBR(appointment.return_due_date) : "",
   };
 }
 
-/** Substitui `{{variavel}}` pelo valor correspondente — variável sem valor conhecido vira string vazia em vez de aparecer literal na mensagem. */
+/**
+ * Substitui `{{variavel}}` pelo valor correspondente — variável sem valor conhecido vira string vazia em vez de aparecer literal na mensagem.
+ * Variável de bloco vazia (ex.: `{{local_atendimento}}` numa consulta sem local) deixaria linhas em branco sobrando:
+ * colapsa 3+ quebras seguidas numa linha em branco só e tira as quebras do fim.
+ */
 export function resolveTemplate(body: string, vars: Record<string, string>): string {
-  return body.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, key: string) => vars[key] ?? "");
+  return body
+    .replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, key: string) => vars[key] ?? "")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n+$/, "");
 }
 
 /**

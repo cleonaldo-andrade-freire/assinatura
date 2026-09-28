@@ -3,6 +3,7 @@
 import { AppointmentStatusBadge, UrgentBadge } from "@/components/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/AppointmentActions";
 import { AppointmentNotesField } from "@/components/dashboard/AppointmentNotesField";
+import { AppointmentLocationField } from "@/components/dashboard/AppointmentLocationField";
 import { OpenTreatmentsSummary } from "@/components/dashboard/OpenTreatmentsSummary";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { formatTimestampBR, formatBRDateTime, formatBRTime, formatDateOnlyBR } from "@/lib/date";
@@ -121,6 +122,7 @@ export function AppointmentDetailBody({
               "Retorno previsto",
               `${formatDateOnlyBR(a.return_due_date)}${a.return_notified_at ? " — lembrete já enviado" : ""}`
             )}
+          <AppointmentLocationField clinicId={clinicId} appointmentId={a.id} locationId={a.location_id} onChanged={onChanged} />
           <AppointmentNotesField clinicId={clinicId} appointmentId={a.id} notes={a.notes} onChanged={onChanged} />
         </div>
       </div>

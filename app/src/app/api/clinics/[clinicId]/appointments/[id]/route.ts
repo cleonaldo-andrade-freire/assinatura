@@ -4,6 +4,7 @@ import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findOverlappingAppointment, recordAppointmentEvent } from "@/lib/appointments";
 import { sendAppointmentRescheduled } from "@/lib/appointmentNotifications";
+import { resolveAppointmentLocation } from "@/lib/locations";
 import type { Appointment, AppointmentStatus } from "@/lib/database.types";
 
 const STATUS_VALUES: [AppointmentStatus, ...AppointmentStatus[]] = [
@@ -23,6 +24,7 @@ const patchSchema = z.object({
   urgent: z.boolean().optional(),
   notes: z.string().nullable().optional(),
   patient_id: z.string().uuid().nullable().optional(),
+  location_id: z.string().uuid().nullable().optional(),
 });
 
 /** Agendamento + histórico de eventos — usado pelo modal de detalhe aberto fora da agenda (ex.: aba Agendamentos da ficha do paciente), onde a interceptação de rota do Next não alcança. */
@@ -63,6 +65,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   const input = parsed.data;
 
   const supabase = await createSupabaseServerClient();
+
+  // Trocar o local não avisa o paciente sozinho (diferente de remarcar) — a
+  // recepção reenvia a confirmação se quiser; a mensagem já sai com o local novo.
+  if (input.location_id) {
+    const valid = await resolveAppointmentLocation(supabase, clinic.id, input.location_id);
+    if (valid === false) {
+      return NextResponse.json({ error: "invalid_location", message: "Local de atendimento inválido ou desativado." }, { status: 400 });
+    }
+  }
 
   const { data: current } = await supabase
     .from("appointments")
@@ -127,6 +138,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
   if (input.urgent !== undefined) update.urgent = input.urgent;
   if (input.notes !== undefined) update.notes = input.notes;
   if (input.patient_id !== undefined) update.patient_id = input.patient_id;
+  if (input.location_id !== undefined) update.location_id = input.location_id;
 
   const { data: updated, error } = await supabase
     .from("appointments")

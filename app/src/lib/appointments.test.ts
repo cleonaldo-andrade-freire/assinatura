@@ -32,6 +32,7 @@ function fakeAppointment(overrides: Partial<Appointment>): Appointment {
     return_dismissed_at: null,
     cancellation_dismissed_at: null,
     backdated: false,
+    location_id: null,
     created_by: null,
     created_at: "2026-08-01T00:00:00+00:00",
     updated_at: "2026-08-01T00:00:00+00:00",

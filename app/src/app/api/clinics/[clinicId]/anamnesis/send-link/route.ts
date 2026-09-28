@@ -8,6 +8,7 @@ import { countTotalAnamneses } from "@/lib/usage";
 import { sendText } from "@/lib/evolution";
 import { upsertPatientFromContact } from "@/lib/patients";
 import { createAnamnesis } from "@/lib/anamnesis";
+import { getClinicLocation, locationMessageBlock } from "@/lib/locations";
 
 const bodySchema = z.object({
   patient_name: z.string().min(1),
@@ -17,6 +18,9 @@ const bodySchema = z.object({
   // (paciente já cadastrado) — nesse caso pulamos upsertPatientFromContact
   // abaixo, ver comentário perto da chamada.
   patient_id: z.string().uuid().optional(),
+  // Local onde o paciente vai ser atendido — só entra no texto da mensagem
+  // (nome, endereço e link do mapa), não fica gravado na anamnese.
+  location_id: z.string().uuid().optional(),
 });
 
 /**
@@ -67,6 +71,11 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "template_not_found" }, { status: 404 });
   }
 
+  const location = await getClinicLocation(sessionClient, clinic.id, input.location_id);
+  if (input.location_id && (!location || !location.active)) {
+    return NextResponse.json({ error: "invalid_location", message: "Local de atendimento inválido ou desativado." }, { status: 400 });
+  }
+
   const questions = template.questions as any[];
   const initialAnswers = questions.map(q => ({
     question: q.text || q.question || "Pergunta",
@@ -100,7 +109,8 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
 
   // Envia o link pelo WhatsApp
   const link = `${process.env.NEXT_PUBLIC_APP_URL}/anamnese/${anamnesis.token}`;
-  const text = `Olá, ${input.patient_name}! Aqui é da clínica ${clinic.name}.\n\nPor favor, preencha sua ficha de anamnese no link abaixo antes do seu atendimento:\n\n${link}`;
+  const text = `Olá, ${input.patient_name}! Aqui é da clínica ${clinic.name}.\n\nPor favor, preencha sua ficha de anamnese no link abaixo antes do seu atendimento:\n\n${link}` +
+    (location ? `\n\nSeu atendimento será em:\n${locationMessageBlock(location)}` : "");
   
   await sendText(clinic, phone, text);
 

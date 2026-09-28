@@ -124,6 +124,21 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
 
       <ConsentTermForm clinicId={clinic.id} clinic={clinic} />
 
+      <div className={styles.panel}>
+        <div className={styles.panelHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p className={styles.panelHeaderTitle}>Locais de atendimento</p>
+          <Link href="/dashboard/configuracoes/locais" className={`${styles.btn} ${styles.btnGhost}`} style={{ fontSize: 13 }}>
+            Gerenciar locais
+          </Link>
+        </div>
+        <div className={styles.panelBody}>
+          <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: 0 }}>
+            Atende em mais de um endereço? Cadastre cada local com o link de como chegar — ele é escolhido no
+            agendamento e vai junto nas mensagens de confirmação, lembretes e no envio da anamnese.
+          </p>
+        </div>
+      </div>
+
       {/* Equipe — somente owner */}
       {role === "owner" && (
         <div className={styles.panel}>

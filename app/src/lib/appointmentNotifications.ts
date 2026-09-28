@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendText } from "@/lib/evolution";
 import { recordAppointmentEvent } from "@/lib/appointments";
 import { buildAppointmentTemplateVars, getAppointmentMessageBody } from "@/lib/appointmentTemplates";
+import { getClinicLocation } from "@/lib/locations";
 import type { Appointment, AppointmentEventActor, AppointmentStatus, Clinic } from "@/lib/database.types";
 
 const CONFIRM_WORDS = new Set(["confirmar", "confirmo", "confirmado", "sim", "s", "1", "ok", "okay", "beleza", "certo"]);
@@ -32,6 +33,12 @@ export function matchConfirmCancel(raw: string): "confirm" | "cancel" | null {
   return null;
 }
 
+/** Variáveis do modelo já com o local da consulta resolvido — `{{local_atendimento}}` & cia. ficam vazias se não houver local. */
+async function appointmentTemplateVars(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment) {
+  const location = await getClinicLocation(supabase, clinic.id, appointment.location_id);
+  return buildAppointmentTemplateVars(clinic, appointment, location);
+}
+
 /**
  * Mensagem inicial de confirmação, mandada assim que o agendamento é criado.
  * Um link só (não um botão por link) — a página é que mostra as duas ações;
@@ -41,7 +48,7 @@ export function matchConfirmCancel(raw: string): "confirm" | "cancel" | null {
  * (ver /dashboard/configuracoes/mensagens), senão o texto padrão.
  */
 export async function sendAppointmentRequest(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const text = await getAppointmentMessageBody(supabase, clinic.id, "solicitacao", vars);
   await sendText(clinic, appointment.patient_phone, text);
 }
@@ -54,7 +61,7 @@ export async function sendAppointmentRequest(supabase: SupabaseClient, clinic: C
  * certos.
  */
 export async function sendAppointmentRescheduled(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const text = await getAppointmentMessageBody(supabase, clinic.id, "remarcado", vars);
   await sendText(clinic, appointment.patient_phone, text);
 }
@@ -66,7 +73,7 @@ export async function sendAppointmentRescheduled(supabase: SupabaseClient, clini
  * sozinho). Quem chama já marca `return_notified_at` depois de mandar.
  */
 export async function sendAppointmentReturnReminder(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const text = await getAppointmentMessageBody(supabase, clinic.id, "retorno_lembrete", vars);
   await sendText(clinic, appointment.patient_phone, text);
 }
@@ -78,7 +85,7 @@ export async function sendAppointmentReturnReminder(supabase: SupabaseClient, cl
  * manualmente — mandar mensagem é só uma tentativa, não uma garantia).
  */
 export async function sendCancellationOutreach(supabase: SupabaseClient, clinic: Clinic, appointment: Appointment): Promise<void> {
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const text = await getAppointmentMessageBody(supabase, clinic.id, "cancelamento_contato", vars);
   await sendText(clinic, appointment.patient_phone, text);
 }
@@ -96,7 +103,7 @@ export async function sendAppointmentReminder(
   appointment: Appointment,
   tier: "24h" | "final"
 ): Promise<void> {
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const text = await getAppointmentMessageBody(supabase, clinic.id, tier === "24h" ? "lembrete_24h" : "lembrete_final", vars);
 
   await sendText(clinic, appointment.patient_phone, text);
@@ -158,7 +165,7 @@ export async function processAppointmentResponse(
     actor,
   });
 
-  const vars = buildAppointmentTemplateVars(clinic, appointment);
+  const vars = await appointmentTemplateVars(supabase, clinic, appointment);
   const reply = await getAppointmentMessageBody(supabase, clinic.id, action === "confirm" ? "confirmado" : "cancelado", vars);
   await sendText(clinic, appointment.patient_phone, reply);
 

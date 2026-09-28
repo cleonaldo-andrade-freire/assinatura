@@ -363,7 +363,28 @@ export interface Appointment {
   // entra como 'atendido', não notifica o paciente e fica fora da constraint
   // de não-sobreposição (ver migration 066).
   backdated: boolean;
+  /** Local de atendimento (ver migration 070) — `null` em clínica sem locais cadastrados ou consulta antiga. */
+  location_id: string | null;
   created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Endereço onde a clínica atende — ver migration 070 e src/lib/locations.ts. */
+export interface ClinicLocation {
+  id: string;
+  clinic_id: string;
+  name: string;
+  cep: string | null;
+  street: string;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string;
+  state: string;
+  maps_url: string | null;
+  is_default: boolean;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }

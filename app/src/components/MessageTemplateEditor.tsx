@@ -16,7 +16,12 @@ const SAMPLE_VARS: Record<string, string> = {
   duracao_consulta: "30 min",
   status_consulta: "agendado",
   link_confirmacao: "https://seuapp.com/confirmacao/abc123",
-  endereco_clinica: "Rua Exemplo, 123 — Centro",
+  endereco_clinica: "Rua Exemplo, 123 — Centro, Aracaju/SE",
+  local_atendimento:
+    "📍 *Consultório Centro*\nRua Exemplo, 123 — Centro, Aracaju/SE\nComo chegar: https://www.google.com/maps/search/?api=1&query=...",
+  local_nome: "Consultório Centro",
+  local_endereco: "Rua Exemplo, 123 — Centro, Aracaju/SE",
+  local_mapa: "https://www.google.com/maps/search/?api=1&query=...",
   celular_clinica: "(79) 99999-9999",
 };
 
