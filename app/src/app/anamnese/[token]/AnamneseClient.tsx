@@ -245,7 +245,23 @@ export function AnamneseClient({ token }: { token: string }) {
 
       setStep("success");
     } catch (e: any) {
-      setSignError(e.message || "Ocorreu um erro ao enviar. Tente novamente.");
+      // fetch rejeitado (TypeError) = sem resposta do servidor — no iPhone vira
+      // "Load failed". A conexão pode ter caído depois de o servidor já ter
+      // gravado a assinatura, então confere antes de mostrar erro.
+      if (e instanceof TypeError) {
+        try {
+          const check = await fetch(`/api/anamnesis/${token}`, { cache: "no-store" });
+          if (check.ok && (await check.json()).already_signed) {
+            setStep("success");
+            return;
+          }
+        } catch {
+          // continua sem conexão — cai na mensagem abaixo
+        }
+        setSignError("A conexão caiu antes de concluir o envio. Verifique sua internet e toque em \"Finalizar e Assinar\" novamente.");
+      } else {
+        setSignError(e.message || "Ocorreu um erro ao enviar. Tente novamente.");
+      }
       setStep("assinatura");
     }
   }
