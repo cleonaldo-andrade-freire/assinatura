@@ -689,6 +689,9 @@ export interface TreatmentEvolution {
   dentist_signed_at: string | null;
   dentist_pdf_storage_key: string | null;
   dentist_pdf_sha256: string | null;
+  // Ver migration 071 — false = finalizado sem marcar "Enviar ao paciente";
+  // aí a contra-assinatura não manda a mensagem automática de validação.
+  notify_patient: boolean;
 }
 
 export type DentistSignatureStatus = "nao_assinada" | "assinada";

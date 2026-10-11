@@ -8,6 +8,7 @@ const bodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1),
   finalized_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   evolution_text: z.string().trim().min(1),
+  notify_patient: z.boolean().default(false),
 });
 
 /** Finaliza um ou vários tratamentos juntos (um por vez ou em lote, mesma
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
           evolution_date: parsed.data.finalized_at,
           text: parsed.data.evolution_text,
           image_keys: [],
+          notify_patient: parsed.data.notify_patient,
         })
         .select("id")
         .single();
@@ -67,15 +69,18 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
         finalized.map((t) => ({ treatment_evolution_id: evolution.id, treatment_id: t.id }))
       );
 
-      // Já dispara o pedido de assinatura ao paciente por WhatsApp — a
-      // contra-assinatura da dentista só é possível depois disso (ordem
-      // invertida em relação ao antigo "dentista assina primeiro", ver
-      // evolutionDentistSignature.ts). Sem isso, a evolução ficaria parada
-      // em signature_status="nao_solicitada" até alguém clicar manualmente
-      // em "Solicitar assinatura".
-      const sent = await requestEvolutionSignature(clinic.id, evolution.id);
-      if (!sent.ok) {
-        console.error(`Não foi possível solicitar assinatura automaticamente ao finalizar (evolução ${evolution.id}):`, sent.error);
+      // Só dispara o pedido de assinatura ao paciente se a caixa "Enviar ao
+      // paciente" foi marcada no modal — a contra-assinatura da dentista só
+      // é possível depois que o paciente assina (ver
+      // evolutionDentistSignature.ts). Desmarcada, a evolução fica em
+      // signature_status="nao_solicitada" até alguém clicar manualmente em
+      // "Solicitar assinatura" (evita mensagens automáticas — risco de
+      // bloqueio do WhatsApp da clínica).
+      if (parsed.data.notify_patient) {
+        const sent = await requestEvolutionSignature(clinic.id, evolution.id);
+        if (!sent.ok) {
+          console.error(`Não foi possível solicitar assinatura ao finalizar (evolução ${evolution.id}):`, sent.error);
+        }
       }
     }
   } catch (err) {

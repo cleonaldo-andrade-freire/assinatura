@@ -22,11 +22,14 @@ export function FinalizeTreatmentModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirm: (finalizedAt: string, evolutionText: string) => Promise<void> | void;
+  onConfirm: (finalizedAt: string, evolutionText: string, notifyPatient: boolean) => Promise<void> | void;
   treatments: Treatment[];
 }) {
   const [finalizedAt, setFinalizedAt] = useState(brDateOnly());
   const [evolutionText, setEvolutionText] = useState("");
+  // Desmarcada por padrão — envio ao paciente só por escolha explícita
+  // (evita mensagens automáticas, risco de bloqueio do WhatsApp da clínica).
+  const [notifyPatient, setNotifyPatient] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEscapeToClose(onClose, open);
@@ -35,6 +38,7 @@ export function FinalizeTreatmentModal({
     if (!open) return;
     setFinalizedAt(brDateOnly());
     setEvolutionText(buildFinalizationText(treatments));
+    setNotifyPatient(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -42,7 +46,7 @@ export function FinalizeTreatmentModal({
     if (!evolutionText.trim()) return;
     setSaving(true);
     try {
-      await onConfirm(finalizedAt, evolutionText.trim());
+      await onConfirm(finalizedAt, evolutionText.trim(), notifyPatient);
     } finally {
       setSaving(false);
     }
@@ -65,6 +69,17 @@ export function FinalizeTreatmentModal({
             <label className={styles.label}>Evolução*</label>
             <textarea className={styles.input} rows={4} value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)} />
           </div>
+
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, cursor: "pointer" }}>
+            <input type="checkbox" checked={notifyPatient} onChange={(e) => setNotifyPatient(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>
+              Enviar ao paciente para assinar por WhatsApp
+              <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)" }}>
+                O paciente recebe uma única mensagem para assinar concordando com o que foi realizado. Sem marcar, dá pra
+                solicitar depois pelo ícone do WhatsApp no tratamento.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className={uiStyles.dialogActions} style={{ marginTop: 20 }}>

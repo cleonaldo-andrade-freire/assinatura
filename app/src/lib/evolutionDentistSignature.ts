@@ -177,7 +177,14 @@ async function finishAndNotify(
   // Best-effort — mesma lógica de requestEvolutionSignature/signEvolution:
   // uma falha de WhatsApp não pode travar a finalização, que já foi salva.
   try {
-    const { data: evolution } = await supabase.from("treatment_evolutions").select("patient_id").eq("id", evolutionId).maybeSingle();
+    const { data: evolution } = await supabase
+      .from("treatment_evolutions")
+      .select("patient_id, notify_patient")
+      .eq("id", evolutionId)
+      .maybeSingle();
+    // Finalizado sem marcar "Enviar ao paciente" (migration 071) — sem
+    // mensagem automática; dá pra mandar depois pelo ícone do WhatsApp.
+    if (evolution && !evolution.notify_patient) return false;
     const { data: patient } = evolution
       ? await supabase.from("patients").select("name, phone").eq("id", evolution.patient_id).maybeSingle()
       : { data: null };

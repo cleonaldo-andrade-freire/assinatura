@@ -127,12 +127,12 @@ export function TreatmentsPanel({
     }
   }
 
-  async function handleFinalizeConfirm(finalizedAt: string, evolutionText: string) {
+  async function handleFinalizeConfirm(finalizedAt: string, evolutionText: string, notifyPatient: boolean) {
     if (!finalizeIds) return;
     const res = await fetch(`/api/clinics/${clinicId}/treatments/finalize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: finalizeIds, finalized_at: finalizedAt, evolution_text: evolutionText }),
+      body: JSON.stringify({ ids: finalizeIds, finalized_at: finalizedAt, evolution_text: evolutionText, notify_patient: notifyPatient }),
     });
     if (!res.ok) {
       push("Falha ao finalizar. Tenta de novo.");
