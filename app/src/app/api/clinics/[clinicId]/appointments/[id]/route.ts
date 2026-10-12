@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findOverlappingAppointment, recordAppointmentEvent } from "@/lib/appointments";
 import { sendAppointmentRescheduled } from "@/lib/appointmentNotifications";
 import { resolveAppointmentLocation } from "@/lib/locations";
+import { appointmentRoomRentedMessage } from "@/lib/roomRental";
 import type { Appointment, AppointmentStatus } from "@/lib/database.types";
 
 const STATUS_VALUES: [AppointmentStatus, ...AppointmentStatus[]] = [
@@ -148,6 +149,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { clinicId: 
     .single();
 
   if (error || !updated) {
+    // Trigger de sala alugada (migration 073) — mesmo código 23P01 da agenda.
+    const roomRented = appointmentRoomRentedMessage(error);
+    if (roomRented) return NextResponse.json({ error: "room_rented", message: roomRented }, { status: 409 });
     if (error?.code === "23P01") {
       return NextResponse.json(
         { error: "schedule_conflict", message: "Já existe um agendamento nesse horário para este profissional." },

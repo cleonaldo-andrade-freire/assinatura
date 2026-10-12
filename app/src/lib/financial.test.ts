@@ -13,7 +13,7 @@ describe("buildMonthlySeries", () => {
     // — que é justamente a informação relevante.
     const serie = buildMonthlySeries(rows, "2026-09", 3);
     expect(serie.map((p) => p.month)).toEqual(["2026-07", "2026-08", "2026-09"]);
-    expect(serie[1]).toEqual({ month: "2026-08", revenue: 0, expense: 0 });
+    expect(serie[1]).toEqual({ month: "2026-08", revenue: 0, expense: 0, rental: 0 });
   });
 
   it("devolve exatamente a quantidade de meses pedida, terminando no mês de referência", () => {
@@ -25,13 +25,25 @@ describe("buildMonthlySeries", () => {
 
   it("converte os numéricos que o Postgres devolve como string", () => {
     const serie = buildMonthlySeries(rows, "2026-09", 3);
-    expect(serie[2]).toEqual({ month: "2026-09", revenue: 2500.5, expense: 1200.25 });
+    expect(serie[2]).toEqual({ month: "2026-09", revenue: 2500.5, expense: 1200.25, rental: 0 });
   });
 
   it("ignora mês fora da janela pedida", () => {
     const serie = buildMonthlySeries(rows, "2026-09", 2);
     expect(serie.map((p) => p.month)).toEqual(["2026-08", "2026-09"]);
     expect(serie.every((p) => p.month !== "2026-07")).toBe(true);
+  });
+
+  it("soma o aluguel da sala à receita e mantém a parte do aluguel separada", () => {
+    // Aluguel não é produção clínica, mas é receita da clínica: entra no
+    // total (gráfico e saldo) e fica exposto à parte pra tela poder dizer
+    // quanto do mês veio da sala.
+    const serie = buildMonthlySeries(
+      [{ month: "2026-09-01", revenue_launched: "1000.00", expense_due: "0", rental_revenue: "450.00" }],
+      "2026-09",
+      1
+    );
+    expect(serie[0]).toEqual({ month: "2026-09", revenue: 1450, expense: 0, rental: 450 });
   });
 
   it("sem nenhuma linha, devolve a janela inteira zerada", () => {

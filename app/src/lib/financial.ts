@@ -6,12 +6,17 @@ export interface MonthlyRow {
   month: string; // "YYYY-MM-DD" (primeiro dia do mês)
   revenue_launched: string | number;
   expense_due: string | number;
+  /** Aluguel da sala pela data do uso (migration 073) — opcional pra quem ainda não seleciona a coluna. */
+  rental_revenue?: string | number;
 }
 
 export interface MonthlyPoint {
   month: string; // "YYYY-MM"
+  /** Receita total do mês: produção clínica + aluguel da sala. */
   revenue: number;
   expense: number;
+  /** Parte de `revenue` que é aluguel da sala — já somada, aqui só pra exibir em separado. */
+  rental: number;
 }
 
 function toNumber(v: string | number | null | undefined): number {
@@ -34,10 +39,12 @@ export function buildMonthlySeries(rows: MonthlyRow[], endMonth: string, months:
   for (let i = months - 1; i >= 0; i--) {
     const mes = addMonthsToDateStr(`${endMonth}-01`, -i).slice(0, 7);
     const row = porMes.get(mes);
+    const rental = toNumber(row?.rental_revenue);
     serie.push({
       month: mes,
-      revenue: toNumber(row?.revenue_launched),
+      revenue: toNumber(row?.revenue_launched) + rental,
       expense: toNumber(row?.expense_due),
+      rental,
     });
   }
   return serie;

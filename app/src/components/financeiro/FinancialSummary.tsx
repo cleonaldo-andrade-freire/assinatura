@@ -34,6 +34,7 @@ export function FinancialSummary({
   prevRevenue,
   prevExpense,
   receivable,
+  rental = 0,
 }: {
   monthLabel: string;
   revenue: number;
@@ -41,6 +42,8 @@ export function FinancialSummary({
   prevRevenue: number;
   prevExpense: number;
   receivable: number;
+  /** Parte de `revenue` que é aluguel da sala (migration 073) — 0 esconde a linha. */
+  rental?: number;
 }) {
   const saldo = revenue - expense;
 
@@ -59,6 +62,11 @@ export function FinancialSummary({
             R$ {formatMoneyDisplay(revenue)}
           </p>
           <Delta current={revenue} previous={prevRevenue} />
+          {rental > 0 && (
+            <span className={chart.catValue} style={{ display: "block" }}>
+              inclui R$ {formatMoneyDisplay(rental)} de locação da sala
+            </span>
+          )}
         </div>
 
         <div>
@@ -91,7 +99,9 @@ export function FinancialSummary({
           <p style={{ margin: "2px 0", fontSize: 22, fontWeight: 600, color: "var(--ink-soft)" }}>
             R$ {formatMoneyDisplay(receivable)}
           </p>
-          <span className={chart.catValue}>débitos em aberto, acumulado</span>
+          <span className={chart.catValue}>
+            {rental > 0 ? "débitos e locações em aberto, acumulado" : "débitos em aberto, acumulado"}
+          </span>
         </div>
       </div>
     </section>

@@ -16,6 +16,7 @@ import {
   buildDaySlotTimes,
   findOverlappingAppointment,
   isCancelled,
+  rangesOverlap,
   recordAppointmentEvent,
   slotKey,
 } from "@/lib/appointments";
@@ -110,10 +111,27 @@ function buildLeadTools(supabase: SupabaseClient, clinic: Clinic, lead: Lead): T
           .lt("scheduled_at", rangeEnd);
         const appointments = ((appointmentsData as Appointment[]) ?? []).filter((a) => !isCancelled(a.status));
 
+        // Sala alugada (migration 073) também ocupa a agenda — sem isto o
+        // robô ofereceria um horário que o banco recusa na hora de agendar.
+        const { data: rentalsData } = clinic.room_rental_enabled
+          ? await supabase
+              .from("room_rentals")
+              .select("starts_at, ends_at")
+              .eq("clinic_id", clinic.id)
+              .eq("status", "agendada")
+              .lt("starts_at", rangeEnd)
+              .gt("ends_at", slots[0])
+          : { data: [] };
+        const rentals = (rentalsData as { starts_at: string; ends_at: string }[] | null) ?? [];
+        const isRented = (s: string) =>
+          rentals.some((r) =>
+            rangesOverlap(new Date(s), appointmentEndsAt(s, APPOINTMENT_SLOT_MINUTES), new Date(r.starts_at), new Date(r.ends_at))
+          );
+
         const startTimes = new Set(appointments.map((a) => slotKey(a.scheduled_at)));
         const continuationMap = buildContinuationMap(appointments, slots);
         const now = Date.now();
-        const isFree = (s: string) => !startTimes.has(s) && !continuationMap.has(s) && new Date(s).getTime() > now;
+        const isFree = (s: string) => !startTimes.has(s) && !continuationMap.has(s) && !isRented(s) && new Date(s).getTime() > now;
 
         const free = slots.filter(isFree);
 

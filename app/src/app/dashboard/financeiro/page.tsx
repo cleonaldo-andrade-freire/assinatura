@@ -126,7 +126,7 @@ export default async function DespesasPage({
   const seriesStart = addMonthsToDateStr(monthStart, -11);
   const { data: monthlyData } = await supabase
     .from("financial_monthly")
-    .select("month, revenue_launched, expense_due")
+    .select("month, revenue_launched, expense_due, rental_revenue")
     .eq("clinic_id", clinic.id)
     .gte("month", seriesStart)
     .lte("month", monthStart)
@@ -143,7 +143,20 @@ export default async function DespesasPage({
     .select("amount")
     .eq("clinic_id", clinic.id)
     .eq("status", "aberto");
-  const totalReceivable = (openDebitsData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+  let totalReceivable = (openDebitsData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+
+  // Locações da sala já usadas e não pagas (migration 073) — cobrança é
+  // depois do uso, então locação futura ainda não é "a receber".
+  if (clinic.room_rental_enabled) {
+    const { data: openRentalsData } = await supabase
+      .from("room_rentals")
+      .select("amount")
+      .eq("clinic_id", clinic.id)
+      .eq("status", "agendada")
+      .is("paid_at", null)
+      .lte("rental_date", today);
+    totalReceivable += (openRentalsData ?? []).reduce((sum, r) => sum + Number(r.amount), 0);
+  }
 
   const { data: monthCategoryData } = await supabase
     .from("expenses")
@@ -175,6 +188,11 @@ export default async function DespesasPage({
       userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {clinic.room_rental_enabled && (
+            <a href="/dashboard/locacao" className={`${styles.btn} ${styles.btnGhost}`}>
+              Locação da sala
+            </a>
+          )}
           <a href={exportHref} className={`${styles.btn} ${styles.btnGhost}`}>
             Exportar CSV
           </a>
@@ -190,6 +208,7 @@ export default async function DespesasPage({
           prevRevenue={anterior.revenue}
           prevExpense={anterior.expense}
           receivable={totalReceivable}
+          rental={atual.rental}
         />
 
         <section className={styles.panel}>

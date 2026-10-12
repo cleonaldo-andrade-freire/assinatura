@@ -48,6 +48,8 @@ export interface Clinic {
   consent_term_version: string | null;
   consent_term_updated_at: string | null;
   lead_bot_enabled: boolean;
+  /** Módulo de locação da sala por turno (migration 073) — ligado só por SQL, por clínica. */
+  room_rental_enabled: boolean;
   lead_bot_trigger_phrase: string | null;
   /** Resposta automática enviada uma única vez quando um lead NOVO abre pelo
    * WhatsApp (texto pré-preenchido do anúncio). Null/vazio = não responde,
@@ -692,9 +694,65 @@ export interface TreatmentEvolution {
   // Ver migration 071 — false = finalizado sem marcar "Enviar ao paciente";
   // aí a contra-assinatura não manda a mensagem automática de validação.
   notify_patient: boolean;
+  // Ver migration 072 — preenchido = assinatura do paciente dispensada (sai
+  // da tela de pendentes e do lembrete automático).
+  signature_waived_at: string | null;
 }
 
 export type DentistSignatureStatus = "nao_assinada" | "assinada";
+
+// Locação da sala por turno — ver migration 073.
+export interface RoomRentalShift {
+  id: string;
+  clinic_id: string;
+  name: string;
+  /** "HH:MM:SS" (coluna `time`). */
+  start_time: string;
+  end_time: string;
+  default_amount: number | null;
+  active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoomTenant {
+  id: string;
+  clinic_id: string;
+  name: string;
+  document: string | null;
+  cro: string | null;
+  cro_uf: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type RoomRentalStatus = "agendada" | "cancelada";
+
+export interface RoomRental {
+  id: string;
+  clinic_id: string;
+  tenant_id: string;
+  shift_id: string;
+  rental_date: string;
+  starts_at: string;
+  ends_at: string;
+  amount: number;
+  notes: string | null;
+  status: RoomRentalStatus;
+  paid_at: string | null;
+  payment_method: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  series_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface TreatmentEvolutionSignature {
   id: string;

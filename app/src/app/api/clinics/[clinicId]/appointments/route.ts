@@ -7,6 +7,7 @@ import { findOverlappingAppointment, recordAppointmentEvent, APPOINTMENT_SLOT_MI
 import { sendAppointmentRequest } from "@/lib/appointmentNotifications";
 import { upsertPatientFromContact } from "@/lib/patients";
 import { resolveAppointmentLocation } from "@/lib/locations";
+import { appointmentRoomRentedMessage } from "@/lib/roomRental";
 
 const bodySchema = z.object({
   scheduled_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), { message: "data/hora inválida" }),
@@ -134,6 +135,9 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     // 23P01 = exclusion_violation — a checagem prévia acima cobre o caminho
     // feliz, mas se duas criações concorrentes passarem por ela ao mesmo
     // tempo, é a constraint do banco (migration 022) que barra de verdade.
+    // O mesmo código vem do trigger de sala alugada (migration 073).
+    const roomRented = appointmentRoomRentedMessage(error);
+    if (roomRented) return NextResponse.json({ error: "room_rented", message: roomRented }, { status: 409 });
     if (error?.code === "23P01") {
       return NextResponse.json(
         { error: "schedule_conflict", message: "Já existe um agendamento nesse horário para este profissional." },
