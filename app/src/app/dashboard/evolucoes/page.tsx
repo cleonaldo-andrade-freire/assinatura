@@ -4,28 +4,35 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { EvolucoesPendentesClient } from "@/components/EvolucoesPendentesClient";
 import { formatTreatmentsLabel } from "@/lib/treatments";
+import type { EvolutionSignatureStatus } from "@/lib/database.types";
 
 /** Junta, entre todos os pacientes, as evoluções que a dentista ainda não
  * assinou digitalmente (ICP-Brasil, agente local) — sem esta tela só dava
  * pra assinar entrando no tratamento de cada paciente, um por um. */
-export default async function EvolucoesPendentesPage() {
+export default async function EvolucoesPendentesPage({ searchParams }: { searchParams: { filtro?: string } }) {
+  const showWaived = searchParams.filtro === "dispensadas";
   const auth = await getClinicAndRole();
   if (!auth) redirect("/login");
   if (auth.role !== "owner") redirect("/dashboard");
   const { clinic, role, userEmail, userName, userAvatarUrl } = auth;
 
   const supabase = await createSupabaseServerClient();
-  // Só entram aqui evoluções que o paciente já assinou — a contra-assinatura
-  // da dentista só é possível depois disso, pra poder mesclar as duas
-  // assinaturas num único PDF (ver evolutionDentistSignature.ts).
-  const { data: evolutions } = await supabase
+  // Entram também as que o paciente ainda não assinou, pra dar pra
+  // (re)enviar o pedido de assinatura daqui — mas só as já assinadas pelo
+  // paciente podem ser contra-assinadas pela dentista, pra poder mesclar as
+  // duas assinaturas num único PDF (ver evolutionDentistSignature.ts).
+  // Dispensadas (migration 072) só aparecem no filtro "Dispensadas" — a não
+  // ser que o paciente tenha assinado mesmo assim por um link ainda válido:
+  // aí volta pra lista principal, pronta pra contra-assinatura.
+  let query = supabase
     .from("treatment_evolutions")
     .select("id, treatment_id, patient_id, evolution_date, text, created_at, signature_status, dentist_signature_status")
     .eq("clinic_id", clinic.id)
-    .eq("dentist_signature_status", "nao_assinada")
-    .eq("signature_status", "assinada")
-    .order("evolution_date", { ascending: false })
-    .limit(200);
+    .eq("dentist_signature_status", "nao_assinada");
+  query = showWaived
+    ? query.not("signature_waived_at", "is", null).neq("signature_status", "assinada")
+    : query.or("signature_waived_at.is.null,signature_status.eq.assinada");
+  const { data: evolutions } = await query.order("evolution_date", { ascending: false }).limit(200);
 
   const list = evolutions ?? [];
   const patientIds = [...new Set(list.map((e) => e.patient_id))];
@@ -70,6 +77,7 @@ export default async function EvolucoesPendentesPage() {
       // de um tooth_region separado (EvolucoesPendentesClient só antepõe
       // isto quando presente).
       tooth_region: null as string | null,
+      signature_status: e.signature_status as EvolutionSignatureStatus,
     };
   });
 
@@ -84,7 +92,7 @@ export default async function EvolucoesPendentesPage() {
       userName={userName}
       userAvatarUrl={userAvatarUrl}
     >
-      <EvolucoesPendentesClient clinicId={clinic.id} dentistCpf={clinic.dentist_cpf} initialRows={rows} />
+      <EvolucoesPendentesClient key={showWaived ? "dispensadas" : "pendentes"} clinicId={clinic.id} dentistCpf={clinic.dentist_cpf} initialRows={rows} showWaived={showWaived} />
     </ClinicShell>
   );
 }

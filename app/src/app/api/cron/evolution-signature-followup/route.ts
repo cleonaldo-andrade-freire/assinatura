@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
     .from("treatment_evolutions")
     .select("id, clinic_id, signature_followup_count")
     .eq("signature_status", "solicitada")
+    // Dispensada pela clínica (migration 072) — não insiste com o paciente.
+    .is("signature_waived_at", null)
     .lt("signature_token_expires_at", new Date().toISOString());
 
   let resent = 0;

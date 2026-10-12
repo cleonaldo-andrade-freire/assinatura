@@ -127,6 +127,8 @@ export async function requestEvolutionSignature(
       // lembretes automáticos — só o cron incrementa, e só conta desde o
       // último toque humano (ver migration 054).
       signature_followup_count: isFollowup ? ev.signature_followup_count + 1 : 0,
+      // Solicitar de novo desfaz o "dispensar assinatura" (migration 072).
+      signature_waived_at: null,
     })
     .eq("id", evolutionId)
     .select("signature_token")
