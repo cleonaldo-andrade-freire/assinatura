@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { PscClient } from "@/lib/psc/PscClient";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+// Lê a query string (code/state do OAuth) — sem isto o build tenta gerar a
+// rota estaticamente, e o erro de "dynamic server usage" que o Next usa pra
+// abortar essa tentativa cai no catch abaixo e vira um log de erro falso.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const code = req.nextUrl.searchParams.get("code");
