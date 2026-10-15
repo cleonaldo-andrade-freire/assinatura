@@ -9,6 +9,7 @@ import { ConnectWhatsApp } from "@/components/ConnectWhatsApp";
 import { LeadAlertSettings } from "@/components/LeadAlertSettings";
 import { LeadGreetingSettings } from "@/components/LeadGreetingSettings";
 import { PlanPicker } from "@/components/PlanPicker";
+import { AgentDiagnosticCheck } from "@/components/AgentDetector";
 import { getPendingInvoice, listPayments, PAYMENT_STATUS_LABEL, type AsaasPayment } from "@/lib/asaas";
 import { effectiveMonthlyPrice, getActivePlans, getPlanById } from "@/lib/plans";
 import { TRIAL_ANAMNESIS_LIMIT } from "@/lib/billing";
@@ -20,7 +21,7 @@ import styles from "@/styles/shell.module.css";
 // Gerado por agent/pack.ps1 e publicado como release no GitHub — reenviar
 // (nova release) sempre que o agente ou a URL de produção embutida mudarem.
 const AGENT_INSTALLER_URL =
-  "https://github.com/cleonaldo-andrade-freire/assinatura/releases/download/agent-installer-v1.1.2/AssinaturaDigitalAgent.zip";
+  "https://github.com/cleonaldo-andrade-freire/assinatura/releases/download/agent-installer-v1.2.0/AssinaturaDigitalAgent.zip";
 
 const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
   trialing: "Em período de teste",
@@ -241,6 +242,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             Extraia o .zip e dê duplo clique em "Instalar.bat". O Windows pode avisar que é de origem desconhecida —
             clique em "Mais informações" → "Executar assim mesmo".
           </p>
+          <p className={styles.hint} style={{ marginTop: 16, marginBottom: 8, fontWeight: 600 }}>
+            Testar o agente neste computador
+          </p>
+          <AgentDiagnosticCheck />
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using Agent.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +13,19 @@ internal static class Program
     private const int Port = 52310;
     private const string AutoStartRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AutoStartValueName = "AssinaturaDigitalAgent";
+    private const string AllowedOriginsKey = "AGENT_ALLOWED_ORIGINS";
+
+    // Origens liberadas no CORS — lidas do appsettings.json na partida e
+    // alteráveis em runtime pelo menu da bandeja ("Liberar site bloqueado"),
+    // por isso compartilhadas entre o middleware e a UI.
+    private static readonly ConcurrentDictionary<string, byte> AllowedOrigins = new(StringComparer.OrdinalIgnoreCase);
+
+    // Origens que bateram no agente e foram recusadas — aparecem no menu da
+    // bandeja pra quem está na frente da máquina liberar com um clique, sem
+    // precisar editar o appsettings.json à mão.
+    private static readonly ConcurrentDictionary<string, DateTime> RejectedOrigins = new(StringComparer.OrdinalIgnoreCase);
+
+    private static string SettingsPath => Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 
     [STAThread]
     private static void Main(string[] args)
@@ -49,7 +64,17 @@ internal static class Program
 
     private static WebApplication BuildWebApplication(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        // ContentRootPath explícito na pasta do Agent.exe: o padrão do
+        // WebApplication é a pasta ATUAL do processo (só C:\Windows\System32
+        // tem tratamento especial do .NET). Aberto de qualquer outra pasta
+        // (linha de comando, outro atalho, outro launcher), o appsettings.json
+        // não era encontrado, só localhost:3000 ficava liberado e o site de
+        // produção via o agente como "não está rodando".
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            Args = args,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
 
         // Escuta só no loopback — nunca exposto pra fora da máquina.
         builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(Port));
@@ -63,10 +88,11 @@ internal static class Program
         // exigindo recompilar o agente pra cada domínio novo. O instalador
         // (installer/install.ps1) escreve o appsettings.json com o domínio
         // real na hora de instalar em cada máquina.
-        var allowedOrigins = new HashSet<string>(
-            (builder.Configuration["AGENT_ALLOWED_ORIGINS"] ?? "http://localhost:3000")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            StringComparer.OrdinalIgnoreCase);
+        foreach (var configured in (builder.Configuration[AllowedOriginsKey] ?? "http://localhost:3000")
+                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            AllowedOrigins.TryAdd(configured.TrimEnd('/'), 0);
+        }
 
         var webApp = builder.Build();
 
@@ -87,7 +113,19 @@ internal static class Program
         webApp.Use(async (context, next) =>
         {
             var origin = context.Request.Headers.Origin.ToString();
-            var originAllowed = !string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin);
+            var originAllowed = !string.IsNullOrEmpty(origin) && AllowedOrigins.ContainsKey(origin);
+
+            // /v1/status é legível por qualquer origem (só expõe versão e se a
+            // origem que perguntou está liberada) — é o que deixa o site
+            // diferenciar "agente desligado" de "agente rodando mas recusando
+            // este site", que pro navegador são o mesmo erro de rede genérico.
+            var isStatus = context.Request.Path.Equals("/v1/status", StringComparison.OrdinalIgnoreCase);
+            var statusReadable = isStatus && !string.IsNullOrEmpty(origin);
+
+            if (!string.IsNullOrEmpty(origin) && !originAllowed && IsWebOrigin(origin))
+            {
+                RejectedOrigins[origin] = DateTime.Now;
+            }
 
             if (originAllowed)
             {
@@ -95,10 +133,15 @@ internal static class Program
                 context.Response.Headers.Append("Vary", "Origin");
                 context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
             }
+            else if (statusReadable)
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                context.Response.Headers.Append("Vary", "Origin");
+            }
 
             if (context.Request.Method == "OPTIONS")
             {
-                if (originAllowed)
+                if (originAllowed || statusReadable)
                 {
                     var requestedHeaders = context.Request.Headers["Access-Control-Request-Headers"].ToString();
                     context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -121,13 +164,19 @@ internal static class Program
             await next();
         });
 
-        webApp.MapGet("/v1/status", () => Results.Json(new
+        webApp.MapGet("/v1/status", (HttpContext context) =>
         {
-            agentVersion = "1.1.0",
-            protocolVersion = 1,
-            os = "windows",
-            providers = new[] { "windows-store" }
-        }));
+            var origin = context.Request.Headers.Origin.ToString();
+            return Results.Json(new
+            {
+                agentVersion = "1.2.0",
+                protocolVersion = 1,
+                os = "windows",
+                providers = new[] { "windows-store" },
+                // null quando chamado sem Origin (ex.: aberto direto numa aba).
+                originAllowed = string.IsNullOrEmpty(origin) ? (bool?)null : AllowedOrigins.ContainsKey(origin),
+            });
+        });
 
         webApp.MapGet("/v1/certificates", (ICertificateProvider provider) =>
         {
@@ -165,6 +214,20 @@ internal static class Program
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add(new ToolStripMenuItem($"Rodando em localhost:{Port}") { Enabled = false });
+        menu.Items.Add(new ToolStripSeparator());
+
+        // Reconstruídos a cada abertura do menu — refletem as origens
+        // liberadas/recusadas no momento, não as da hora em que o ícone subiu.
+        var allowedItem = new ToolStripMenuItem("Sites liberados");
+        var rejectedItem = new ToolStripMenuItem("Liberar site bloqueado");
+        menu.Items.Add(allowedItem);
+        menu.Items.Add(rejectedItem);
+        menu.Opening += (_, _) => RefreshOriginMenus(allowedItem, rejectedItem);
+        RefreshOriginMenus(allowedItem, rejectedItem);
+
+        var openFolderItem = new ToolStripMenuItem("Abrir pasta do agente");
+        openFolderItem.Click += (_, _) => OpenAgentFolder();
+        menu.Items.Add(openFolderItem);
         menu.Items.Add(new ToolStripSeparator());
 
         var autoStartItem = new ToolStripMenuItem("Iniciar com o Windows")
@@ -205,11 +268,105 @@ internal static class Program
         }
     }
 
+    private static void RefreshOriginMenus(ToolStripMenuItem allowedItem, ToolStripMenuItem rejectedItem)
+    {
+        allowedItem.DropDownItems.Clear();
+        foreach (var origin in AllowedOrigins.Keys.OrderBy(o => o))
+        {
+            allowedItem.DropDownItems.Add(new ToolStripMenuItem(origin) { Enabled = false });
+        }
+        allowedItem.DropDownItems.Add(new ToolStripSeparator());
+        allowedItem.DropDownItems.Add(new ToolStripMenuItem($"Configuração: {SettingsPath}") { Enabled = false });
+
+        rejectedItem.DropDownItems.Clear();
+        var pending = RejectedOrigins
+            .Where(kv => !AllowedOrigins.ContainsKey(kv.Key))
+            .OrderByDescending(kv => kv.Value)
+            .Take(10)
+            .ToList();
+        rejectedItem.Enabled = pending.Count > 0;
+        rejectedItem.Text = pending.Count > 0
+            ? $"Liberar site bloqueado ({pending.Count})"
+            : "Liberar site bloqueado (nenhum)";
+        foreach (var (origin, lastSeen) in pending)
+        {
+            var item = new ToolStripMenuItem($"{origin}  (tentou às {lastSeen:HH:mm})");
+            item.Click += (_, _) => ConfirmAndAllowOrigin(origin);
+            rejectedItem.DropDownItems.Add(item);
+        }
+    }
+
+    private static void ConfirmAndAllowOrigin(string origin)
+    {
+        var answer = MessageBox.Show(
+            $"Liberar o site abaixo para usar os certificados digitais desta máquina?\n\n{origin}\n\n" +
+            "Só confirme se este for o endereço do sistema da clínica.",
+            "Agente de Assinatura Digital",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            MessageBoxDefaultButton.Button2);
+        if (answer != DialogResult.Yes) return;
+
+        AllowedOrigins.TryAdd(origin, 0);
+        RejectedOrigins.TryRemove(origin, out _);
+        try
+        {
+            SaveAllowedOrigins();
+            MessageBox.Show(
+                $"Site liberado: {origin}\n\nVolte ao navegador e clique em \"Testar novamente\".",
+                "Agente de Assinatura Digital",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"O site foi liberado até o agente ser fechado, mas não deu pra salvar em {SettingsPath}.\n\nDetalhe técnico: {ex.Message}",
+                "Agente de Assinatura Digital",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+    }
+
+    // Reescreve o appsettings.json preservando as outras chaves que existirem.
+    private static void SaveAllowedOrigins()
+    {
+        var settings = new Dictionary<string, object?>();
+        if (File.Exists(SettingsPath))
+        {
+            var existing = JsonSerializer.Deserialize<Dictionary<string, object?>>(File.ReadAllText(SettingsPath));
+            if (existing != null) settings = existing;
+        }
+        settings[AllowedOriginsKey] = string.Join(",", AllowedOrigins.Keys.OrderBy(o => o));
+        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    // Só origens http(s) "limpas" entram na lista de recusadas — evita poluir
+    // o menu com "null" (file://, sandbox) ou lixo mandado no header.
+    private static bool IsWebOrigin(string origin) =>
+        Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+        && uri.GetLeftPart(UriPartial.Authority).Equals(origin, StringComparison.OrdinalIgnoreCase);
+
+    private static void OpenAgentFolder()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"\"{AppContext.BaseDirectory}\"");
+        }
+        catch
+        {
+            // Sem explorer disponível não há o que fazer — ignora.
+        }
+    }
+
     private static bool IsAutoStartEnabled()
     {
         using var key = Registry.CurrentUser.OpenSubKey(AutoStartRegistryKey, writable: false);
+        // O instalador grava o caminho entre aspas e o menu daqui gravava sem —
+        // compara ignorando as aspas pros dois casos marcarem o checkbox.
         return key?.GetValue(AutoStartValueName) is string existing
-            && existing.Equals(GetExecutablePath(), StringComparison.OrdinalIgnoreCase);
+            && existing.Trim('"').Equals(GetExecutablePath(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static void SetAutoStart(bool enabled)
@@ -218,7 +375,7 @@ internal static class Program
             ?? Registry.CurrentUser.CreateSubKey(AutoStartRegistryKey);
         if (enabled)
         {
-            key.SetValue(AutoStartValueName, GetExecutablePath());
+            key.SetValue(AutoStartValueName, $"\"{GetExecutablePath()}\"");
         }
         else
         {
