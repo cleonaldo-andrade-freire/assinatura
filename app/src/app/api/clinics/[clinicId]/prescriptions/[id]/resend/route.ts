@@ -27,7 +27,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "no_phone" }, { status: 400 });
   }
 
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/prescricao?token=${prescription.token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/prescricao/${prescription.token}`;
   const sent = await sendText(clinic, prescription.patient_phone, `💊 Seu receituário odontológico já está disponível: ${link}`);
   if (!sent) {
     return NextResponse.json({ error: "send_failed" }, { status: 502 });

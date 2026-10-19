@@ -206,7 +206,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
     .eq("id", typedConversation.id);
 
   if (anamnesis) {
-    const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura?token=${anamnesis.token}`;
+    const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura/${anamnesis.token}`;
     await sendText(
       clinic,
       inbound.phone,

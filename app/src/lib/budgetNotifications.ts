@@ -42,7 +42,7 @@ export async function sendBudgetWhatsApp(
   items: BudgetItem[]
 ): Promise<void> {
   const current = budget.pdf_storage_key ? budget : await issueBudgetPdf(supabase, clinic, budget, items);
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/orcamento?token=${current.token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/orcamento/${current.token}`;
   const text = `📋 Seu orçamento odontológico (${current.description}) já está disponível: ${link}`;
   const sent = await sendText(clinic, current.patient_phone, text);
   if (sent) {

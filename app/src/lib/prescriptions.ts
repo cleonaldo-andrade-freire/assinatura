@@ -283,7 +283,7 @@ async function finishPrescriptionSignature(
   const finalPrescription = updated as Prescription;
 
   if (finalPrescription.patient_phone) {
-    const link = `${process.env.NEXT_PUBLIC_APP_URL}/prescricao?token=${finalPrescription.token}`;
+    const link = `${process.env.NEXT_PUBLIC_APP_URL}/prescricao/${finalPrescription.token}`;
     const message = isExamsOnly({
       items: finalPrescription.items,
       exam_requests: finalPrescription.exam_requests ?? [],

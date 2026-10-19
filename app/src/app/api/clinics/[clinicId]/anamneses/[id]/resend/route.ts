@@ -32,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
     return NextResponse.json({ error: "no_phone" }, { status: 400 });
   }
 
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura?token=${anamnesis.token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/assinatura/${anamnesis.token}`;
   const sent = await sendText(clinic, anamnesis.patient_phone, `📄 Sua anamnese assinada já está disponível: ${link}`);
   if (!sent) {
     return NextResponse.json({ error: "send_failed" }, { status: 502 });

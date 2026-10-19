@@ -31,7 +31,7 @@ export async function sendReceiptWhatsApp(supabase: SupabaseClient, clinic: Clin
   const patientPhone = receipt.patient_phone;
   if (!patientPhone) return;
   const current = receipt.pdf_storage_key ? receipt : await issueReceiptPdf(supabase, clinic, receipt, debits);
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/recibo?token=${current.token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/recibo/${current.token}`;
   const text = `🧾 Seu recibo de pagamento já está disponível: ${link}`;
   const sent = await sendText(clinic, patientPhone, text);
   if (sent) {

@@ -285,7 +285,7 @@ async function finishCertificateSignature(
   const finalCertificate = updated as Certificate;
 
   if (finalCertificate.patient_phone) {
-    const link = `${process.env.NEXT_PUBLIC_APP_URL}/atestado?token=${finalCertificate.token}`;
+    const link = `${process.env.NEXT_PUBLIC_APP_URL}/atestado/${finalCertificate.token}`;
     const sent = await sendText(clinic, finalCertificate.patient_phone, `📄 Seu atestado odontológico já está disponível: ${link}`);
     if (sent) {
       await supabase

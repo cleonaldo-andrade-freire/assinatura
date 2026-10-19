@@ -144,7 +144,7 @@ export async function requestEvolutionSignature(
     payload: { content_hash: contentHash },
   });
 
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/evolucao-assinatura?token=${refreshed.signature_token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/evolucao-assinatura/${refreshed.signature_token}`;
   const message = isFollowup
     ? `📋 Olá, ${firstName(patient.name)}! Ainda não recebemos sua confirmação sobre o registro do seu atendimento de ${formatDateOnlyBR(ev.evolution_date)} na ${clinic.name}.\n\n` +
       `O link anterior expirou — segue um novo, leva menos de 1 minuto:\n${link}\n\n` +
