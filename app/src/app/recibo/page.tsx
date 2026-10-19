@@ -4,9 +4,14 @@ import { isValidToken } from "@/lib/validation";
 import { formatTimestampBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Receipt, TreatmentDebit } from "@/lib/database.types";
+import { clinicLinkPreview } from "@/lib/linkPreview";
 
 function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
+}
+
+export function generateMetadata({ searchParams }: { searchParams: { token?: string } }) {
+  return clinicLinkPreview("recibo", searchParams.token);
 }
 
 export default async function ReciboPage({ searchParams }: { searchParams: { token?: string } }) {

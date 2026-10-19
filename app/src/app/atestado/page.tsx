@@ -4,6 +4,11 @@ import { isValidToken } from "@/lib/validation";
 import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { Certificate } from "@/lib/database.types";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
+import { clinicLinkPreview } from "@/lib/linkPreview";
+
+export function generateMetadata({ searchParams }: { searchParams: { token?: string } }) {
+  return clinicLinkPreview("atestado", searchParams.token);
+}
 
 export default async function AtestadoPage({ searchParams }: { searchParams: { token?: string } }) {
   const token = searchParams.token;

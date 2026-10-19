@@ -4,6 +4,7 @@ import { isValidToken } from "@/lib/validation";
 import { formatTimestampBR, formatBRTime, formatBRWeekday } from "@/lib/date";
 import { ConfirmationActions } from "@/components/ConfirmationActions";
 import type { Appointment } from "@/lib/database.types";
+import { clinicLinkPreview } from "@/lib/linkPreview";
 
 // Sem cookies/headers/searchParams, o Next trataria essa rota como estática
 // por padrão (cacheia o HTML renderizado e as respostas de fetch do
@@ -13,6 +14,10 @@ import type { Appointment } from "@/lib/database.types";
 // primeira resposta que o Next cacheou, nunca refletindo remarcação nem
 // fazendo o link expirar de verdade.
 export const dynamic = "force-dynamic";
+
+export function generateMetadata({ params }: { params: { token: string } }) {
+  return clinicLinkPreview("confirmacao", params.token);
+}
 
 export default async function ConfirmacaoPage({ params }: { params: { token: string } }) {
   if (!isValidToken(params.token)) notFound();

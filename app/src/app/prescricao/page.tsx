@@ -6,6 +6,11 @@ import { formatTimestampBR } from "@/lib/date";
 import type { Prescription } from "@/lib/database.types";
 import { isExamsOnly } from "@/lib/prescriptionExams";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
+import { clinicLinkPreview } from "@/lib/linkPreview";
+
+export function generateMetadata({ searchParams }: { searchParams: { token?: string } }) {
+  return clinicLinkPreview("prescricao", searchParams.token);
+}
 
 export default async function PrescricaoPage({ searchParams }: { searchParams: { token?: string } }) {
   const token = searchParams.token;

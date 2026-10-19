@@ -4,9 +4,14 @@ import { isValidToken } from "@/lib/validation";
 import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import type { Budget, BudgetItem } from "@/lib/database.types";
+import { clinicLinkPreview } from "@/lib/linkPreview";
 
 function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
+}
+
+export function generateMetadata({ searchParams }: { searchParams: { token?: string } }) {
+  return clinicLinkPreview("orcamento", searchParams.token);
 }
 
 export default async function OrcamentoPage({ searchParams }: { searchParams: { token?: string } }) {
