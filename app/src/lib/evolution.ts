@@ -6,6 +6,11 @@ function evolutionConfigured(clinic: EvolutionCreds): boolean {
   return !!(clinic.evolution_base_url && clinic.evolution_instance_name && clinic.evolution_api_key);
 }
 
+function hasAppLink(text: string): boolean {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  return !!appUrl && text.includes(appUrl);
+}
+
 /**
  * Manda uma mensagem de texto simples via Evolution API. Best-effort: erros são
  * logados, não lançados — uma falha de rede aqui nunca deve derrubar o fluxo que
@@ -30,6 +35,10 @@ export async function sendText(clinic: EvolutionCreds, phone: string, text: stri
       body: JSON.stringify({
         number: phone.replace(/\D/g, ""),
         text,
+        // O WhatsApp do iPhone não deixa clicável o link do app em texto vindo
+        // de número fora dos contatos (só o trecho final). O cartão de prévia
+        // abre o link completo, então pedimos sempre que houver link nosso.
+        ...(hasAppLink(text) ? { linkPreview: true } : {}),
       }),
     });
     if (!res.ok) {
