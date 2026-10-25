@@ -67,6 +67,18 @@ export function buildFinalizationText(treatments: Pick<Treatment, "treatment_nam
 }
 
 /**
+ * Texto padrão do "Registrar atendimento" — igual ao de finalização quando
+ * a sessão encerra os tratamentos; quando não encerra (ex.: canal em várias
+ * sessões), registra só que houve sessão ("Sessão de Canal do dente 36").
+ */
+export function buildVisitText(treatments: Pick<Treatment, "treatment_name" | "tooth_region">[], finalize: boolean): string {
+  if (treatments.length === 0) return "";
+  if (finalize) return buildFinalizationText(treatments);
+  const parts = treatments.map((t) => (t.tooth_region ? `${t.treatment_name} do dente ${t.tooth_region}` : t.treatment_name));
+  return `Sessão de ${parts.join(", ")}`;
+}
+
+/**
  * Rótulo dos tratamentos vinculados a uma evolução — usado no PDF assinado,
  * na tela pública de confirmação e no aviso "Também vinculada a" da tela de
  * edição do tratamento. Mesma convenção de formatação (toothRegion — name)

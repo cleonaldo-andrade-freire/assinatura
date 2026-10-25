@@ -8,6 +8,7 @@ import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { FinalizeTreatmentModal } from "@/components/treatments/FinalizeTreatmentModal";
 import { TreatmentDetailModal } from "@/components/treatments/TreatmentDetailModal";
 import { NewTreatmentModal } from "@/components/treatments/NewTreatmentModal";
+import { RegisterVisitModal } from "@/components/treatments/RegisterVisitModal";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatTimestampBR } from "@/lib/date";
 import type { Treatment } from "@/lib/database.types";
@@ -80,6 +81,7 @@ export function TreatmentsPanel({
 
   const [detailTreatment, setDetailTreatment] = useState<Treatment | null>(null);
   const [newTreatmentOpen, setNewTreatmentOpen] = useState(false);
+  const [registerVisitOpen, setRegisterVisitOpen] = useState(false);
 
   const [confirmDeleteIds, setConfirmDeleteIds] = useState<string[] | null>(null);
   const [deletingIds, setDeletingIds] = useState(false);
@@ -154,9 +156,14 @@ export function TreatmentsPanel({
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <button type="button" onClick={() => setNewTreatmentOpen(true)} className={`${styles.btn} ${styles.btnPrimary}`}>
-          + Novo tratamento
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => setRegisterVisitOpen(true)} className={`${styles.btn} ${styles.btnPrimary}`}>
+            Registrar atendimento
+          </button>
+          <button type="button" onClick={() => setNewTreatmentOpen(true)} className={`${styles.btn} ${styles.btnGhost}`}>
+            + Novo tratamento
+          </button>
+        </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-soft)", cursor: "pointer" }}>
           <input
             type="checkbox"
@@ -258,6 +265,19 @@ export function TreatmentsPanel({
         clinicId={clinicId}
         patientId={patientId}
         onCreated={(created) => setTreatments((prev) => [created, ...prev])}
+      />
+
+      <RegisterVisitModal
+        open={registerVisitOpen}
+        onClose={() => setRegisterVisitOpen(false)}
+        clinicId={clinicId}
+        patientId={patientId}
+        initialSelectedIds={Array.from(selected)}
+        onSaved={(message) => {
+          push(message, "success");
+          setSelected(new Set());
+          router.refresh();
+        }}
       />
 
       <TreatmentDetailModal

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DictationButton } from "@/components/treatments/DictationButton";
 import { EvolutionImageUploader, type EvolutionImageItem } from "@/components/treatments/EvolutionImageUploader";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { appendDictated, useDictation } from "@/lib/useDictation";
 import { brDateOnly } from "@/lib/date";
 import type { TreatmentEvolution } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
@@ -11,26 +13,6 @@ import styles from "@/styles/shell.module.css";
 import tp from "./treatments.module.css";
 
 const MAX_EVOLUTION_IMAGES = 5;
-
-// Web Speech API — sem tipos no lib.dom padrão do TS, e só existe com
-// prefixo "webkit" em boa parte dos navegadores (Chrome/Edge; sem suporte
-// no Firefox desktop). Tipagem mínima só do que a gente usa.
-interface SpeechRecognitionLike {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((event: { resultIndex: number; results: { [i: number]: { isFinal: boolean; [j: number]: { transcript: string } }; length: number } }) => void) | null;
-  onend: (() => void) | null;
-  onerror: (() => void) | null;
-  start(): void;
-  stop(): void;
-}
-
-function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
-  if (typeof window === "undefined") return undefined;
-  const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
-}
 
 export interface EvolutionFormResult {
   evolutionDate: string;
@@ -67,8 +49,7 @@ export function EvolutionFormModal({
   const [keepImageKeys, setKeepImageKeys] = useState<string[]>([]);
   const [keptDescriptions, setKeptDescriptions] = useState<Record<string, string>>({});
   const [newImages, setNewImages] = useState<EvolutionImageItem[]>([]);
-  const [dictating, setDictating] = useState(false);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictation = useDictation((dictated) => setText((prev) => appendDictated(prev, dictated)));
 
   useEscapeToClose(onClose, open);
 
@@ -76,20 +57,13 @@ export function EvolutionFormModal({
   // continuava escutando em segundo plano até o modal reabrir.
   useEffect(() => {
     if (open) return;
-    recognitionRef.current?.stop();
-    setDictating(false);
+    dictation.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop();
-    };
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
-    recognitionRef.current?.stop();
-    setDictating(false);
+    dictation.stop();
     if (initial) {
       setEvoDate(initial.evolution_date);
       setText(initial.text);
@@ -106,43 +80,15 @@ export function EvolutionFormModal({
       setKeptDescriptions({});
     }
     setNewImages([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
   if (!open || typeof document === "undefined") return null;
 
   const remainingSlots = Math.max(0, MAX_EVOLUTION_IMAGES - keepImageKeys.length);
-  const speechSupported = getSpeechRecognitionCtor() !== undefined;
-
-  function toggleDictation() {
-    if (dictating) {
-      recognitionRef.current?.stop();
-      setDictating(false);
-      return;
-    }
-    const Ctor = getSpeechRecognitionCtor();
-    if (!Ctor) return;
-    const recognition = new Ctor();
-    recognition.lang = "pt-BR";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.onresult = (event) => {
-      let finalText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
-      }
-      if (finalText.trim()) {
-        setText((prev) => (prev ? `${prev} ${finalText.trim()}` : finalText.trim()));
-      }
-    };
-    recognition.onend = () => setDictating(false);
-    recognition.onerror = () => setDictating(false);
-    recognitionRef.current = recognition;
-    recognition.start();
-    setDictating(true);
-  }
 
   function handleSave() {
-    recognitionRef.current?.stop();
+    dictation.stop();
     if (!text.trim()) return;
     onSave({ evolutionDate: evoDate, text: text.trim(), keepImageKeys, keepImageDescriptions: keptDescriptions, newImages });
   }
@@ -167,17 +113,7 @@ export function EvolutionFormModal({
               <label className={styles.label} style={{ marginBottom: 0 }}>
                 Texto*
               </label>
-              {speechSupported && (
-                <button
-                  type="button"
-                  onClick={toggleDictation}
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  style={{ padding: "3px 10px", fontSize: 12, color: dictating ? "var(--danger)" : undefined, borderColor: dictating ? "var(--danger)" : undefined }}
-                  title={dictating ? "Parar ditado" : "Ditar por voz"}
-                >
-                  {dictating ? "● Gravando… (clique pra parar)" : "🎤 Ditar por voz"}
-                </button>
-              )}
+              {dictation.supported && <DictationButton dictating={dictation.dictating} onToggle={dictation.toggle} />}
             </div>
             <textarea className={styles.input} rows={5} value={text} onChange={(e) => setText(e.target.value)} style={{ marginTop: 6 }} />
           </div>

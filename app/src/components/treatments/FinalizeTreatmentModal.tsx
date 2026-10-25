@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DictationButton } from "@/components/treatments/DictationButton";
 import { brDateOnly } from "@/lib/date";
 import { buildFinalizationText } from "@/lib/treatments";
+import { appendDictated, useDictation } from "@/lib/useDictation";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import type { Treatment } from "@/lib/database.types";
 import uiStyles from "@/components/ui/ui.module.css";
@@ -31,10 +33,12 @@ export function FinalizeTreatmentModal({
   // (evita mensagens automáticas, risco de bloqueio do WhatsApp da clínica).
   const [notifyPatient, setNotifyPatient] = useState(false);
   const [saving, setSaving] = useState(false);
+  const dictation = useDictation((dictated) => setEvolutionText((prev) => appendDictated(prev, dictated)));
 
   useEscapeToClose(onClose, open);
 
   useEffect(() => {
+    dictation.stop();
     if (!open) return;
     setFinalizedAt(brDateOnly());
     setEvolutionText(buildFinalizationText(treatments));
@@ -43,6 +47,7 @@ export function FinalizeTreatmentModal({
   }, [open]);
 
   async function handleConfirm() {
+    dictation.stop();
     if (!evolutionText.trim()) return;
     setSaving(true);
     try {
@@ -66,8 +71,13 @@ export function FinalizeTreatmentModal({
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Evolução*</label>
-            <textarea className={styles.input} rows={4} value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <label className={styles.label} style={{ marginBottom: 0 }}>
+                Evolução*
+              </label>
+              {dictation.supported && <DictationButton dictating={dictation.dictating} onToggle={dictation.toggle} />}
+            </div>
+            <textarea className={styles.input} rows={4} value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)} style={{ marginTop: 6 }} />
           </div>
 
           <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, cursor: "pointer" }}>
