@@ -21,6 +21,10 @@ const bodySchema = z.object({
   rest_days: z.number().int().min(0),
   care_date: z.string().min(1),
   starts_on: z.string().min(1),
+  // Declaração de comparecimento (migration 074) — só data + turno; o
+  // servidor zera os campos de afastamento pra não depender do client.
+  kind: z.enum(["afastamento", "comparecimento"]).default("afastamento"),
+  shift: z.enum(["manha", "tarde", "noite"]).optional(),
   signerCertificatePem: z.string().optional(),
   // Via não assinada digitalmente (shell mobile v2, prompt §8) — default
   // false preserva o fluxo de assinatura normal pra quem não manda esse campo.
@@ -59,6 +63,10 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
     return NextResponse.json({ error: "invalid_body", details: parsed.error.flatten() }, { status: 400 });
   }
   const input = parsed.data;
+  const attendance = input.kind === "comparecimento";
+  if (attendance && !input.shift) {
+    return NextResponse.json({ error: "invalid_body", message: "Escolha o turno do comparecimento." }, { status: 400 });
+  }
 
   // Escrita via chave de serviço — mesmo padrão de `anamneses`/`signatures`:
   // `certificates` não tem policy de insert pra usuário autenticado.
@@ -96,9 +104,11 @@ export async function POST(req: NextRequest, { params }: { params: { clinicId: s
       dentist_cro_uf: clinic.dentist_cro_uf,
 
       reason: input.reason,
-      rest_days: input.rest_days,
+      rest_days: attendance ? 0 : input.rest_days,
       care_date: input.care_date,
-      starts_on: input.starts_on,
+      starts_on: attendance ? input.care_date : input.starts_on,
+      kind: input.kind,
+      shift: attendance ? input.shift : null,
     })
     .select("id")
     .single();

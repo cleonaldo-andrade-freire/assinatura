@@ -106,7 +106,11 @@ async function ValidationResult({
 
       <div className="card">
         <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-          {result.documentType === "atestado" ? "Atestado odontológico" : "Receituário odontológico"}
+          {result.documentType === "atestado"
+            ? "Atestado odontológico"
+            : result.documentType === "comparecimento"
+              ? "Declaração de comparecimento"
+              : "Receituário odontológico"}
         </p>
         <h1>Autenticidade confirmada</h1>
         <dl style={{ margin: 0, borderTop: "1px solid var(--line)" }}>

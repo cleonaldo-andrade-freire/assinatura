@@ -40,6 +40,7 @@ import type {
   Treatment,
   TreatmentDebit,
 } from "@/lib/database.types";
+import { certificateSummary } from "@/lib/certificateKind";
 import styles from "@/styles/shell.module.css";
 
 const DOCS_PAGE_SIZE = 5;
@@ -501,7 +502,7 @@ export default async function EditPatientPage({
             <thead>
               <tr>
                 <th>Data</th>
-                <th>Dias de afastamento</th>
+                <th>Tipo</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -510,7 +511,7 @@ export default async function EditPatientPage({
               {certificates.map((c) => (
                 <ClickableRow key={c.id} href={`/dashboard/atestados/${c.id}`}>
                   <td>{formatTimestampBR(c.created_at)}</td>
-                  <td>{c.rest_days}</td>
+                  <td>{certificateSummary(c)}</td>
                   <td>
                     <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
                       {DOCUMENT_STATUS_LABEL[c.status]}

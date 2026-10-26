@@ -5,6 +5,7 @@ import { formatTimestampBR, formatDateOnlyBR } from "@/lib/date";
 import type { Certificate } from "@/lib/database.types";
 import { isRealSignatureProvider } from "@/lib/signature/providerLabel";
 import { clinicLinkPreview } from "@/lib/linkPreview";
+import { certificateTitle, shiftLabel } from "@/lib/certificateKind";
 
 export function generateMetadata({ searchParams }: { searchParams: { token?: string } }) {
   return clinicLinkPreview("atestado", searchParams.token);
@@ -41,7 +42,7 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
         <div className="card" style={{ textAlign: "center" }}>
           <h1>Documento em processamento</h1>
           <p style={{ color: "var(--ink-soft)" }}>
-            Seu atestado ainda está sendo preparado. Atualize esta página em alguns instantes.
+            {c.kind === "comparecimento" ? "Sua declaração ainda está sendo preparada." : "Seu atestado ainda está sendo preparado."} Atualize esta página em alguns instantes.
           </p>
         </div>
       ) : (
@@ -66,7 +67,7 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
 
           <div className="card">
             <p style={{ textTransform: "uppercase", fontSize: 11.5, fontWeight: 700, color: "var(--brand)", margin: "0 0 10px" }}>
-              Atestado odontológico
+              {certificateTitle(c.kind)}
             </p>
             <h1>Documento assinado</h1>
             <p style={{ fontSize: 15, marginBottom: 18 }}>
@@ -83,14 +84,23 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
                 <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Data do atendimento</dt>
                 <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(c.care_date)}</dd>
               </div>
-              <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
-                <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Início do afastamento</dt>
-                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(c.starts_on)}</dd>
-              </div>
-              <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
-                <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Dias de afastamento</dt>
-                <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{c.rest_days}</dd>
-              </div>
+              {c.kind === "comparecimento" ? (
+                <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                  <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Turno</dt>
+                  <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{shiftLabel(c.shift)}</dd>
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                    <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Início do afastamento</dt>
+                    <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{formatDateOnlyBR(c.starts_on)}</dd>
+                  </div>
+                  <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+                    <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>Dias de afastamento</dt>
+                    <dd style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>{c.rest_days}</dd>
+                  </div>
+                </>
+              )}
               {!c.hide_cid_on_patient_pdf && c.cid && (
                 <div style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                   <dt style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "0 0 3px" }}>CID</dt>
@@ -103,7 +113,7 @@ export default async function AtestadoPage({ searchParams }: { searchParams: { t
           <div className="card" style={{ textAlign: "center", padding: "20px 4px" }}>
             <a
               href={`/api/certificates/${c.token}/pdf`}
-              download={`atestado-${c.patient_name}.pdf`}
+              download={`${c.kind === "comparecimento" ? "declaracao-comparecimento" : "atestado"}-${c.patient_name}.pdf`}
               className="btn-primary"
               style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none" }}
             >

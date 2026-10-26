@@ -5,6 +5,7 @@ export const CERTIFICATE_PLACEHOLDERS: { token: string; label: string }[] = [
   { token: "{{data_atendimento}}", label: "Data de atendimento" },
   { token: "{{data_inicio}}", label: "Data de início" },
   { token: "{{dias_afastamento}}", label: "Dias de afastamento" },
+  { token: "{{turno}}", label: "Turno (comparecimento)" },
 ];
 
 export const PRESCRIPTION_PLACEHOLDERS: { token: string; label: string }[] = [

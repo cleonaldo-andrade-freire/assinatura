@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentClinic } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendText } from "@/lib/evolution";
+import { certificateReadyMessage } from "@/lib/certificateKind";
 
 /** Reenvia o link do atestado assinado por WhatsApp, sem reprocessar a assinatura. */
 export async function POST(_req: NextRequest, { params }: { params: { clinicId: string; id: string } }) {
@@ -13,7 +14,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
   const supabase = createSupabaseAdminClient();
   const { data: certificate } = await supabase
     .from("certificates")
-    .select("id, token, status, patient_phone")
+    .select("id, token, status, patient_phone, kind")
     .eq("id", params.id)
     .eq("clinic_id", clinic.id)
     .maybeSingle();
@@ -28,7 +29,7 @@ export async function POST(_req: NextRequest, { params }: { params: { clinicId: 
   }
 
   const link = `${process.env.NEXT_PUBLIC_APP_URL}/atestado/${certificate.token}`;
-  const sent = await sendText(clinic, certificate.patient_phone, `📄 Seu atestado odontológico já está disponível: ${link}`);
+  const sent = await sendText(clinic, certificate.patient_phone, certificateReadyMessage(certificate.kind, link));
   if (!sent) {
     return NextResponse.json({ error: "send_failed" }, { status: 502 });
   }

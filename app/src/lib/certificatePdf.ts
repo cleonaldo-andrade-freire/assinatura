@@ -3,6 +3,7 @@ import { drawClinicLetterhead, reasonToWords, wrapReasonWords, wrapText, type Le
 import { formatDateOnlyBR, formatTimestampBR } from "@/lib/date";
 import { drawValidationFooter } from "@/lib/pdfValidationFooter";
 import { drawUnsignedSignatureBox } from "@/lib/pdfUnsignedNotice";
+import { certificateReasonValues, certificateTitle, shiftLabel } from "@/lib/certificateKind";
 import type { Certificate } from "@/lib/database.types";
 
 const MARGIN = 48;
@@ -62,7 +63,7 @@ export async function buildCertificatePdf(
     }
   }
 
-  page.drawText("Atestado Odontológico", { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText(certificateTitle(certificate.kind), { x: MARGIN, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
   y = drawClinicLetterhead(page, MARGIN, y, font, clinicInfo);
 
@@ -82,8 +83,12 @@ export async function buildCertificatePdf(
   );
   field("Data de emissão:", formatTimestampBR(certificate.created_at));
   field("Data do atendimento:", formatDateOnlyBR(certificate.care_date));
-  field("Início do afastamento:", formatDateOnlyBR(certificate.starts_on));
-  field("Dias de afastamento:", String(certificate.rest_days));
+  if (certificate.kind === "comparecimento") {
+    field("Turno:", shiftLabel(certificate.shift));
+  } else {
+    field("Início do afastamento:", formatDateOnlyBR(certificate.starts_on));
+    field("Dias de afastamento:", String(certificate.rest_days));
+  }
 
 
   ensureSpace(20);
@@ -99,15 +104,7 @@ export async function buildCertificatePdf(
   // Dados vindos de placeholders (nome, CPF, datas, dias) saem em negrito — o
   // atestado deixa claro pra quem lê o que é texto fixo do modelo e o que foi
   // preenchido pra este paciente específico.
-  const reasonValues: Record<string, string> = {
-    paciente_nome: certificate.patient_name,
-    paciente_cpf: certificate.patient_cpf ?? "",
-    data_emissao: formatTimestampBR(certificate.created_at),
-    data_atendimento: formatDateOnlyBR(certificate.care_date),
-    data_inicio: formatDateOnlyBR(certificate.starts_on),
-    dias_afastamento: String(certificate.rest_days),
-  };
-  const reasonWords = reasonToWords(certificate.reason, reasonValues);
+  const reasonWords = reasonToWords(certificate.reason, certificateReasonValues(certificate));
   const reasonSpaceWidth = font.widthOfTextAtSize(" ", 11);
   for (const line of wrapReasonWords(reasonWords, font, bold, 11, contentWidth)) {
     ensureSpace(15);

@@ -121,6 +121,9 @@ export interface Signature {
 
 export type CertificateStatus = "rascunho" | "aguardando_assinatura" | "assinado" | "falha" | "pendente_assinatura";
 
+export type CertificateKind = "afastamento" | "comparecimento";
+export type CertificateShift = "manha" | "tarde" | "noite";
+
 export interface Certificate {
   id: string;
   clinic_id: string;
@@ -137,6 +140,10 @@ export interface Certificate {
   rest_days: number;
   care_date: string;
   starts_on: string;
+  /** Ver migration 074 e `lib/certificateKind.ts`. */
+  kind: CertificateKind;
+  /** Só na declaração de comparecimento. */
+  shift: CertificateShift | null;
   status: CertificateStatus;
   signature_provider: string | null;
   signature_provider_doc_id: string | null;

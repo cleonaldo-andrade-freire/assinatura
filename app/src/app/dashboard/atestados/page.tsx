@@ -13,6 +13,7 @@ import type { Certificate, CertificateTemplate } from "@/lib/database.types";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import { NewCertificateTrigger } from "@/components/NewCertificateTrigger";
 import { CertificateGridActions } from "@/components/CertificateGridActions";
+import { certificateSummary } from "@/lib/certificateKind";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
@@ -137,7 +138,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                 <tr>
                   <th>Paciente</th>
                   <th>Data</th>
-                  <th>Dias de afastamento</th>
+                  <th>Tipo</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
@@ -160,7 +161,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                       </span>
                     </td>
                     <td data-label="Data">{formatTimestampBR(c.created_at)}</td>
-                    <td data-label="Dias de afastamento">{c.rest_days}</td>
+                    <td data-label="Tipo">{certificateSummary(c)}</td>
                     <td data-label="Status">
                       <span className={`${styles.statusDot} ${styles[DOCUMENT_STATUS_CLASS[c.status]]}`}>
                         {DOCUMENT_STATUS_LABEL[c.status]}

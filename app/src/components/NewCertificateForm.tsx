@@ -7,7 +7,8 @@ import { formatTimestampBR } from "@/lib/date";
 import { resolveReasonSegments } from "@/lib/documentReason";
 import { PatientSearchField, type PatientSuggestion } from "@/components/PatientSearchField";
 import { AgentCertificateSelector, useAgent, type AgentCertificate } from "@/components/AgentDetector";
-import type { Certificate, CertificateTemplate } from "@/lib/database.types";
+import type { Certificate, CertificateKind, CertificateShift, CertificateTemplate } from "@/lib/database.types";
+import { ATTENDANCE_DEFAULT_REASON, CERTIFICATE_SHIFTS } from "@/lib/certificateKind";
 import { useDraftAutosave } from "@/lib/useDraftAutosave";
 import { useMobileV2Active } from "@/lib/useMobileV2Active";
 import { DraftBanner } from "@/components/mobile/DraftBanner";
@@ -17,6 +18,12 @@ import styles from "@/styles/shell.module.css";
 function todayISO(): string {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/** Turno sugerido pela hora atual — o comum é emitir a declaração na saída do paciente. */
+function currentShift(): CertificateShift {
+  const hour = new Date().getHours();
+  return hour < 12 ? "manha" : hour < 18 ? "tarde" : "noite";
 }
 
 export function NewCertificateForm({
@@ -47,6 +54,8 @@ export function NewCertificateForm({
   const [patientName, setPatientName] = useState(initialPatientName ?? "");
 
 
+  const [kind, setKind] = useState<CertificateKind>("afastamento");
+  const [shift, setShift] = useState<CertificateShift>(currentShift);
   const [reason, setReason] = useState("");
   const [restDays, setRestDays] = useState(1);
   const [careDate, setCareDate] = useState(todayISO());
@@ -69,7 +78,7 @@ export function NewCertificateForm({
   const draftKey = mobileV2 ? `mobiledraft:certificate:${clinicId}:${initialPatientId ?? "new"}` : null;
   const { hasDraft, draft, clearDraft, dismissDraftPrompt } = useDraftAutosave(
     draftKey,
-    { patientId, patientName, reason, restDays, careDate, startsOn, templateId },
+    { patientId, patientName, kind, shift, reason, restDays, careDate, startsOn, templateId },
     { isEmpty: (v) => !v.patientName.trim() && !v.reason.trim() }
   );
 
@@ -78,6 +87,8 @@ export function NewCertificateForm({
     setPatientId(draft.patientId);
     setPatientName(draft.patientName);
 
+    setKind(draft.kind ?? "afastamento"); // Fallback para drafts antigos
+    if (draft.shift) setShift(draft.shift);
     setReason(draft.reason);
     setRestDays(draft.restDays);
     setCareDate(draft.careDate ?? draft.startsOn); // Fallback para drafts antigos
@@ -87,6 +98,14 @@ export function NewCertificateForm({
   }
 
 
+
+  function handleSelectKind(next: CertificateKind) {
+    setKind(next);
+    // Preenche o texto padrão da declaração só se a dentista ainda não
+    // escreveu nada (ou se é o próprio texto padrão, ao voltar pro afastamento).
+    if (next === "comparecimento" && !reason.trim()) setReason(ATTENDANCE_DEFAULT_REASON);
+    if (next === "afastamento" && reason === ATTENDANCE_DEFAULT_REASON) setReason("");
+  }
 
   function pickPatientSuggestion(s: PatientSuggestion) {
     setPatientId(s.id);
@@ -158,6 +177,8 @@ export function NewCertificateForm({
           rest_days: restDays,
           care_date: careDate,
           starts_on: startsOn,
+          kind,
+          shift: kind === "comparecimento" ? shift : undefined,
           unsigned: unsigned || undefined,
           signerCertificatePem: cert
             ? cert.certificateChainBase64.map(b64 => `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)?.join('\n') || b64}\n-----END CERTIFICATE-----`).join('\n')
@@ -211,7 +232,9 @@ export function NewCertificateForm({
         disabled={sending}
         title={mobileV2 ? "Gera o PDF sem assinatura ICP-Brasil, pra imprimir e assinar à mão. Pode ser assinado digitalmente depois, no computador." : undefined}
       >
-        {sending ? "Emitindo…" : mobileV2 ? "Emitir atestado (sem assinatura digital)" : "Emitir atestado"}
+        {sending
+          ? "Emitindo…"
+          : `Emitir ${kind === "comparecimento" ? "declaração" : "atestado"}${mobileV2 ? " (sem assinatura digital)" : ""}`}
       </button>
       {mobileV2 && (
         <p className={styles.hint} style={{ marginTop: 8 }}>
@@ -224,6 +247,28 @@ export function NewCertificateForm({
 
   const fieldGroups = (
     <>
+      <div className={styles.field}>
+        <span className={styles.label}>Tipo de documento</span>
+        <div role="group" aria-label="Tipo de documento" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(
+            [
+              ["afastamento", "Atestado de afastamento"],
+              ["comparecimento", "Declaração de comparecimento"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={kind === value}
+              className={`${styles.btn} ${kind === value ? styles.btnPrimary : styles.btnGhost}`}
+              onClick={() => handleSelectKind(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {templates.length > 0 && (
         <div className={styles.field}>
           <label htmlFor="templateId" className={styles.label}>
@@ -258,6 +303,21 @@ export function NewCertificateForm({
           </label>
           <input id="careDate" type="date" className={styles.input} value={careDate} onChange={(e) => setCareDate(e.target.value)} required />
         </div>
+        {kind === "comparecimento" ? (
+          <div className={styles.field}>
+            <label htmlFor="shift" className={styles.label}>
+              Turno
+            </label>
+            <select id="shift" className={styles.select} value={shift} onChange={(e) => setShift(e.target.value as CertificateShift)}>
+              {CERTIFICATE_SHIFTS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+        <>
         <div className={styles.field}>
           <label htmlFor="startsOn" className={styles.label}>
             Início do afastamento
@@ -278,13 +338,15 @@ export function NewCertificateForm({
             required
           />
         </div>
+        </>
+        )}
       </div>
 
 
 
       <div className={styles.field}>
         <label htmlFor="reason" className={styles.label}>
-          Texto do atestado
+          {kind === "comparecimento" ? "Texto da declaração" : "Texto do atestado"}
         </label>
         <textarea
           id="reason"

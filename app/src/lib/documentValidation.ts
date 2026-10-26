@@ -5,7 +5,7 @@ import { formatTreatmentsLabel } from "@/lib/treatments";
 
 export interface DocumentValidationResult {
   found: boolean;
-  documentType?: "atestado" | "prescricao";
+  documentType?: "atestado" | "comparecimento" | "prescricao";
   clinicName?: string;
   dentistName?: string;
   dentistCro?: string;
@@ -39,7 +39,7 @@ export async function lookupDocumentValidation(supabase: SupabaseClient, rawCode
 
   return {
     found: true,
-    documentType: certificate ? "atestado" : "prescricao",
+    documentType: certificate ? (certificate.kind === "comparecimento" ? "comparecimento" : "atestado") : "prescricao",
     clinicName: clinic?.name,
     dentistName: doc.dentist_name,
     dentistCro: doc.dentist_cro,

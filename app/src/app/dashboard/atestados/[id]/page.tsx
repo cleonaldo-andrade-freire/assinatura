@@ -7,6 +7,7 @@ import { CertificateActions } from "@/components/CertificateActions";
 import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import { resolveReasonSegments } from "@/lib/documentReason";
+import { certificateReasonValues, shiftLabel } from "@/lib/certificateKind";
 import { formatValidationCode } from "@/lib/validationCode";
 import type { Certificate } from "@/lib/database.types";
 import { isRealSignatureProvider, signatureProviderLabel } from "@/lib/signature/providerLabel";
@@ -37,21 +38,15 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
     .maybeSingle();
   if (!certificate) notFound();
   const c = certificate as Certificate;
-  const reasonSegments = resolveReasonSegments(c.reason, {
-    paciente_nome: c.patient_name,
-    paciente_cpf: c.patient_cpf ?? "",
-    data_emissao: formatTimestampBR(c.created_at),
-    data_atendimento: formatDateOnlyBR(c.care_date),
-    data_inicio: formatDateOnlyBR(c.starts_on),
-    dias_afastamento: String(c.rest_days),
-  });
+  const reasonSegments = resolveReasonSegments(c.reason, certificateReasonValues(c));
+  const attendance = c.kind === "comparecimento";
 
   return (
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
       title={c.patient_name}
-      subtitle={`Atestado emitido em ${formatTimestampBR(c.created_at)}`}
+      subtitle={`${attendance ? "Declaração de comparecimento emitida" : "Atestado emitido"} em ${formatTimestampBR(c.created_at)}`}
       role={role}
       userEmail={userEmail}
       userName={userName}
@@ -64,7 +59,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
     >
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Dados do atestado</p>
+          <p className={styles.panelHeaderTitle}>{attendance ? "Dados da declaração" : "Dados do atestado"}</p>
         </div>
         <div className={styles.panelBody}>
           {detailRow("Paciente", c.patient_name)}
@@ -72,13 +67,19 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
           {c.patient_phone && detailRow("WhatsApp", `+55 ${formatBRPhoneLocal(c.patient_phone)}`)}
           {detailRow("Dentista responsável", `${c.dentist_name} — CRO ${c.dentist_cro}/${c.dentist_cro_uf}`)}
           {detailRow("Data do atendimento", formatDateOnlyBR(c.care_date))}
-          {detailRow("Início do afastamento", formatDateOnlyBR(c.starts_on))}
-          {detailRow("Dias de afastamento", String(c.rest_days))}
+          {attendance ? (
+            detailRow("Turno", shiftLabel(c.shift))
+          ) : (
+            <>
+              {detailRow("Início do afastamento", formatDateOnlyBR(c.starts_on))}
+              {detailRow("Dias de afastamento", String(c.rest_days))}
+            </>
+          )}
           {/* CID sempre visível aqui pra clínica — a flag `hide_cid_on_patient_pdf`
               só controla o que aparece no PDF entregue ao paciente. */}
           {c.cid && detailRow("CID (registro interno)", c.cid + (c.hide_cid_on_patient_pdf ? " — oculto no PDF do paciente" : ""))}
           <div style={{ padding: "10px 0" }}>
-            <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 4 }}>Texto do atestado</span>
+            <span style={{ color: "var(--ink-soft)", fontSize: 13.5, display: "block", marginBottom: 4 }}>{attendance ? "Texto da declaração" : "Texto do atestado"}</span>
             <span style={{ fontSize: 14 }}>
               {reasonSegments.map((seg, i) =>
                 seg.variable ? <strong key={i}>{seg.text}</strong> : <span key={i}>{seg.text}</span>

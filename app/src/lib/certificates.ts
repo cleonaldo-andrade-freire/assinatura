@@ -5,6 +5,7 @@ import { saveCertificatePdf } from "@/lib/certificatePdfStorage";
 import { getSignatureProvider } from "@/lib/signature";
 import { sendText } from "@/lib/evolution";
 import { loadClinicLogoForPdf } from "@/lib/pdfLogo";
+import { certificateReadyMessage } from "@/lib/certificateKind";
 import { ensureUniqueValidationCode } from "@/lib/validationCode";
 import type { Certificate, Clinic } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -286,7 +287,7 @@ async function finishCertificateSignature(
 
   if (finalCertificate.patient_phone) {
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/atestado/${finalCertificate.token}`;
-    const sent = await sendText(clinic, finalCertificate.patient_phone, `📄 Seu atestado odontológico já está disponível: ${link}`);
+    const sent = await sendText(clinic, finalCertificate.patient_phone, certificateReadyMessage(finalCertificate.kind, link));
     if (sent) {
       await supabase
         .from("certificates")
