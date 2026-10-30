@@ -10,7 +10,9 @@ import { DailyAgendaPanel } from "@/components/dashboard/DailyAgendaPanel";
 import { brDateOnly, firstOfMonth, firstOfNextMonth } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
-import type { Appointment } from "@/lib/database.types";
+import { OpenRentalsPanel } from "@/components/dashboard/OpenRentalsPanel";
+import { groupReceivables, type TenantReceivable } from "@/lib/roomRental";
+import type { Appointment, RoomRental } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
 const PAGE_SIZE = 10;
@@ -92,7 +94,26 @@ export default async function DashboardPage({
     .eq("status", "pago")
     .gte("paid_at", monthStart)
     .lt("paid_at", monthEnd);
-  const monthlyRevenue = (revenueData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+  // Aluguel da sala (migration 073) entra no caixa pela data da baixa —
+  // mesma régua de "pago" dos débitos. paid_at é gravado ao meio-dia de
+  // Brasília, então as bordas de dia/mês não escorregam de fuso.
+  let monthlyRental = 0;
+  let dailyRental = 0;
+  if (clinic.room_rental_enabled) {
+    const { data: rentalPaidData } = await supabase
+      .from("room_rentals")
+      .select("amount, paid_at")
+      .eq("clinic_id", clinic.id)
+      .eq("status", "agendada")
+      .gte("paid_at", monthStart)
+      .lt("paid_at", monthEnd);
+    for (const r of rentalPaidData ?? []) {
+      monthlyRental += Number(r.amount);
+      if (brDateOnly(new Date(r.paid_at as string)) === todayDate) dailyRental += Number(r.amount);
+    }
+  }
+
+  const monthlyRevenue = (revenueData ?? []).reduce((sum, d) => sum + Number(d.amount), 0) + monthlyRental;
 
   const { data: expenseData } = await supabase
     .from("expenses")
@@ -115,7 +136,7 @@ export default async function DashboardPage({
     .eq("status", "pago")
     .gte("paid_at", dayStart)
     .lte("paid_at", dayEnd);
-  const dailyRevenue = (dailyRevenueData ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+  const dailyRevenue = (dailyRevenueData ?? []).reduce((sum, d) => sum + Number(d.amount), 0) + dailyRental;
 
   const { data: dailyExpenseData } = await supabase
     .from("expenses")
@@ -178,6 +199,23 @@ export default async function DashboardPage({
     oldestCreatedAt: v.oldestCreatedAt,
   }));
 
+  // Locações a receber — mesmos números do "a receber" da tela de Locação,
+  // só pro owner (valores), como os KPIs.
+  let openRentalGroups: TenantReceivable[] = [];
+  if (clinic.room_rental_enabled && role === "owner") {
+    const [{ data: openRentalsData }, { data: tenantsData }] = await Promise.all([
+      supabase
+        .from("room_rentals")
+        .select("*")
+        .eq("clinic_id", clinic.id)
+        .eq("status", "agendada")
+        .is("paid_at", null)
+        .lte("rental_date", todayDate),
+      supabase.from("room_tenants").select("id, name").eq("clinic_id", clinic.id),
+    ]);
+    openRentalGroups = groupReceivables((openRentalsData as RoomRental[]) ?? [], tenantsData ?? [], todayDate);
+  }
+
   const openDebitGroups: OpenDebitGroup[] = openDebitsTop.map(([patientId, v]) => ({
     patientId,
     patientName: patientNameById.get(patientId) ?? "Paciente",
@@ -204,6 +242,8 @@ export default async function DashboardPage({
           dailyRevenue={dailyRevenue}
           dailyExpense={dailyExpense}
           dailyBalance={dailyBalance}
+          monthlyRental={monthlyRental}
+          dailyRental={dailyRental}
         />
       )}
 
@@ -240,6 +280,7 @@ export default async function DashboardPage({
 
       <UnfinishedTreatmentsPanel groups={unfinishedGroups} />
       <OpenDebitsPanel groups={openDebitGroups} />
+      {clinic.room_rental_enabled && role === "owner" && <OpenRentalsPanel groups={openRentalGroups} />}
     </ClinicShell>
   );
 }

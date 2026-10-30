@@ -11,6 +11,18 @@ interface DashboardKPIsProps {
   dailyRevenue: number;
   dailyExpense: number;
   dailyBalance: number;
+  /** Parte das receitas que é aluguel da sala — 0 esconde a linha. */
+  monthlyRental?: number;
+  dailyRental?: number;
+}
+
+function RentalNote({ value }: { value: number }) {
+  if (value <= 0) return null;
+  return (
+    <div style={{ fontSize: 11.5, color: "var(--ink-faint)", textAlign: "right", marginTop: 4 }}>
+      inclui {formatMoneyDisplay(value)} de locação da sala
+    </div>
+  );
 }
 
 function EyeIcon() {
@@ -40,6 +52,8 @@ export function DashboardKPIs({
   dailyRevenue,
   dailyExpense,
   dailyBalance,
+  monthlyRental = 0,
+  dailyRental = 0,
 }: DashboardKPIsProps) {
   const [visible, setVisible] = useState(true);
 
@@ -89,6 +103,7 @@ export function DashboardKPIs({
           <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Receitas do dia</div>
             <div className={styles.statValue}>{formatMoney(dailyRevenue)}</div>
+            <RentalNote value={dailyRental} />
           </div>
           <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Despesas do dia</div>
@@ -106,6 +121,7 @@ export function DashboardKPIs({
           <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Receitas do mês</div>
             <div className={styles.statValue}>{formatMoney(monthlyRevenue)}</div>
+            <RentalNote value={monthlyRental} />
           </div>
           <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Despesas do mês</div>
