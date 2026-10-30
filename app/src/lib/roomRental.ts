@@ -10,8 +10,8 @@ import type { RoomRental, RoomRentalShift, RoomTenant } from "@/lib/database.typ
 
 /** Semeados na primeira abertura da tela, quando a clínica ainda não tem turno nenhum. */
 export const DEFAULT_SHIFTS: Pick<RoomRentalShift, "name" | "start_time" | "end_time" | "sort_order">[] = [
-  { name: "Manhã", start_time: "07:00", end_time: "12:00", sort_order: 1 },
-  { name: "Tarde", start_time: "13:00", end_time: "18:00", sort_order: 2 },
+  { name: "Manhã", start_time: "08:00", end_time: "12:00", sort_order: 1 },
+  { name: "Tarde", start_time: "14:00", end_time: "18:00", sort_order: 2 },
   { name: "Noite", start_time: "18:00", end_time: "22:00", sort_order: 3 },
 ];
 
@@ -126,4 +126,46 @@ export function appointmentRoomRentedMessage(error: { code?: string; message?: s
     return "A sala está alugada nesse horário (Locação da sala) — escolha outro horário.";
   }
   return null;
+}
+
+/** Locação como a Agenda mostra: horário, quem alugou e qual turno. */
+export interface AgendaRental {
+  id: string;
+  rental_date: string;
+  starts_at: string;
+  ends_at: string;
+  tenantName: string;
+  shiftName: string;
+}
+
+export interface RentalSlot<T> {
+  rental: T;
+  /** Primeiro slot da grade coberto pela locação — é onde o bloco é desenhado. */
+  first: boolean;
+  /** Quantos slots da grade a locação cobre (só significativo em `first`). */
+  span: number;
+}
+
+/**
+ * Slot da agenda → locação que o cobre (`[starts_at, ends_at)`). Na agenda a
+ * locação ganha da consulta pelo mesmo motivo de `buildWeekGrid`: os triggers
+ * da 073 impedem as duas no mesmo horário, então só sobra consulta cancelada
+ * ali embaixo. Turno que passa do fim da grade (Noite até 22h numa grade que
+ * vai até 21h) cobre só os slots que existem.
+ */
+export function buildRentalSlotMap<T extends Pick<AgendaRental, "starts_at" | "ends_at">>(
+  rentals: T[],
+  slots: string[]
+): Map<string, RentalSlot<T>> {
+  const map = new Map<string, RentalSlot<T>>();
+  for (const r of rentals) {
+    const start = new Date(r.starts_at).getTime();
+    const end = new Date(r.ends_at).getTime();
+    const covered = slots.filter((s) => {
+      const t = new Date(s).getTime();
+      return t >= start && t < end;
+    });
+    covered.forEach((s, i) => map.set(s, { rental: r, first: i === 0, span: covered.length }));
+  }
+  return map;
 }

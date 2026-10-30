@@ -30,7 +30,7 @@ const SWATCH_COLOR: Record<AppointmentStatus, string> = {
  * Esta legenda é o canal redundante que cobre a mesma exigência de "nunca
  * só cor" nas duas visões de desktop.
  */
-export function AgendaLegend() {
+export function AgendaLegend({ showRental = false }: { showRental?: boolean }) {
   return (
     <div className={styles.agendaLegend}>
       {LEGEND_STATUSES.map((status) => (
@@ -43,6 +43,12 @@ export function AgendaLegend() {
         <span className={styles.agendaLegendSwatch} style={{ background: "var(--surface)", boxShadow: "inset 0 0 0 2px var(--urgent)" }} />
         Urgência
       </span>
+      {showRental && (
+        <span className={styles.agendaLegendItem}>
+          <span className={`${styles.agendaLegendSwatch} ${styles.agendaRentalSwatch}`} />
+          Sala alugada
+        </span>
+      )}
     </div>
   );
 }

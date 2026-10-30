@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appointmentRoomRentedMessage,
+  buildRentalSlotMap,
   buildWeekGrid,
   groupReceivables,
   isReceivable,
@@ -8,6 +9,7 @@ import {
   shiftRange,
 } from "./roomRental";
 import type { RoomRental, RoomRentalShift } from "./database.types";
+import { buildDaySlotTimes } from "./appointments";
 
 function shift(id: string, start: string, end: string): RoomRentalShift {
   return {
@@ -148,5 +150,26 @@ describe("mensagens de conflito", () => {
   it("do lado da agenda, só reconhece o trigger de sala alugada", () => {
     expect(appointmentRoomRentedMessage({ code: "23P01", message: "room_rented" })).toMatch(/sala está alugada/);
     expect(appointmentRoomRentedMessage({ code: "23P01", message: "conflicting key value violates exclusion constraint" })).toBeNull();
+  });
+});
+
+describe("buildRentalSlotMap", () => {
+  const slots = buildDaySlotTimes("2026-10-13");
+
+  it("cobre os slots do turno, marcando o primeiro com o tamanho do bloco", () => {
+    const r = { ...shiftRange("2026-10-13", { start_time: "08:00", end_time: "12:00" }) };
+    const map = buildRentalSlotMap([{ starts_at: r.startsAt, ends_at: r.endsAt }], slots);
+    expect(map.size).toBe(8);
+    expect(map.get(slots[0])).toMatchObject({ first: true, span: 8 });
+    expect(map.get(slots[1])?.first).toBe(false);
+    // 12:00 é o fim exclusivo — já fica livre.
+    expect(map.has(slots[8])).toBe(false);
+  });
+
+  it("turno que passa do fim da grade cobre só os slots existentes", () => {
+    const r = shiftRange("2026-10-13", { start_time: "18:00", end_time: "22:00" });
+    const map = buildRentalSlotMap([{ starts_at: r.startsAt, ends_at: r.endsAt }], slots);
+    expect(map.size).toBe(6);
+    expect(map.get(slots[20])).toMatchObject({ first: true, span: 6 });
   });
 });

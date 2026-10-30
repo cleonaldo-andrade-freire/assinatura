@@ -8,6 +8,7 @@ import { AgendaWeekGrid } from "@/components/AgendaWeekGrid";
 import { AgendaRealtimeRefresh } from "@/components/AgendaRealtimeRefresh";
 import { AgendaDetailFromQuery } from "@/components/dashboard/AgendaDetailFromQuery";
 import { AgendaLegend } from "@/components/AgendaLegend";
+import { AgendaRentalBlock } from "@/components/AgendaRentalBlock";
 import { NewAppointmentTrigger } from "@/components/NewAppointmentTrigger";
 import { PatientAvatar } from "@/components/PatientAvatar";
 import {
@@ -28,6 +29,7 @@ import {
   mondayOfWeek,
   monthGridDays,
 } from "@/lib/date";
+import { buildRentalSlotMap, type AgendaRental } from "@/lib/roomRental";
 import type { Appointment } from "@/lib/database.types";
 import styles from "@/styles/shell.module.css";
 
@@ -76,6 +78,37 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
     .order("scheduled_at", { ascending: true });
   const appointments = (data as Appointment[]) ?? [];
 
+  // Sala alugada por turno (migration 073): aparece na agenda como bloqueio,
+  // com quem alugou — o valor fica só na tela de Locação (owner).
+  let rentals: AgendaRental[] = [];
+  if (clinic.room_rental_enabled) {
+    const { data: rentalsData } = await supabase
+      .from("room_rentals")
+      .select("id, rental_date, starts_at, ends_at, room_tenants(name), room_rental_shifts(name)")
+      .eq("clinic_id", clinic.id)
+      .eq("status", "agendada")
+      .gte("rental_date", rangeStart)
+      .lt("rental_date", rangeEnd)
+      .order("starts_at");
+    rentals = ((rentalsData ?? []) as unknown as {
+      id: string;
+      rental_date: string;
+      starts_at: string;
+      ends_at: string;
+      room_tenants: { name: string } | null;
+      room_rental_shifts: { name: string } | null;
+    }[]).map((r) => ({
+      id: r.id,
+      rental_date: r.rental_date,
+      starts_at: r.starts_at,
+      ends_at: r.ends_at,
+      tenantName: r.room_tenants?.name ?? "—",
+      shiftName: r.room_rental_shifts?.name ?? "Turno",
+    }));
+  }
+  // Locação é tela só do owner — pros outros papéis o bloco não é link.
+  const rentalHrefBase = role === "owner" ? "/dashboard/locacao?semana=" : undefined;
+
   const bySlot = new Map<string, Appointment[]>();
   for (const a of appointments) {
     const key = slotKey(a.scheduled_at);
@@ -90,6 +123,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
   const daySlots = buildDayRowTimes(date, appointments);
   const weekSlotsPerDay = buildDaySlotTimes(date).length;
   const continuationSlots = buildContinuationMap(appointments, daySlots);
+  const dayRentalSlots = buildRentalSlotMap(rentals, daySlots);
   const prevDay = addDaysToDateStr(date, -1);
   const nextDay = addDaysToDateStr(date, 1);
   const prevWeek = addDaysToDateStr(weekStart, -7);
@@ -110,6 +144,12 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
       list.push(a);
       monthByDay.set(day, list);
     }
+  }
+  const monthRentalsByDay = new Map<string, AgendaRental[]>();
+  for (const r of rentals) {
+    const list = monthRentalsByDay.get(r.rental_date) ?? [];
+    list.push(r);
+    monthRentalsByDay.set(r.rental_date, list);
   }
   const professionalName = clinic.dentist_name || clinic.name;
 
@@ -174,11 +214,18 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
             {daySlots.map((slot) => {
               const items = bySlot.get(slot) ?? [];
               const continuedBy = continuationSlots.get(slot);
+              const rentalSlot = dayRentalSlots.get(slot);
               return (
                 <div key={slot} className={styles.agendaSlot}>
                   <div className={styles.agendaSlotTime}>{formatBRTime(slot)}</div>
                   <div className={styles.agendaSlotBody}>
-                    {items.length > 0 ? (
+                    {rentalSlot ? (
+                      <AgendaRentalBlock
+                        rental={rentalSlot.rental}
+                        href={rentalHrefBase && rentalHrefBase + rentalSlot.rental.rental_date}
+                        continuation={!rentalSlot.first}
+                      />
+                    ) : items.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {items.map((a) => (
                           <Link
@@ -229,7 +276,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
 
       {/* ---- semanal ou mensal, só visível em telas ≥860px ---- */}
       <div className={styles.agendaDesktopView}>
-        <AgendaLegend />
+        <AgendaLegend showRental={clinic.room_rental_enabled} />
         {view === "week" ? (
           <>
             <div className={styles.agendaNav}>
@@ -251,6 +298,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
               slotsPerDay={weekSlotsPerDay}
               today={today}
               appointments={appointments}
+              rentals={rentals}
+              rentalHrefBase={rentalHrefBase}
             />
           </>
         ) : (
@@ -277,6 +326,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                 const outside = d.slice(0, 7) !== date.slice(0, 7);
                 const summary = daySummary.get(d);
                 const dayAppointments = monthByDay.get(d) ?? [];
+                const dayRentals = monthRentalsByDay.get(d) ?? [];
                 const MAX_VISIBLE = 10;
                 const visible = dayAppointments.slice(0, MAX_VISIBLE);
                 const hiddenCount = dayAppointments.length - visible.length;
@@ -287,6 +337,15 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
                       {Number(d.slice(8, 10))}
                       {summary?.anyUrgent && <UrgentBadge />}
                     </div>
+                    {dayRentals.map((r) => (
+                      <span
+                        key={r.id}
+                        className={`${styles.agendaWeekChip} ${styles.agendaRentalChip}`}
+                        title={`Sala alugada para ${r.tenantName} — ${r.shiftName}, ${formatBRTime(r.starts_at)}–${formatBRTime(r.ends_at)}`}
+                      >
+                        🔑 {r.shiftName} · {r.tenantName}
+                      </span>
+                    ))}
                     {visible.length > 0 && (
                       <div className={styles.agendaMonthApptList}>
                         {visible.map((a) => (

@@ -15,6 +15,8 @@ import {
 import { formatTimestampBR, formatBRTime } from "@/lib/date";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import { PatientAvatar } from "@/components/PatientAvatar";
+import { AgendaRentalBlock } from "@/components/AgendaRentalBlock";
+import { buildRentalSlotMap, type AgendaRental } from "@/lib/roomRental";
 import type { Appointment } from "@/lib/database.types";
 import shellStyles from "@/styles/shell.module.css";
 
@@ -24,6 +26,8 @@ const WEEKDAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 // agendamento que ainda vai acontecer — atendido/cancelado/falta ficam
 // parados no lugar.
 const DRAGGABLE_STATUSES = new Set(["agendado", "confirmado"]);
+
+const NO_RENTALS: AgendaRental[] = [];
 
 interface Slot {
   date: string;
@@ -37,6 +41,8 @@ export function AgendaWeekGrid({
   slotsPerDay,
   today,
   appointments,
+  rentals = NO_RENTALS,
+  rentalHrefBase,
 }: {
   clinicId: string;
   professionalName: string;
@@ -45,6 +51,10 @@ export function AgendaWeekGrid({
   slotsPerDay: number;
   today: string;
   appointments: Appointment[];
+  /** Turnos da sala alugados na semana — bloco único por locação, não clicável pra agendar. */
+  rentals?: AgendaRental[];
+  /** Prefixo do link pra tela de Locação + rental_date (só owner); sem ele o bloco não é link. */
+  rentalHrefBase?: string;
 }) {
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
@@ -69,6 +79,11 @@ export function AgendaWeekGrid({
     const allSlots = weekDays.flatMap((d) => dayTimes.get(d)!);
     return buildContinuationMap(appointments, allSlots);
   }, [appointments, weekDays, dayTimes]);
+
+  const rentalSlots = useMemo(
+    () => buildRentalSlotMap(rentals, weekDays.flatMap((d) => dayTimes.get(d)!)),
+    [rentals, weekDays, dayTimes]
+  );
 
   const [openSlot, setOpenSlot] = useState<Slot | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -131,7 +146,7 @@ export function AgendaWeekGrid({
     const times = dayTimes.get(d)!;
     let count = 1;
     for (let i = startSlotIndex + 1; i < times.length; i++) {
-      const occupiedByOther = (bySlot.get(times[i])?.length ?? 0) > 0;
+      const occupiedByOther = (bySlot.get(times[i])?.length ?? 0) > 0 || rentalSlots.has(times[i]);
       if (occupiedByOther) break;
       count++;
     }
@@ -197,6 +212,28 @@ export function AgendaWeekGrid({
                 const slot = dayTimes.get(d)![slotIndex];
                 const items = bySlot.get(slot) ?? [];
                 const continuedBy = items.length === 0 ? continuationSlots.get(slot) : undefined;
+
+                // Turno alugado: um bloco só no primeiro slot, esticado pelo
+                // span (mesma técnica do card de consulta longa); os slots
+                // seguintes não renderizam nada. Não aceita duplo clique nem
+                // soltar card arrastado — o servidor recusaria.
+                const rentalSlot = rentalSlots.get(slot);
+                if (rentalSlot && !rentalSlot.first) return null;
+                if (rentalSlot) {
+                  return (
+                    <div
+                      key={`${d}-${slotIndex}`}
+                      className={`${shellStyles.agendaWeekCell} ${d === today ? shellStyles.today : ""}`}
+                      style={{ gridRow: rentalSlot.span > 1 ? `span ${rentalSlot.span}` : undefined }}
+                    >
+                      <AgendaRentalBlock
+                        rental={rentalSlot.rental}
+                        href={rentalHrefBase && rentalHrefBase + rentalSlot.rental.rental_date}
+                        compact
+                      />
+                    </div>
+                  );
+                }
 
                 // Célula coberta por um agendamento que começou numa linha
                 // anterior — não renderiza nada aqui: o card que começou
