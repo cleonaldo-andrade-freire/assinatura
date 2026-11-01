@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import styles from "@/styles/shell.module.css";
 import { formatMoneyDisplay } from "@/lib/money";
+import { FinancialEntriesModal, type FinancialEntry } from "@/components/dashboard/FinancialEntriesModal";
 
 interface DashboardKPIsProps {
   monthlyRevenue: number;
@@ -14,6 +15,9 @@ interface DashboardKPIsProps {
   /** Parte das receitas que é aluguel da sala — 0 esconde a linha. */
   monthlyRental?: number;
   dailyRental?: number;
+  /** Lançamentos individuais pagos no mês — abrem num modal ao clicar no card. */
+  monthlyRevenueEntries?: FinancialEntry[];
+  monthlyExpenseEntries?: FinancialEntry[];
 }
 
 function RentalNote({ value }: { value: number }) {
@@ -43,6 +47,15 @@ function EyeOffIcon() {
   );
 }
 
+// Card vira <button> pra abrir o extrato — zera os estilos nativos de botão.
+const clickableCardStyle: React.CSSProperties = {
+  cursor: "pointer",
+  textAlign: "left",
+  font: "inherit",
+  color: "inherit",
+  width: "100%",
+};
+
 const DASHBOARD_KPIS_VISIBLE_KEY = "dentalagil_dashboard_kpis_visible";
 
 export function DashboardKPIs({
@@ -54,8 +67,11 @@ export function DashboardKPIs({
   dailyBalance,
   monthlyRental = 0,
   dailyRental = 0,
+  monthlyRevenueEntries = [],
+  monthlyExpenseEntries = [],
 }: DashboardKPIsProps) {
   const [visible, setVisible] = useState(true);
+  const [entriesOpen, setEntriesOpen] = useState<"receitas" | "despesas" | null>(null);
 
   // Sem o prefixo "R$" repetido 6 vezes — contexto (clínica odontológica
   // brasileira) já deixa a moeda óbvia sem ele.
@@ -118,17 +134,29 @@ export function DashboardKPIs({
             </div>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+          <button
+            type="button"
+            onClick={() => setEntriesOpen("receitas")}
+            className={`${styles.statCard} ${styles.statCardDashboard}`}
+            style={clickableCardStyle}
+            title="Ver lançamentos"
+          >
             <div className={styles.statLabel}>Receitas do mês</div>
             <div className={styles.statValue}>{formatMoney(monthlyRevenue)}</div>
             <RentalNote value={monthlyRental} />
-          </div>
-          <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
+          </button>
+          <button
+            type="button"
+            onClick={() => setEntriesOpen("despesas")}
+            className={`${styles.statCard} ${styles.statCardDashboard}`}
+            style={clickableCardStyle}
+            title="Ver lançamentos"
+          >
             <div className={styles.statLabel}>Despesas do mês</div>
             <div className={styles.statValue} style={{ color: "var(--danger)" }}>
               {formatMoney(monthlyExpense)}
             </div>
-          </div>
+          </button>
           <div className={`${styles.statCard} ${styles.statCardDashboard}`}>
             <div className={styles.statLabel}>Saldo do mês</div>
             <div className={styles.statValue} style={{ color: monthlyBalance < 0 ? "var(--danger)" : "var(--brand-deep)" }}>
@@ -137,6 +165,20 @@ export function DashboardKPIs({
           </div>
         </div>
       )}
+
+      <FinancialEntriesModal
+        open={entriesOpen === "receitas"}
+        onClose={() => setEntriesOpen(null)}
+        title="Receitas do mês"
+        entries={monthlyRevenueEntries}
+      />
+      <FinancialEntriesModal
+        open={entriesOpen === "despesas"}
+        onClose={() => setEntriesOpen(null)}
+        title="Despesas do mês"
+        entries={monthlyExpenseEntries}
+        danger
+      />
     </div>
   );
 }

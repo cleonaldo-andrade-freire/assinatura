@@ -213,6 +213,15 @@ export default async function EditPatientPage({
   const treatments = (treatmentsData as Treatment[]) ?? [];
   const treatmentsTotalPages = Math.max(1, Math.ceil((treatmentsCount ?? 0) / DOCS_PAGE_SIZE));
 
+  // Todos os tratamentos (abertos e finalizados) pra vincular um débito manual.
+  const { data: debitTreatmentsData } = await supabase
+    .from("treatments")
+    .select("id, treatment_name, tooth_region, price")
+    .eq("clinic_id", clinic.id)
+    .eq("patient_id", patient.id)
+    .order("created_at", { ascending: false });
+  const debitTreatmentOptions = (debitTreatmentsData ?? []).map((t) => ({ ...t, price: Number(t.price) }));
+
   const debitsOpenPage = Math.max(1, parseInt(searchParams.dbPage ?? "1", 10) || 1);
   const dbFrom = (debitsOpenPage - 1) * DOCS_PAGE_SIZE;
   const dbTo = dbFrom + DOCS_PAGE_SIZE - 1;
@@ -469,6 +478,7 @@ export default async function EditPatientPage({
       paidTotalPages={paidDebitsTotalPages}
       paidCount={paidDebitsCount ?? 0}
       totalReceived={totalReceived}
+      treatmentOptions={debitTreatmentOptions}
       role={role}
     />
   );

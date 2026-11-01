@@ -7,9 +7,10 @@ import { UpcomingReturnsPanel } from "@/components/dashboard/UpcomingReturnsPane
 import { UnfinishedTreatmentsPanel, type UnfinishedTreatmentGroup } from "@/components/dashboard/UnfinishedTreatmentsPanel";
 import { OpenDebitsPanel, type OpenDebitGroup } from "@/components/dashboard/OpenDebitsPanel";
 import { DailyAgendaPanel } from "@/components/dashboard/DailyAgendaPanel";
-import { brDateOnly, firstOfMonth, firstOfNextMonth } from "@/lib/date";
+import { brDateOnly, firstOfMonth, firstOfNextMonth, formatDateOnlyBR } from "@/lib/date";
 import { formatMoneyDisplay } from "@/lib/money";
 import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
+import type { FinancialEntry } from "@/components/dashboard/FinancialEntriesModal";
 import { OpenRentalsPanel } from "@/components/dashboard/OpenRentalsPanel";
 import { groupReceivables, type TenantReceivable } from "@/lib/roomRental";
 import type { Appointment, RoomRental } from "@/lib/database.types";
@@ -20,6 +21,12 @@ const TOP_GROUPS_LIMIT = 10;
 
 function formatMoney(value: number): string {
   return `R$ ${formatMoneyDisplay(value)}`;
+}
+
+/** Nome de uma relação embutida do Supabase (`patients(name)`) — pode vir objeto ou array conforme a tipagem. */
+function embeddedName(rel: unknown): string | null {
+  const row = Array.isArray(rel) ? rel[0] : rel;
+  return (row as { name?: string } | null)?.name ?? null;
 }
 
 export default async function DashboardPage({
@@ -87,13 +94,23 @@ export default async function DashboardPage({
   const monthStart = firstOfMonth(todayDate);
   const monthEnd = firstOfNextMonth(todayDate);
 
+  // Lançamentos individuais vêm junto (não só o valor) pro modal que abre
+  // ao clicar nos cards de receitas/despesas do mês.
   const { data: revenueData } = await supabase
     .from("treatment_debits")
-    .select("amount")
+    .select("id, amount, paid_at, description, payment_method, patients(name)")
     .eq("clinic_id", clinic.id)
     .eq("status", "pago")
     .gte("paid_at", monthStart)
     .lt("paid_at", monthEnd);
+  const monthlyRevenueEntries: FinancialEntry[] = (revenueData ?? []).map((d) => ({
+    id: d.id,
+    date: d.paid_at as string,
+    description: d.description,
+    detail: embeddedName(d.patients),
+    paymentMethod: d.payment_method,
+    amount: Number(d.amount),
+  }));
   // Aluguel da sala (migration 073) entra no caixa pela data da baixa —
   // mesma régua de "pago" dos débitos. paid_at é gravado ao meio-dia de
   // Brasília, então as bordas de dia/mês não escorregam de fuso.
@@ -102,13 +119,21 @@ export default async function DashboardPage({
   if (clinic.room_rental_enabled) {
     const { data: rentalPaidData } = await supabase
       .from("room_rentals")
-      .select("amount, paid_at")
+      .select("id, amount, paid_at, rental_date, payment_method, room_tenants(name)")
       .eq("clinic_id", clinic.id)
       .eq("status", "agendada")
       .gte("paid_at", monthStart)
       .lt("paid_at", monthEnd);
     for (const r of rentalPaidData ?? []) {
       monthlyRental += Number(r.amount);
+      monthlyRevenueEntries.push({
+        id: r.id,
+        date: r.paid_at as string,
+        description: `Locação da sala — ${formatDateOnlyBR(r.rental_date)}`,
+        detail: embeddedName(r.room_tenants),
+        paymentMethod: r.payment_method,
+        amount: Number(r.amount),
+      });
       if (brDateOnly(new Date(r.paid_at as string)) === todayDate) dailyRental += Number(r.amount);
     }
   }
@@ -117,12 +142,20 @@ export default async function DashboardPage({
 
   const { data: expenseData } = await supabase
     .from("expenses")
-    .select("amount")
+    .select("id, amount, paid_at, description, category, payment_method")
     .eq("clinic_id", clinic.id)
     .eq("status", "pago")
     .gte("paid_at", monthStart)
     .lt("paid_at", monthEnd);
   const monthlyExpense = (expenseData ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
+  const monthlyExpenseEntries: FinancialEntry[] = (expenseData ?? []).map((e) => ({
+    id: e.id,
+    date: e.paid_at as string,
+    description: e.description,
+    detail: e.category,
+    paymentMethod: e.payment_method,
+    amount: Number(e.amount),
+  }));
   const monthlyBalance = monthlyRevenue - monthlyExpense;
 
   // Balanço do dia
@@ -244,6 +277,8 @@ export default async function DashboardPage({
           dailyBalance={dailyBalance}
           monthlyRental={monthlyRental}
           dailyRental={dailyRental}
+          monthlyRevenueEntries={monthlyRevenueEntries}
+          monthlyExpenseEntries={monthlyExpenseEntries}
         />
       )}
 

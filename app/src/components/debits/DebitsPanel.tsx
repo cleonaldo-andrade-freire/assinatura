@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
 import { ReceivePaymentModal } from "@/components/debits/ReceivePaymentModal";
 import { IssueReceiptModal } from "@/components/debits/IssueReceiptModal";
+import { AddDebitModal, type DebitTreatmentOption } from "@/components/debits/AddDebitModal";
 import { formatMoneyDisplay } from "@/lib/money";
 import { formatBRDateTime } from "@/lib/date";
 import type { Receipt, TreatmentDebit } from "@/lib/database.types";
@@ -45,6 +46,7 @@ export function DebitsPanel({
   paidTotalPages,
   paidCount,
   totalReceived,
+  treatmentOptions = [],
   role = "owner",
 }: {
   clinicId: string;
@@ -59,6 +61,8 @@ export function DebitsPanel({
   paidTotalPages: number;
   paidCount: number;
   totalReceived: number;
+  /** Tratamentos do paciente pra vincular um débito manual (opção "Relacionado a tratamento"). */
+  treatmentOptions?: DebitTreatmentOption[];
   /** Atendente só pode receber pagamento/emitir recibo — excluir e cancelar recebimento ficam só com owner. */
   role?: "owner" | "staff";
 }) {
@@ -95,6 +99,7 @@ export function DebitsPanel({
   const [selectedPaid, setSelectedPaid] = useState<Set<string>>(new Set());
   const [receivingPayment, setReceivingPayment] = useState(false);
   const [issuingReceipt, setIssuingReceipt] = useState(false);
+  const [addingDebit, setAddingDebit] = useState(false);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -184,6 +189,13 @@ export function DebitsPanel({
     }
   }
 
+  function handleDebitCreated(debit: TreatmentDebit) {
+    setOpenDebits((prev) => [debit, ...prev]);
+    setAddingDebit(false);
+    push("Débito lançado.", "success");
+    router.refresh();
+  }
+
   function handleIssued(receipt: Receipt) {
     const ids = new Set(debitsToReceipt.map((d) => d.id));
     setPaidDebits((prev) => prev.map((d) => (ids.has(d.id) ? { ...d, receipt_id: receipt.id } : d)));
@@ -206,8 +218,13 @@ export function DebitsPanel({
 
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <p className={styles.panelHeaderTitle}>Em aberto</p>
-          {openCount > 0 && <span className={db.paymentTag}>{openCount}</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <p className={styles.panelHeaderTitle}>Em aberto</p>
+            {openCount > 0 && <span className={db.paymentTag}>{openCount}</span>}
+          </div>
+          <button type="button" onClick={() => setAddingDebit(true)} className={`${styles.btn} ${styles.btnPrimary}`}>
+            + Novo débito
+          </button>
         </div>
         <div className={styles.panelBody}>
           {openDebits.length === 0 ? (
@@ -349,6 +366,15 @@ export function DebitsPanel({
         clinicId={clinicId}
         debits={debitsToReceipt}
         onIssued={handleIssued}
+      />
+
+      <AddDebitModal
+        open={addingDebit}
+        onClose={() => setAddingDebit(false)}
+        clinicId={clinicId}
+        patientId={patientId}
+        treatments={treatmentOptions}
+        onCreated={handleDebitCreated}
       />
 
       <ConfirmDialog
