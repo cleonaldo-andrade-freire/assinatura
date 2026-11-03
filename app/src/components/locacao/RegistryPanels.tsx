@@ -90,7 +90,7 @@ export function TenantsPanel({ clinicId, tenants, onSaved }: { clinicId: string;
             <tr>
               <th>Nome</th>
               <th>CRO</th>
-              <th>Telefone</th>
+              <th>WhatsApp</th>
               <th>Situação</th>
               <th></th>
             </tr>
@@ -102,7 +102,7 @@ export function TenantsPanel({ clinicId, tenants, onSaved }: { clinicId: string;
                   {t.name}
                 </td>
                 <td data-label="CRO">{t.cro ? `${t.cro}${t.cro_uf ? `/${t.cro_uf}` : ""}` : "—"}</td>
-                <td data-label="Telefone">{t.phone || "—"}</td>
+                <td data-label="WhatsApp">{t.phone || "—"}</td>
                 <td data-label="Situação">
                   <span className={`${styles.statusBadge} ${t.active ? styles.statusOk : styles.statusMuted}`}>{t.active ? "Ativo" : "Inativo"}</span>
                 </td>
@@ -149,7 +149,7 @@ export function TenantsPanel({ clinicId, tenants, onSaved }: { clinicId: string;
           {field("cro_uf", "UF", { flex: "0 0 70px", maxLength: 2 })}
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {field("phone", "Telefone")}
+          {field("phone", "WhatsApp (com DDD)")}
           {field("email", "E-mail")}
         </div>
         <div className={styles.field}>

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { computeContentHash } from "@/lib/documentSignatureEvents";
 import { sendText } from "@/lib/evolution";
+import { toE164BR } from "@/lib/validation";
 import { contractLink, contractWhatsappMessage, type RentalContractSnapshot } from "@/lib/roomRentalContract";
 import type { SignatureResult } from "@/components/SignatureCanvas";
 import type { Clinic, RoomRental, RoomRentalShift, RoomTenant } from "@/lib/database.types";
@@ -84,7 +85,9 @@ export async function prepareRentalContract(
   const link = contractLink(updated.contract_token as string);
   let sent = false;
   if (opts.send) {
-    sent = await sendText(clinic, tenant.phone!, contractWhatsappMessage(snapshot, link));
+    // Cadastro do locatário guarda só os dígitos digitados ("81999998888"),
+    // sem o DDI que a Evolution exige.
+    sent = await sendText(clinic, toE164BR(tenant.phone!), contractWhatsappMessage(snapshot, link));
     if (!sent) {
       return { ok: false, status: 502, error: "send_failed", message: "Contrato gerado, mas o WhatsApp falhou. Use “Copiar link” e envie manualmente." };
     }
