@@ -48,6 +48,12 @@ function rental(overrides: Partial<RoomRental>): RoomRental {
     created_by: null,
     created_at: "",
     updated_at: "",
+    contract_token: null,
+    contract_snapshot: null,
+    contract_hash: null,
+    contract_sent_at: null,
+    contract_signed_at: null,
+    contract_signature: null,
     ...overrides,
   };
 }

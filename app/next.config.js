@@ -9,7 +9,7 @@ const nextConfig = {
   // o WhatsApp do iPhone corta "?token=" e só deixa clicável o trecho depois
   // do "=". As páginas continuam lendo ?token=, então os links antigos valem.
   async redirects() {
-    return ["atestado", "prescricao", "orcamento", "recibo", "assinatura", "evolucao-assinatura"].map((page) => ({
+    return ["atestado", "prescricao", "orcamento", "recibo", "assinatura", "evolucao-assinatura", "contrato-locacao"].map((page) => ({
       source: `/${page}/:token`,
       destination: `/${page}?token=:token`,
       permanent: false,

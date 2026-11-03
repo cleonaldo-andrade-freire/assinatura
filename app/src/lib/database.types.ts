@@ -759,6 +759,13 @@ export interface RoomRental {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Contrato da locação (migration 075). */
+  contract_token: string | null;
+  contract_snapshot: unknown | null;
+  contract_hash: string | null;
+  contract_sent_at: string | null;
+  contract_signed_at: string | null;
+  contract_signature: unknown | null;
 }
 
 export interface TreatmentEvolutionSignature {

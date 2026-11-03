@@ -13,6 +13,7 @@ const TOKEN_SOURCES = {
   orcamento: ["budgets", "token"],
   recibo: ["receipts", "token"],
   confirmacao: ["appointments", "confirm_token"],
+  contrato: ["room_rentals", "contract_token"],
 } as const;
 
 /**
