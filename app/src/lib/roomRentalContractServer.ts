@@ -111,6 +111,7 @@ export interface PublicContract {
   cancelled: boolean;
   signedAt: string | null;
   signatureDataUrl: string | null;
+  signatureIp: string | null;
 }
 
 /** Contrato pelo token do link — sem login, o token é a credencial. */
@@ -120,7 +121,7 @@ export async function getContractByToken(token: string): Promise<PublicContract 
   if (!data || !data.contract_snapshot || !data.contract_hash) return null;
   const rental = data as RoomRental;
   const { data: clinic } = await supabase.from("clinics").select("name, logo_url").eq("id", rental.clinic_id).single();
-  const signature = rental.contract_signature as { dataUrl?: string } | null;
+  const signature = rental.contract_signature as { dataUrl?: string; ip?: string | null } | null;
   return {
     rentalId: rental.id,
     clinicName: clinic?.name ?? "Clínica",
@@ -130,6 +131,7 @@ export async function getContractByToken(token: string): Promise<PublicContract 
     cancelled: rental.status === "cancelada",
     signedAt: rental.contract_signed_at,
     signatureDataUrl: signature?.dataUrl ?? null,
+    signatureIp: signature?.ip ?? null,
   };
 }
 

@@ -4,7 +4,7 @@ import { formatDateOnlyBR, formatTimestampBR } from "@/lib/date";
 import { clinicLinkPreview } from "@/lib/linkPreview";
 import { getContractByToken } from "@/lib/roomRentalContractServer";
 import { contractClauses, contractShiftLabel, formatContractAmount, lessorLine, partyLine } from "@/lib/roomRentalContract";
-import { ContratoAssinatura, PrintButton } from "./ContratoAssinatura";
+import { ContratoAssinatura } from "./ContratoAssinatura";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,16 @@ export default async function ContratoLocacaoPage({ searchParams }: { searchPara
               <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "8px 0 0" }}>
                 Assinado eletronicamente em {formatTimestampBR(contract.signedAt)}.
               </p>
-              <PrintButton />
+              <a
+                href={`/api/contrato-locacao/${encodeURIComponent(token)}/pdf`}
+                download={`contrato-locacao-${s.rental.date}.pdf`}
+                style={{
+                  display: "inline-flex", marginTop: 14, background: "var(--surface)", border: "1.5px solid var(--line)", color: "var(--ink)",
+                  borderRadius: "var(--radius-sm)", padding: "10px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none",
+                }}
+              >
+                Baixar contrato em PDF
+              </a>
             </div>
           )}
         </div>

@@ -501,6 +501,14 @@ function ContractSection({
               <a className={uiStyles.dialogBtnGhost} href={link} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                 Ver contrato assinado
               </a>
+              <a
+                className={uiStyles.dialogBtnGhost}
+                href={`/api/contrato-locacao/${rental.contract_token}/pdf`}
+                download={`contrato-locacao-${rental.rental_date}.pdf`}
+                style={{ textDecoration: "none" }}
+              >
+                Baixar PDF
+              </a>
               <button type="button" className={uiStyles.dialogBtnGhost} disabled={busy} onClick={() => setConfirmRenew(true)}>
                 Gerar novo contrato
               </button>

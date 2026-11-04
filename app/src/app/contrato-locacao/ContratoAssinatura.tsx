@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { SignatureCanvas, type SignatureResult } from "@/components/SignatureCanvas";
 import { SignatureMark } from "@/components/SignatureMark";
 
 /** Aceite + assinatura com o dedo ou o mouse, no fim do contrato. */
 export function ContratoAssinatura({ token, contentHash }: { token: string; contentHash: string }) {
-  const router = useRouter();
   const [accepted, setAccepted] = useState(false);
   const [signature, setSignature] = useState<SignatureResult | null>(null);
   const [sending, setSending] = useState(false);
@@ -36,7 +34,9 @@ export function ContratoAssinatura({ token, contentHash }: { token: string; cont
         setError(messages[body?.error] || "Não foi possível enviar sua assinatura agora. Tente novamente.");
         return;
       }
-      router.refresh();
+      // Recarga completa (não só router.refresh) para a página voltar já do
+      // servidor com a assinatura desenhada no fim do contrato.
+      window.location.reload();
     } catch {
       setError("Falha de conexão. Tente novamente.");
     } finally {
@@ -80,18 +80,3 @@ export function ContratoAssinatura({ token, contentHash }: { token: string; cont
   );
 }
 
-/** Imprimir / salvar em PDF pelo próprio navegador. */
-export function PrintButton() {
-  return (
-    <button
-      type="button"
-      onClick={() => window.print()}
-      style={{
-        marginTop: 14, background: "var(--surface)", border: "1.5px solid var(--line)", color: "var(--ink)",
-        borderRadius: "var(--radius-sm)", padding: "10px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer",
-      }}
-    >
-      Imprimir ou salvar em PDF
-    </button>
-  );
-}

@@ -16,5 +16,11 @@ import { createClient } from "@supabase/supabase-js";
 export function createSupabaseAdminClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { autoRefreshToken: false, persistSession: false },
+    // O Next 14 guarda em cache as chamadas `fetch` feitas em páginas do
+    // servidor — e o supabase-js lê o banco via `fetch`. Sem isto, uma página
+    // pública podia continuar mostrando o dado da primeira visita (ex.:
+    // contrato de locação "sem assinatura" depois de assinado). Leitura de
+    // banco é sempre ao vivo.
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
   });
 }
