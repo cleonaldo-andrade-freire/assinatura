@@ -53,6 +53,47 @@ export async function sendText(clinic: EvolutionCreds, phone: string, text: stri
 }
 
 /**
+ * Manda uma imagem ou vídeo com legenda via Evolution API (v2:
+ * `/message/sendMedia`). `mediaUrl` precisa ser baixável pela Evolution —
+ * usamos URL assinada de curta duração do Supabase Storage, nunca bucket
+ * público. Best-effort, mesmo contrato do `sendText`.
+ */
+export async function sendMedia(
+  clinic: EvolutionCreds,
+  phone: string,
+  media: { type: "image" | "video"; mimetype: string; url: string; fileName: string; caption?: string }
+): Promise<boolean> {
+  if (!evolutionConfigured(clinic)) return false;
+
+  const url = `${clinic.evolution_base_url!.replace(/\/$/, "")}/message/sendMedia/${clinic.evolution_instance_name}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: clinic.evolution_api_key!,
+      },
+      body: JSON.stringify({
+        number: phone.replace(/\D/g, ""),
+        mediatype: media.type,
+        mimetype: media.mimetype,
+        media: media.url,
+        fileName: media.fileName,
+        ...(media.caption ? { caption: media.caption } : {}),
+      }),
+    });
+    if (!res.ok) {
+      console.error("Evolution API sendMedia respondeu", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Falha ao chamar Evolution API (sendMedia):", err);
+    return false;
+  }
+}
+
+/**
  * Avisa a clínica no WhatsApp que uma anamnese foi assinada, chamando a Evolution API
  * dela diretamente (sem passar por n8n). Best-effort.
  */

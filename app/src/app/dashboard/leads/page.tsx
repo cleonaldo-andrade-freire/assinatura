@@ -7,6 +7,7 @@ import { NewLeadButton } from "@/components/NewLeadButton";
 import { LeadsExportButton } from "@/components/LeadsExportButton";
 import { LEAD_BOARD_STATUSES, backfillLeadNamesFromPatients } from "@/lib/leads";
 import type { Lead } from "@/lib/database.types";
+import styles from "@/styles/shell.module.css";
 
 /** Lead 'scheduled' mais antigo que isto sai do quadro sozinho no próximo
  * carregamento da página — faxina lazy, sem cron (ver guia-deploy: cron no
@@ -79,6 +80,11 @@ export default async function LeadsPage() {
       userAvatarUrl={userAvatarUrl}
       actions={
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {role === "owner" && clinic.campaigns_enabled && (
+            <a href="/dashboard/campanhas" className={`${styles.btn} ${styles.btnGhost}`}>
+              Campanhas
+            </a>
+          )}
           <LeadsExportButton clinicId={clinic.id} />
           <NewLeadButton clinicId={clinic.id} />
         </div>

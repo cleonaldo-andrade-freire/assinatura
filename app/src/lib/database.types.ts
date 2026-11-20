@@ -50,6 +50,10 @@ export interface Clinic {
   lead_bot_enabled: boolean;
   /** Módulo de locação da sala por turno (migration 073) — ligado só por SQL, por clínica. */
   room_rental_enabled: boolean;
+  /** Campanhas de promoção por WhatsApp (migration 076) — ligado só por SQL, por clínica. */
+  campaigns_enabled?: boolean;
+  /** Portão do ritmo das campanhas: nenhuma mensagem de campanha sai antes disso. */
+  campaign_next_send_at?: string | null;
   lead_bot_trigger_phrase: string | null;
   /** Resposta automática enviada uma única vez quando um lead NOVO abre pelo
    * WhatsApp (texto pré-preenchido do anúncio). Null/vazio = não responde,
@@ -887,5 +891,51 @@ export interface LeadMessage {
   clinic_id: string;
   role: LeadMessageRole;
   content: string;
+  created_at: string;
+}
+
+// ---- Campanhas de promoção por WhatsApp (migration 076) ----
+
+export type CampaignAudience = "pacientes" | "leads" | "todos";
+export type CampaignStatus = "rascunho" | "enviando" | "pausada" | "concluida" | "cancelada";
+export type CampaignMediaType = "image" | "video";
+
+export interface MarketingCampaign {
+  id: string;
+  clinic_id: string;
+  name: string;
+  audience: CampaignAudience;
+  only_attended: boolean;
+  invite_text: string;
+  content_text: string;
+  media_key: string | null;
+  media_type: CampaignMediaType | null;
+  media_mime: string | null;
+  media_name: string | null;
+  status: CampaignStatus;
+  pause_reason: string | null;
+  consecutive_failures: number;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CampaignRecipientStatus = "pending" | "sending" | "sent" | "interested" | "declined" | "replied" | "failed" | "skipped";
+
+export interface MarketingCampaignRecipient {
+  id: string;
+  campaign_id: string;
+  clinic_id: string;
+  phone: string;
+  name: string | null;
+  patient_id: string | null;
+  lead_id: string | null;
+  status: CampaignRecipientStatus;
+  skip_reason: string | null;
+  sent_at: string | null;
+  replied_at: string | null;
+  reply_text: string | null;
+  last_outbound_at: string | null;
   created_at: string;
 }

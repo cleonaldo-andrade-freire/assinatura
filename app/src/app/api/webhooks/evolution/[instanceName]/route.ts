@@ -8,6 +8,7 @@ import { brPhoneVariants } from "@/lib/validation";
 import { matchConfirmCancel, processAppointmentResponse } from "@/lib/appointmentNotifications";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import { findOpenLead, findOrCreateOpenLead, appendLeadMessage, matchesLeadBotTrigger } from "@/lib/leads";
+import { handleCampaignReply, isCampaignEcho } from "@/lib/campaignsServer";
 import type { Clinic, Conversation, Lead, LeadMessage, Question } from "@/lib/database.types";
 
 /** Janela dentro da qual um `fromMe` com o mesmo texto de uma mensagem 'bot'
@@ -80,6 +81,18 @@ export async function POST(req: NextRequest, { params }: { params: { instanceNam
   }
 
   if (!conversation) {
+    // Resposta a um convite de campanha (SIM → manda o conteúdo e abre lead;
+    // NÃO/SAIR → opt-out). Vem antes do agendamento pendente, mas a fila
+    // nunca convida quem tem consulta aguardando confirmação — então um "sim"
+    // aqui não tem como ser confirmação de consulta.
+    if (!isMediaOnly) {
+      const campaignReply = await handleCampaignReply(supabase, clinic, inbound.phone, inboundText);
+      if (campaignReply.handled) {
+        if (campaignReply.lead) await maybeSendLeadAlert(supabase, clinic, campaignReply.lead, inbound.phone, `${inboundText} (respondeu à campanha)`);
+        return NextResponse.json({ ok: true });
+      }
+    }
+
     // Nenhuma anamnese em andamento pra esse número — antes de tratar como
     // lead, checa se é uma resposta de confirmação de agendamento (canal
     // alternativo ao link, ver lib/appointmentNotifications.ts). Mídia pura
@@ -277,6 +290,9 @@ async function maybeSendLeadAlert(
  * como 'staff' e pausa o bot (`waiting_reply`) até a equipe reabrir o lead.
  */
 async function handleOutboundEcho(supabase: SupabaseClient, clinic: Clinic, phone: string, text: string): Promise<void> {
+  // Eco de convite/conteúdo de campanha — não é a dentista respondendo.
+  if (await isCampaignEcho(supabase, clinic.id, phone)) return;
+
   const { data: lead } = await supabase
     .from("leads")
     .select("*")
