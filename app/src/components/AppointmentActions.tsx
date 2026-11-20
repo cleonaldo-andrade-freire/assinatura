@@ -137,7 +137,9 @@ export function AppointmentActions({
     // Leva direto pra aba de Tratamentos da ficha — é lá que o registro do
     // atendimento (evolução, finalização) acontece. Sem paciente cadastrado
     // não tem ficha pra abrir, só atualiza o status mesmo.
-    if (ok && patientId) router.push(`/dashboard/pacientes/${patientId}?tab=tratamentos`);
+    // `atendimento` abre o "Registrar atendimento" já vinculado a este
+    // agendamento — ao salvar, ele vira "atendido".
+    if (ok && patientId) router.push(`/dashboard/pacientes/${patientId}?tab=tratamentos&atendimento=${appointmentId}`);
   }
 
   const isTerminal = status === "atendido" || status === "cancelado_paciente" || status === "cancelado_dentista" || status === "faltou";

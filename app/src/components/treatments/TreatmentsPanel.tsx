@@ -47,6 +47,7 @@ export function TreatmentsPanel({
   totalPages,
   count,
   showFinalized,
+  startAppointmentId,
   toggleShowFinalizedHref,
 }: {
   clinicId: string;
@@ -56,6 +57,8 @@ export function TreatmentsPanel({
   totalPages: number;
   count: number;
   showFinalized: boolean;
+  /** Veio do "Iniciar atendimento" da agenda: abre o "Registrar atendimento" já vinculado a este agendamento. */
+  startAppointmentId?: string | null;
   toggleShowFinalizedHref: string;
 }) {
   const router = useRouter();
@@ -82,6 +85,18 @@ export function TreatmentsPanel({
   const [detailTreatment, setDetailTreatment] = useState<Treatment | null>(null);
   const [newTreatmentOpen, setNewTreatmentOpen] = useState(false);
   const [registerVisitOpen, setRegisterVisitOpen] = useState(false);
+  const [visitAppointmentId, setVisitAppointmentId] = useState<string | null>(null);
+
+  // Chegou pelo "Iniciar atendimento": abre o modal vinculado ao agendamento
+  // e tira o parâmetro da URL, pra um F5 não reabrir. Se fechar sem salvar,
+  // o servidor ainda acha o agendamento "em atendimento" no próximo registro.
+  useEffect(() => {
+    if (!startAppointmentId) return;
+    setVisitAppointmentId(startAppointmentId);
+    setRegisterVisitOpen(true);
+    router.replace(`/dashboard/pacientes/${patientId}?tab=tratamentos`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startAppointmentId]);
 
   const [confirmDeleteIds, setConfirmDeleteIds] = useState<string[] | null>(null);
   const [deletingIds, setDeletingIds] = useState(false);
@@ -269,9 +284,13 @@ export function TreatmentsPanel({
 
       <RegisterVisitModal
         open={registerVisitOpen}
-        onClose={() => setRegisterVisitOpen(false)}
+        onClose={() => {
+          setRegisterVisitOpen(false);
+          setVisitAppointmentId(null);
+        }}
         clinicId={clinicId}
         patientId={patientId}
+        appointmentId={visitAppointmentId}
         initialSelectedIds={Array.from(selected)}
         onSaved={(message) => {
           push(message, "success");

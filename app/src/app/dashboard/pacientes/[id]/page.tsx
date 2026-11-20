@@ -72,6 +72,8 @@ export default async function EditPatientPage({
     dbPage?: string;
     dbPaidPage?: string;
     tab?: string;
+    /** Agendamento vindo do "Iniciar atendimento" da agenda — abre o "Registrar atendimento" vinculado a ele. */
+    atendimento?: string;
   };
 }) {
   const auth = await getClinicAndRole();
@@ -457,6 +459,7 @@ export default async function EditPatientPage({
       totalPages={treatmentsTotalPages}
       count={treatmentsCount ?? 0}
       showFinalized={showFinalizedTreatments}
+      startAppointmentId={searchParams.atendimento ?? null}
       toggleShowFinalizedHref={pageHref(`/dashboard/pacientes/${patient.id}`, {
         tpPage: 1,
         ...(showFinalizedTreatments ? {} : { tpShowFinalized: "1" }),
