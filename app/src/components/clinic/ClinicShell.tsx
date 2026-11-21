@@ -162,6 +162,15 @@ function ExpensesIcon() {
   );
 }
 
+function CampaignsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 10v4a1 1 0 001 1h3l6 4V5L8 9H5a1 1 0 00-1 1z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M18 9a4 4 0 010 6M8 15l1 4h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -207,6 +216,9 @@ function CollapseIcon() {
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
+// Módulo ligado por clínica (clinics.campaigns_enabled) e só para o owner.
+const CAMPAIGNS_HREF = "/dashboard/campanhas";
+
 // Ordem canônica — vale pra sidebar de desktop, que mostra tudo inline sem
 // distinção (tem espaço de sobra pros oito destinos).
 const NAV_ITEMS = [
@@ -219,6 +231,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/pacientes", label: "Pacientes", icon: PatientsIcon },
   { href: "/dashboard/proteses", label: "Próteses", icon: ProsthesisIcon },
   { href: "/dashboard/leads", label: "Leads", icon: LeadsIcon },
+  { href: CAMPAIGNS_HREF, label: "Campanhas", icon: CampaignsIcon },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: ExpensesIcon },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
@@ -270,6 +283,8 @@ interface ClinicShellProps {
   userName?: string | null;
   /** Foto de perfil do usuário logado (opcional — cadastrada em "Meu perfil"). */
   userAvatarUrl?: string | null;
+  /** clinics.campaigns_enabled — mostra "Campanhas" no menu (só para o owner). */
+  campaignsEnabled?: boolean;
 }
 
 export function ClinicShell({
@@ -283,6 +298,7 @@ export function ClinicShell({
   userEmail,
   userName,
   userAvatarUrl,
+  campaignsEnabled = false,
 }: ClinicShellProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -311,9 +327,10 @@ export function ClinicShell({
   const showMobileV2Chrome = mobileV2Active && isMobileViewport;
 
   // Filtra itens do menu pelo papel do usuário
-  const visibleNavItems = role === "staff"
-    ? NAV_ITEMS.filter((item) => STAFF_ALLOWED_HREFS.has(item.href))
-    : NAV_ITEMS;
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.href === CAMPAIGNS_HREF && !campaignsEnabled) return false;
+    return role === "staff" ? STAFF_ALLOWED_HREFS.has(item.href) : true;
+  });
   const mobilePrimaryItems = visibleNavItems.filter((item) => MOBILE_PRIMARY_HREFS.has(item.href));
   const moreNavItems = visibleNavItems.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href));
   // Só lê localStorage depois de montar (evita mismatch de hidratação entre

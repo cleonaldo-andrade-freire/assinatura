@@ -83,6 +83,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Configurações"
       subtitle="Dados do responsável técnico, WhatsApp, identidade visual e assinatura da clínica"
       role={role}

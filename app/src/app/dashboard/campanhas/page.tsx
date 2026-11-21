@@ -38,6 +38,7 @@ export default async function CampanhasPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Campanhas"
       subtitle="Promoções pelo WhatsApp — convite primeiro, conteúdo só para quem disser SIM"
       role={role}

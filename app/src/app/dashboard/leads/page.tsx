@@ -72,6 +72,7 @@ export default async function LeadsPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Leads"
       subtitle="Triagem automática por IA no WhatsApp — números fora do fluxo de anamnese/agenda"
       role={role}

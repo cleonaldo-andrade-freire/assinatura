@@ -35,6 +35,7 @@ export default async function PriceTablesPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Tabelas de tratamento"
       subtitle="Preços por plano (particular, convênios) usados ao montar um orçamento"
       role={role}

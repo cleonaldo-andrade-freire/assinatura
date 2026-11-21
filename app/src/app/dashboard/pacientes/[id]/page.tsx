@@ -615,6 +615,7 @@ export default async function EditPatientPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={patient.name}
       role={role}
       userEmail={userEmail}

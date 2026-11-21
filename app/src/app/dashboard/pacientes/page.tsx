@@ -43,6 +43,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: { q
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Pacientes"
       subtitle="Cadastro de pacientes da clínica"
       role={role}

@@ -85,6 +85,7 @@ export default async function EvolucoesPendentesPage({ searchParams }: { searchP
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Evoluções pendentes de assinatura"
       subtitle="Assine digitalmente (ICP-Brasil) e envie ao paciente para ciência — individualmente ou em lote"
       role={role}

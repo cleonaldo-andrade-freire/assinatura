@@ -260,6 +260,7 @@ export default async function DashboardPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Dashboard"
       subtitle="Cancelamentos e retornos que precisam de um contato"
       role={role}

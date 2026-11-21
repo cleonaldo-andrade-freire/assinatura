@@ -24,6 +24,7 @@ export default async function EditCertificateTemplatePage({ params }: { params: 
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={(data as CertificateTemplate).name}
       role={role}
       userEmail={userEmail}

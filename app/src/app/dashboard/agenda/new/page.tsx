@@ -17,6 +17,7 @@ export default async function NewAppointmentPage({ searchParams }: { searchParam
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Novo agendamento"
       role={role}
       userEmail={userEmail}

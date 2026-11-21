@@ -21,6 +21,7 @@ export default async function PerfilPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Meu perfil"
       subtitle="Nome e foto mostrados pra identificar sua sessão"
       role={role}

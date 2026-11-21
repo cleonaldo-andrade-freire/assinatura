@@ -51,6 +51,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={p.patient_name}
       subtitle={`Receituário emitido em ${formatTimestampBR(p.created_at)}`}
       role={role}

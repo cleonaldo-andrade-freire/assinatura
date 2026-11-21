@@ -180,6 +180,7 @@ export default async function DespesasPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Financeiro"
       subtitle="Receita lançada, despesas e saldo — mês a mês"
       role={role}

@@ -25,6 +25,7 @@ export default async function LocationsPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Locais de atendimento"
       subtitle="Endereços onde a clínica atende — vão nas mensagens da agenda e no envio da anamnese"
       role={role}

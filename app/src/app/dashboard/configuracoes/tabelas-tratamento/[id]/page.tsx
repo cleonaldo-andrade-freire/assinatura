@@ -36,6 +36,7 @@ export default async function PriceTableDetailPage({ params }: { params: { id: s
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={priceTable.name}
       subtitle={priceTable.is_default ? "Tabela padrão" : undefined}
       role={role}

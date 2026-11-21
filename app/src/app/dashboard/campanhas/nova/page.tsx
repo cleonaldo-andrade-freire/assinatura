@@ -14,6 +14,7 @@ export default async function NovaCampanhaPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Nova campanha"
       subtitle="Salva como rascunho — nada é enviado até você iniciar"
       role={role}

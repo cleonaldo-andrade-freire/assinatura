@@ -56,6 +56,7 @@ export default async function LocacaoPage({ searchParams }: { searchParams: { se
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Locação da sala"
       subtitle="Turnos alugados para outros profissionais — cobrança depois do uso"
       role={role}

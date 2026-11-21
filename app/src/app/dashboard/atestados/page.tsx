@@ -70,6 +70,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Atestados"
       subtitle="Atestados odontológicos emitidos pela clínica"
       role={role}

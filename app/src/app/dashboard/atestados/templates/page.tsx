@@ -44,6 +44,7 @@ export default async function CertificateTemplatesPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Modelos de atestado"
       subtitle="Textos reaproveitáveis com dados do paciente mesclados automaticamente"
       role={role}

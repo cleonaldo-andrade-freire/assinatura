@@ -26,6 +26,7 @@ export default async function DocumentosPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Documentos"
       subtitle="Anamneses, atestados e receituários em um só lugar"
       role={role}

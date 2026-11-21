@@ -28,6 +28,7 @@ export default async function AppointmentMessageTemplatesPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Modelos de mensagem"
       subtitle="Textos enviados por WhatsApp em cada momento do fluxo de agendamento"
       role={role}

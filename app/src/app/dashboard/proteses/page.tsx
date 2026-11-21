@@ -23,6 +23,7 @@ export default async function ProsthesisPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Controle de prótese"
       subtitle="Acompanhamento do serviço de prótese, do pedido à instalação"
       role={role}

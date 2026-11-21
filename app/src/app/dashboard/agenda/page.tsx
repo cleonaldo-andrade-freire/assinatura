@@ -161,6 +161,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Agenda"
       subtitle="Agendamentos da clínica"
       role={role}

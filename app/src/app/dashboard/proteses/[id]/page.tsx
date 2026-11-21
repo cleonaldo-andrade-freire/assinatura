@@ -34,6 +34,7 @@ export default async function ProsthesisOrderDetailPage({ params }: { params: { 
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={o.description}
       subtitle={`Estágio atual: ${PROSTHESIS_STAGE_LABEL[o.stage]}`}
       role={role}

@@ -54,6 +54,7 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={typedAnamnesis.patient_name}
       subtitle={`Anamnese registrada em ${formatTimestampBR(typedAnamnesis.created_at)}`}
       role={role}

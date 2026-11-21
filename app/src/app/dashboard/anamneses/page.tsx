@@ -117,6 +117,7 @@ export default async function AnamnesesPage({
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Anamneses"
       subtitle="Todas as anamneses recebidas pela clínica"
       role={role}

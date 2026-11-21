@@ -26,6 +26,7 @@ export default async function EditTemplatePage({ params }: { params: { id: strin
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Editar modelo"
       role={role}
       userEmail={userEmail}

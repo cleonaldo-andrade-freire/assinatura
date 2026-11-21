@@ -59,6 +59,7 @@ export default async function CampanhaPage({ params }: { params: { id: string } 
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={campaign.name}
       subtitle={`${CAMPAIGN_AUDIENCE_LABEL[campaign.audience]}${campaign.only_attended && campaign.audience !== "leads" ? " (só já atendidos)" : ""}`}
       role={role}

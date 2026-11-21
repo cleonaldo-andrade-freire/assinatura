@@ -26,6 +26,7 @@ export default async function TemplatesPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Modelos de anamnese"
       subtitle="Cada modelo é uma lista de perguntas — escolha qual usar ao iniciar uma anamnese nova"
       role={role}

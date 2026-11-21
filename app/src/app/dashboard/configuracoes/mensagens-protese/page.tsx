@@ -25,6 +25,7 @@ export default async function ProsthesisMessageTemplatesPage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Modelos de mensagem — Prótese"
       subtitle="Textos enviados por WhatsApp quando o serviço muda de estágio"
       role={role}

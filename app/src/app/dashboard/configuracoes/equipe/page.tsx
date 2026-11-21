@@ -26,6 +26,7 @@ export default async function EquipePage() {
     <ClinicShell
       clinicName={auth.clinic.name}
       clinicLogoUrl={auth.clinic.logo_url}
+      campaignsEnabled={auth.clinic.campaigns_enabled}
       title="Equipe"
       subtitle="Gerencie os membros que têm acesso ao sistema"
       role={auth.role}

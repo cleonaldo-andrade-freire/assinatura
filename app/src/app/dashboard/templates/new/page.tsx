@@ -13,6 +13,7 @@ export default async function NewTemplatePage() {
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Novo modelo de anamnese"
       subtitle='Ex.: "Adulto", "Criança", "Simples" — o paciente responde uma pergunta de cada vez pelo WhatsApp'
       role={role}

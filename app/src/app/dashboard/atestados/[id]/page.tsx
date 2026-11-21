@@ -45,6 +45,7 @@ export default async function CertificateDetailPage({ params }: { params: { id: 
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title={c.patient_name}
       subtitle={`${attendance ? "Declaração de comparecimento emitida" : "Atestado emitido"} em ${formatTimestampBR(c.created_at)}`}
       role={role}

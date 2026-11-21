@@ -69,6 +69,7 @@ export default async function PrescriptionsPage({ searchParams }: { searchParams
     <ClinicShell
       clinicName={clinic.name}
       clinicLogoUrl={clinic.logo_url}
+      campaignsEnabled={clinic.campaigns_enabled}
       title="Receituários"
       subtitle="Receituários odontológicos emitidos pela clínica"
       role={role}
