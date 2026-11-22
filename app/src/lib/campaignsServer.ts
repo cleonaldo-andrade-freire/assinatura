@@ -8,6 +8,7 @@ import { brPhoneVariants } from "@/lib/validation";
 import {
   CAMPAIGN_DAILY_LIMIT,
   CAMPAIGN_DECLINE_CONFIRMATION,
+  CAMPAIGN_MANUAL_SKIP_REASON,
   CAMPAIGN_MAX_CONSECUTIVE_FAILURES,
   CAMPAIGN_REPLY_WINDOW_DAYS,
   canonicalCampaignPhone,
@@ -101,7 +102,10 @@ export async function buildCampaignAudience(
 
 /** Gera a fila de destinatários e coloca a campanha em "enviando". Só a partir de rascunho. */
 export async function startCampaign(supabase: SupabaseClient, clinic: Clinic, campaign: MarketingCampaign): Promise<{ count: number }> {
-  const audience = await buildCampaignAudience(supabase, clinic, campaign);
+  // Quem foi retirado no rascunho já tem linha "skipped" na fila — o upsert
+  // com ignoreDuplicates abaixo não mexe nela.
+  const removed = await manuallyRemovedPhones(supabase, campaign.id);
+  const audience = (await buildCampaignAudience(supabase, clinic, campaign)).filter((m) => !removed.has(m.phone));
   if (audience.length === 0) throw new Error("Nenhum contato no público escolhido.");
 
   for (let i = 0; i < audience.length; i += 500) {
@@ -118,6 +122,72 @@ export async function startCampaign(supabase: SupabaseClient, clinic: Clinic, ca
     .eq("status", "rascunho");
   if (error) throw new Error(error.message);
   return { count: audience.length };
+}
+
+async function manuallyRemovedPhones(supabase: SupabaseClient, campaignId: string): Promise<Set<string>> {
+  const rows = await fetchAll<{ phone: string }>((from, to) =>
+    supabase
+      .from("marketing_campaign_recipients")
+      .select("phone")
+      .eq("campaign_id", campaignId)
+      .eq("status", "skipped")
+      .eq("skip_reason", CAMPAIGN_MANUAL_SKIP_REASON)
+      .range(from, to)
+  );
+  return new Set(rows.map((r) => r.phone));
+}
+
+export type DraftAudienceMember = AudienceMember & { removed: boolean };
+
+/** Rascunho: quem vai receber se iniciar agora, marcando quem a clínica já retirou. */
+export async function listDraftAudience(supabase: SupabaseClient, clinic: Clinic, campaign: MarketingCampaign): Promise<DraftAudienceMember[]> {
+  const [audience, removed] = await Promise.all([buildCampaignAudience(supabase, clinic, campaign), manuallyRemovedPhones(supabase, campaign.id)]);
+  return audience.map((m) => ({ ...m, removed: removed.has(m.phone) })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+}
+
+/**
+ * Tira (removed=true) ou devolve um contato da campanha.
+ * - Rascunho: grava/apaga uma linha "skipped" na fila, que o startCampaign respeita.
+ * - Enviando/pausada: só mexe em quem ainda está na fila (pending) ou foi retirado à mão.
+ */
+export async function setCampaignContactRemoved(
+  supabase: SupabaseClient,
+  clinic: Clinic,
+  campaign: MarketingCampaign,
+  phone: string,
+  removed: boolean
+): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+  if (campaign.status === "rascunho") {
+    if (!removed) {
+      const { error } = await supabase
+        .from("marketing_campaign_recipients")
+        .delete()
+        .eq("campaign_id", campaign.id)
+        .eq("phone", phone)
+        .eq("status", "skipped")
+        .eq("skip_reason", CAMPAIGN_MANUAL_SKIP_REASON);
+      return error ? { ok: false, status: 500, message: error.message } : { ok: true };
+    }
+    const member = (await buildCampaignAudience(supabase, clinic, campaign)).find((m) => m.phone === phone);
+    if (!member) return { ok: false, status: 404, message: "Contato fora do público desta campanha." };
+    const { error } = await supabase.from("marketing_campaign_recipients").upsert(
+      { ...member, campaign_id: campaign.id, clinic_id: clinic.id, status: "skipped", skip_reason: CAMPAIGN_MANUAL_SKIP_REASON },
+      { onConflict: "campaign_id,phone" }
+    );
+    return error ? { ok: false, status: 500, message: error.message } : { ok: true };
+  }
+
+  if (campaign.status !== "enviando" && campaign.status !== "pausada") {
+    return { ok: false, status: 409, message: "Esta campanha já terminou." };
+  }
+  let query = supabase.from("marketing_campaign_recipients").update(removed ? { status: "skipped", skip_reason: CAMPAIGN_MANUAL_SKIP_REASON } : { status: "pending", skip_reason: null }).eq("campaign_id", campaign.id).eq("phone", phone);
+  query = removed ? query.eq("status", "pending") : query.eq("status", "skipped").eq("skip_reason", CAMPAIGN_MANUAL_SKIP_REASON);
+  const { data, error } = await query.select("id");
+  if (error) return { ok: false, status: 500, message: error.message };
+  if (!data || data.length === 0) {
+    return { ok: false, status: 409, message: removed ? "Este contato já recebeu o convite (ou não está mais na fila)." : "Este contato não pode voltar para a fila." };
+  }
+  return { ok: true };
 }
 
 async function signedMediaUrl(key: string): Promise<string | null> {

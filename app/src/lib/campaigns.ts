@@ -57,6 +57,9 @@ export const CAMPAIGN_STATUS_CLASS: Record<CampaignStatus, string> = {
   cancelada: "statusNeutral",
 };
 
+/** skip_reason de quem a clínica tirou da campanha à mão (no rascunho ou da fila). */
+export const CAMPAIGN_MANUAL_SKIP_REASON = "Retirado manualmente";
+
 export const RECIPIENT_STATUS_LABEL: Record<CampaignRecipientStatus, string> = {
   pending: "Na fila",
   sending: "Enviando",

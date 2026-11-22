@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicShell } from "@/components/clinic/ClinicShell";
 import { CampaignActions } from "@/components/campaigns/CampaignActions";
 import { RecipientsTable } from "@/components/campaigns/RecipientsTable";
+import { DraftAudienceList } from "@/components/campaigns/DraftAudienceList";
 import { CAMPAIGN_AUDIENCE_LABEL, CAMPAIGN_STATUS_CLASS, CAMPAIGN_STATUS_LABEL } from "@/lib/campaigns";
 import { formatBRDateTime } from "@/lib/date";
 import type { CampaignRecipientStatus, MarketingCampaign, MarketingCampaignRecipient } from "@/lib/database.types";
@@ -111,11 +112,15 @@ export default async function CampanhaPage({ params }: { params: { id: string } 
       </div>
 
       {campaign.status === "rascunho" ? (
-        <div className={styles.panel}>
-          <div className={styles.emptyState}>A lista de contatos é montada quando você iniciar o envio — já sem quem pediu para sair.</div>
-        </div>
+        <DraftAudienceList clinicId={clinic.id} campaignId={campaign.id} />
       ) : (
-        <RecipientsTable recipients={recipients} truncated={total > RECIPIENT_LIMIT} />
+        <RecipientsTable
+          clinicId={clinic.id}
+          campaignId={campaign.id}
+          editable={campaign.status === "enviando" || campaign.status === "pausada"}
+          recipients={recipients}
+          truncated={total > RECIPIENT_LIMIT}
+        />
       )}
     </ClinicShell>
   );

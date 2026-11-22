@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { RECIPIENT_STATUS_LABEL } from "@/lib/campaigns";
+import { useRouter } from "next/navigation";
+import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { CAMPAIGN_MANUAL_SKIP_REASON, RECIPIENT_STATUS_LABEL } from "@/lib/campaigns";
 import { formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { CampaignRecipientStatus, MarketingCampaignRecipient } from "@/lib/database.types";
@@ -20,8 +22,43 @@ const STATUS_CLASS: Record<CampaignRecipientStatus, string> = {
 
 type Filter = "all" | CampaignRecipientStatus;
 
-export function RecipientsTable({ recipients, truncated }: { recipients: MarketingCampaignRecipient[]; truncated: boolean }) {
+export function RecipientsTable({
+  clinicId,
+  campaignId,
+  editable,
+  recipients,
+  truncated,
+}: {
+  clinicId: string;
+  campaignId: string;
+  /** Enviando/pausada: dá pra tirar quem ainda está na fila (ou devolver quem foi tirado). */
+  editable: boolean;
+  recipients: MarketingCampaignRecipient[];
+  truncated: boolean;
+}) {
+  const router = useRouter();
+  const { toasts, push, dismiss } = useToasts();
+  const [busy, setBusy] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+
+  async function setRemoved(r: MarketingCampaignRecipient, removed: boolean) {
+    setBusy(r.id);
+    try {
+      const res = await fetch(`/api/clinics/${clinicId}/campaigns/${campaignId}/recipients`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: r.phone, removed }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        push(data?.message || "Não foi possível atualizar o contato.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  }
   const counts = recipients.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
   const shown = filter === "all" ? recipients : recipients.filter((r) => r.status === filter);
   const filters: Filter[] = ["all", "interested", "replied", "sent", "declined", "pending", "failed", "skipped"];
@@ -48,6 +85,7 @@ export function RecipientsTable({ recipients, truncated }: { recipients: Marketi
               <th>Situação</th>
               <th>Convite</th>
               <th>Resposta</th>
+              {editable && <th aria-label="Ações" />}
             </tr>
           </thead>
           <tbody>
@@ -69,11 +107,26 @@ export function RecipientsTable({ recipients, truncated }: { recipients: Marketi
                 <td data-label="Resposta" style={{ fontSize: 13 }}>
                   {r.reply_text ? <span title={r.replied_at ? formatBRDateTime(r.replied_at) : undefined}>&ldquo;{r.reply_text}&rdquo;</span> : "—"}
                 </td>
+                {editable && (
+                  <td data-label="" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    {r.status === "pending" && (
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} disabled={busy === r.id} onClick={() => setRemoved(r, true)}>
+                        Tirar da fila
+                      </button>
+                    )}
+                    {r.status === "skipped" && r.skip_reason === CAMPAIGN_MANUAL_SKIP_REASON && (
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} disabled={busy === r.id} onClick={() => setRemoved(r, false)}>
+                        Devolver à fila
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
       {truncated && <p style={{ margin: 0, padding: "10px 24px", fontSize: 12.5, color: "var(--ink-faint)" }}>Mostrando os primeiros 1000 contatos.</p>}
     </div>
   );
