@@ -937,5 +937,7 @@ export interface MarketingCampaignRecipient {
   replied_at: string | null;
   reply_text: string | null;
   last_outbound_at: string | null;
+  /** A clínica já tratou este contato (migration 077). */
+  handled_at: string | null;
   created_at: string;
 }

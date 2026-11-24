@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendMedia, sendText } from "@/lib/evolution";
+import { hasWhatsApp, sendMedia, sendText } from "@/lib/evolution";
 import { findPendingAppointmentForPhone } from "@/lib/appointments";
 import { appendLeadMessage, findOpenLead, findOrCreateOpenLead } from "@/lib/leads";
 import { brDateOnly, brDayRangeUtc } from "@/lib/date";
@@ -10,6 +10,9 @@ import {
   CAMPAIGN_DECLINE_CONFIRMATION,
   CAMPAIGN_MANUAL_SKIP_REASON,
   CAMPAIGN_MAX_CONSECUTIVE_FAILURES,
+  CAMPAIGN_NO_WHATSAPP_REASON,
+  CAMPAIGN_WRONG_NUMBER_REASON,
+  OPT_OUT_SOURCE_WRONG_NUMBER,
   CAMPAIGN_REPLY_WINDOW_DAYS,
   canonicalCampaignPhone,
   classifyCampaignReply,
@@ -230,14 +233,17 @@ export async function sendCampaignTest(clinic: Clinic, campaign: MarketingCampai
   return content.ok ? { ok: true } : { ok: false, message: "O convite saiu, mas o conteúdo falhou." };
 }
 
-async function isOptedOut(supabase: SupabaseClient, clinicId: string, phone: string): Promise<boolean> {
-  const { data } = await supabase.from("marketing_opt_outs").select("id").eq("clinic_id", clinicId).in("phone", brPhoneVariants(phone)).limit(1);
-  return (data ?? []).length > 0;
+/** Origem do opt-out desse telefone (`null` = pode receber). */
+async function optOutSource(supabase: SupabaseClient, clinicId: string, phone: string): Promise<string | null> {
+  const { data } = await supabase.from("marketing_opt_outs").select("source").eq("clinic_id", clinicId).in("phone", brPhoneVariants(phone)).limit(1);
+  const row = (data ?? [])[0] as { source: string | null } | undefined;
+  return row ? row.source || "whatsapp" : null;
 }
 
 /** Motivo pra NÃO mandar o convite agora (null = pode mandar). */
 async function skipReason(supabase: SupabaseClient, clinicId: string, recipient: MarketingCampaignRecipient): Promise<string | null> {
-  if (await isOptedOut(supabase, clinicId, recipient.phone)) return "Pediu para não receber promoções";
+  const optOut = await optOutSource(supabase, clinicId, recipient.phone);
+  if (optOut) return optOut === OPT_OUT_SOURCE_WRONG_NUMBER ? CAMPAIGN_WRONG_NUMBER_REASON : "Pediu para não receber promoções";
   // "SIM" confirmaria a consulta em vez de responder a campanha.
   if (await findPendingAppointmentForPhone(supabase, clinicId, recipient.phone)) return "Tem consulta aguardando confirmação";
   const { data: conversation } = await supabase
@@ -351,8 +357,11 @@ async function sendNextForClinic(supabase: SupabaseClient, clinicId: string, cam
         continue;
       }
 
+      // Número sem WhatsApp: nem tenta mandar. A checagem não envia mensagem;
+      // se ela falhar (null), segue e manda normalmente.
+      const exists = await hasWhatsApp(clinic, brPhoneVariants(recipient.phone));
       const invite = renderCampaignText(campaign.invite_text, { name: recipient.name, clinicName: clinic.name });
-      const ok = await sendText(clinic, recipient.phone, invite);
+      const ok = exists === false ? false : await sendText(clinic, recipient.phone, invite);
       const sentAt = new Date().toISOString();
       if (ok) {
         await supabase.from("marketing_campaign_recipients").update({ status: "sent", sent_at: sentAt, last_outbound_at: sentAt }).eq("id", recipient.id);
@@ -362,7 +371,13 @@ async function sendNextForClinic(supabase: SupabaseClient, clinicId: string, cam
         if (lead) await appendLeadMessage(supabase, { leadId: lead.id, clinicId, role: "bot", content: invite });
         console.log(`[campaign-sender] clinic=${clinicId} campaign=${campaign.id} recipient=${recipient.id} convite enviado`);
       } else {
-        await supabase.from("marketing_campaign_recipients").update({ status: "failed", skip_reason: "Evolution API recusou o envio" }).eq("id", recipient.id);
+        await supabase
+          .from("marketing_campaign_recipients")
+          .update({ status: "failed", skip_reason: exists === false ? CAMPAIGN_NO_WHATSAPP_REASON : "Evolution API recusou o envio" })
+          .eq("id", recipient.id);
+        // "Sem WhatsApp" também conta como erro seguido: se a checagem estiver
+        // quebrada (dizendo "não" pra todo mundo), a campanha pausa em vez de
+        // marcar a fila inteira.
         const failures = campaign.consecutive_failures + 1;
         const pause = failures >= CAMPAIGN_MAX_CONSECUTIVE_FAILURES;
         await supabase
@@ -370,7 +385,10 @@ async function sendNextForClinic(supabase: SupabaseClient, clinicId: string, cam
           .update({
             consecutive_failures: failures,
             ...(pause
-              ? { status: "pausada", pause_reason: `Pausada automaticamente: ${failures} erros de envio seguidos. Verifique a conexão do WhatsApp antes de retomar.` }
+              ? {
+                  status: "pausada",
+                  pause_reason: `Pausada automaticamente: ${failures} erros de envio (ou números sem WhatsApp) seguidos. Verifique a conexão do WhatsApp antes de retomar.`,
+                }
               : {}),
             updated_at: sentAt,
           })
@@ -446,16 +464,126 @@ export async function handleCampaignReply(
     .from("marketing_campaign_recipients")
     .update({ status: "interested", replied_at: now, reply_text: text.slice(0, 500), last_outbound_at: now })
     .eq("id", recipient.id);
-  const { ok, text: content } = await sendCampaignContent(clinic, campaign, phone, recipient.name);
-
-  // Quem disse SIM vira card no quadro de leads pra recepção acompanhar até agendar.
-  const lead = await findOrCreateOpenLead(supabase, clinic.id, phone);
-  if (!lead.patient_name && recipient.name) await supabase.from("leads").update({ patient_name: recipient.name }).eq("id", lead.id);
-  await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "patient", content: text });
-  if (ok) await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "bot", content: `[Campanha "${campaign.name}"] ${content}` });
-  await supabase.from("leads").update({ status: "waiting_reply", updated_at: now }).eq("id", lead.id);
+  const { ok, lead } = await deliverCampaignContent(supabase, clinic, campaign, recipient, phone, text);
   console.log(`[campaign-reply] clinic=${clinic.id} recipient=${recipient.id} SIM — conteúdo ${ok ? "enviado" : "FALHOU"}, lead=${lead.id}`);
   return { handled: true, lead };
+}
+
+/**
+ * Manda o conteúdo pra quem disse SIM e abre/atualiza o card no quadro de
+ * leads pra recepção acompanhar até agendar. `patientText` = a resposta que
+ * chegou agora pelo webhook (na ação manual ela já está no quadro).
+ */
+async function deliverCampaignContent(
+  supabase: SupabaseClient,
+  clinic: Clinic,
+  campaign: MarketingCampaign,
+  recipient: MarketingCampaignRecipient,
+  phone: string,
+  patientText: string | null
+): Promise<{ ok: boolean; lead: Lead }> {
+  const { ok, text: content } = await sendCampaignContent(clinic, campaign, phone, recipient.name);
+  const lead = await findOrCreateOpenLead(supabase, clinic.id, phone);
+  if (!lead.patient_name && recipient.name) await supabase.from("leads").update({ patient_name: recipient.name }).eq("id", lead.id);
+  if (patientText) await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "patient", content: patientText });
+  if (ok) await appendLeadMessage(supabase, { leadId: lead.id, clinicId: clinic.id, role: "bot", content: `[Campanha "${campaign.name}"] ${content}` });
+  await supabase.from("leads").update({ status: "waiting_reply", updated_at: new Date().toISOString() }).eq("id", lead.id);
+  return { ok, lead };
+}
+
+export type RecipientAction = "yes" | "no" | "handled" | "wrong_number" | "retry";
+
+/** De quais situações cada ação pode partir. */
+const ACTION_FROM: Record<RecipientAction, MarketingCampaignRecipient["status"][]> = {
+  yes: ["sent", "replied"],
+  no: ["sent", "replied"],
+  handled: ["replied", "failed"],
+  wrong_number: ["sent", "replied", "failed", "interested"],
+  retry: ["failed"],
+};
+
+/**
+ * Ação manual da clínica sobre um contato da campanha:
+ * - yes: vira "Quer saber" e manda o conteúdo (a clínica clicou — não é envio automático).
+ * - no: vira "Não quer" e grava opt-out. Não manda mensagem de confirmação.
+ * - handled: "Já respondi pelo WhatsApp" — sai da lista "Precisa de atenção".
+ * - wrong_number: tira da campanha e marca o telefone (opt-out "numero_errado"):
+ *   nunca mais entra em campanha, e o cadastro do paciente avisa pra corrigir.
+ * - retry: erro no envio volta pra fila (só com a campanha enviando/pausada).
+ */
+export async function applyRecipientAction(
+  supabase: SupabaseClient,
+  clinic: Clinic,
+  campaign: MarketingCampaign,
+  recipientId: string,
+  action: RecipientAction
+): Promise<{ ok: true; warning?: string } | { ok: false; status: number; message: string }> {
+  const { data } = await supabase.from("marketing_campaign_recipients").select("*").eq("id", recipientId).eq("campaign_id", campaign.id).maybeSingle();
+  const recipient = data as MarketingCampaignRecipient | null;
+  if (!recipient) return { ok: false, status: 404, message: "Contato não encontrado nesta campanha." };
+  const changed = "A situação deste contato mudou. Atualize a página.";
+  if (!ACTION_FROM[action].includes(recipient.status)) return { ok: false, status: 409, message: changed };
+
+  const now = new Date().toISOString();
+  // Update condicionado à situação lida acima: dois cliques/duas abas não mandam o conteúdo duas vezes.
+  const transition = async (patch: Partial<MarketingCampaignRecipient>): Promise<string | null> => {
+    const { data: rows, error } = await supabase
+      .from("marketing_campaign_recipients")
+      .update(patch)
+      .eq("id", recipient.id)
+      .eq("status", recipient.status)
+      .select("id");
+    if (error) return error.message;
+    return rows && rows.length > 0 ? null : changed;
+  };
+  const done = (err: string | null) => (err ? { ok: false as const, status: 409, message: err } : { ok: true as const });
+
+  if (action === "yes") {
+    if (campaign.status === "cancelada") return { ok: false, status: 409, message: "Esta campanha foi cancelada." };
+    const err = await transition({ status: "interested", handled_at: now, last_outbound_at: now });
+    if (err) return done(err);
+    const { ok } = await deliverCampaignContent(supabase, clinic, campaign, recipient, recipient.phone, null);
+    console.log(`[campaign-action] clinic=${clinic.id} recipient=${recipient.id} SIM manual — conteúdo ${ok ? "enviado" : "FALHOU"}`);
+    return ok ? { ok: true } : { ok: true, warning: "Marcado como SIM, mas o WhatsApp recusou o envio do conteúdo. Mande pelo quadro de leads." };
+  }
+
+  if (action === "no") {
+    await supabase
+      .from("marketing_opt_outs")
+      .upsert({ clinic_id: clinic.id, phone: recipient.phone, source: "manual", reply_text: recipient.reply_text }, { onConflict: "clinic_id,phone", ignoreDuplicates: true });
+    return done(await transition({ status: "declined", handled_at: now }));
+  }
+
+  if (action === "handled") return done(await transition({ handled_at: now }));
+
+  if (action === "wrong_number") {
+    // Sobrescreve um opt-out comum: "número errado" é o que importa pro cadastro.
+    const { error } = await supabase
+      .from("marketing_opt_outs")
+      .upsert({ clinic_id: clinic.id, phone: recipient.phone, source: OPT_OUT_SOURCE_WRONG_NUMBER, reply_text: recipient.reply_text }, { onConflict: "clinic_id,phone" });
+    if (error) return { ok: false, status: 500, message: error.message };
+    return done(await transition({ status: "skipped", skip_reason: CAMPAIGN_WRONG_NUMBER_REASON, handled_at: now }));
+  }
+
+  // retry
+  if (campaign.status !== "enviando" && campaign.status !== "pausada") {
+    return { ok: false, status: 409, message: "Só dá pra reenviar com a campanha enviando ou pausada." };
+  }
+  return done(await transition({ status: "pending", skip_reason: null, sent_at: null, handled_at: null }));
+}
+
+/** Telefone do paciente marcado como "número errado" em alguma campanha. */
+export async function isPatientPhoneMarkedWrong(supabase: SupabaseClient, clinicId: string, phone: string | null): Promise<boolean> {
+  const canonical = canonicalCampaignPhone(phone);
+  if (!canonical) return false;
+  const { data } = await supabase
+    .from("marketing_opt_outs")
+    .select("id")
+    .eq("clinic_id", clinicId)
+    .eq("source", OPT_OUT_SOURCE_WRONG_NUMBER)
+    .in("phone", brPhoneVariants(canonical))
+    .limit(1);
+  return (data ?? []).length > 0;
 }
 
 /** `fromMe` recebido logo depois de uma mensagem de campanha pro mesmo número = eco do próprio app. */

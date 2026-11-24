@@ -53,6 +53,36 @@ export async function sendText(clinic: EvolutionCreds, phone: string, text: stri
 }
 
 /**
+ * Pergunta à Evolution (v2: `/chat/whatsappNumbers`) se algum dos números tem
+ * WhatsApp. Não manda mensagem nenhuma. `true`/`false` = resposta clara;
+ * `null` = não deu pra saber (erro, formato inesperado) — quem chama deve
+ * seguir como se não tivesse checado.
+ */
+export async function hasWhatsApp(clinic: EvolutionCreds, numbers: string[]): Promise<boolean | null> {
+  if (!evolutionConfigured(clinic)) return null;
+  const url = `${clinic.evolution_base_url!.replace(/\/$/, "")}/chat/whatsappNumbers/${clinic.evolution_instance_name}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: clinic.evolution_api_key! },
+      body: JSON.stringify({ numbers: numbers.map((n) => n.replace(/\D/g, "")) }),
+    });
+    if (!res.ok) {
+      console.error("Evolution API whatsappNumbers respondeu", res.status, await res.text().catch(() => ""));
+      return null;
+    }
+    const data = (await res.json().catch(() => null)) as unknown;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const flags = data.map((d) => (d && typeof d === "object" && "exists" in d ? (d as { exists: unknown }).exists : undefined));
+    if (flags.some((f) => f === true)) return true;
+    return flags.every((f) => f === false) ? false : null;
+  } catch (err) {
+    console.error("Falha ao chamar Evolution API (whatsappNumbers):", err);
+    return null;
+  }
+}
+
+/**
  * Manda uma imagem ou vídeo com legenda via Evolution API (v2:
  * `/message/sendMedia`). `mediaUrl` precisa ser baixável pela Evolution —
  * usamos URL assinada de curta duração do Supabase Storage, nunca bucket

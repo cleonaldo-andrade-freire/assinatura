@@ -56,7 +56,11 @@ describe("classifyCampaignReply", () => {
     expect(classifyCampaignReply(t)).toBe("no");
   });
 
-  it.each(["Não sei, quanto custa?", "Qual o valor?", "sim mas não agora", "Bom dia"])("'%s' = other", (t) => {
+  it.each(["Oii, sim!", "Sum", "Boa noite D.Evigane pode sim", "Simmm", "Siiim", "ss", "Bom dia! Sim, quero", "Oi Dra, pode mandar sim"])("'%s' = yes (com cumprimento ou erro de digitação)", (t) => {
+    expect(classifyCampaignReply(t)).toBe("yes");
+  });
+
+  it.each(["Não sei, quanto custa?", "Qual o valor?", "sim mas não agora", "Bom dia", "quem é?", "não conheço essa pessoa, número errado"])("'%s' = other", (t) => {
     expect(classifyCampaignReply(t)).toBe("other");
   });
 });

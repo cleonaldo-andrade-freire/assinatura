@@ -59,6 +59,17 @@ export const CAMPAIGN_STATUS_CLASS: Record<CampaignStatus, string> = {
 
 /** skip_reason de quem a clínica tirou da campanha à mão (no rascunho ou da fila). */
 export const CAMPAIGN_MANUAL_SKIP_REASON = "Retirado manualmente";
+/** skip_reason de quem a clínica marcou como "Número errado". */
+export const CAMPAIGN_WRONG_NUMBER_REASON = "Número errado";
+/** skip_reason quando a Evolution diz que o número não tem WhatsApp (convite nem sai). */
+export const CAMPAIGN_NO_WHATSAPP_REASON = "Número sem WhatsApp";
+/** marketing_opt_outs.source de número errado (migration 077). */
+export const OPT_OUT_SOURCE_WRONG_NUMBER = "numero_errado";
+
+/** Contato que a clínica precisa olhar: resposta que o robô não entendeu, erro no envio ou sem WhatsApp. */
+export function recipientNeedsAttention(r: { status: CampaignRecipientStatus; handled_at: string | null }): boolean {
+  return !r.handled_at && (r.status === "replied" || r.status === "failed");
+}
 
 export const RECIPIENT_STATUS_LABEL: Record<CampaignRecipientStatus, string> = {
   pending: "Na fila",
@@ -175,6 +186,21 @@ const NO_EXACT = new Set([
   "nao mande mais",
 ]);
 
+// Erros de digitação comuns de "sim" (o "u" fica do lado do "i" no teclado).
+const YES_TYPOS: Record<string, string> = { sum: "sim", sin: "sim", sm: "sim", simn: "sim", aim: "sim" };
+// Cumprimentos/vocativos que vêm antes do SIM ("Oii, sim!", "Boa noite Dra, pode sim").
+const GREETING_WORDS = new Set(["oi", "ola", "bom", "boa", "dia", "tarde", "noite", "dra", "dr", "doutora", "doutor", "tudo", "bem", "obrigada", "obrigado", "ah", "ai", "eba", "opa", "e", "a"]);
+// Palavras que, em qualquer posição de uma frase curta, querem dizer SIM.
+const YES_ANYWHERE = new Set(["sim", "quero", "claro"]);
+const YES_PHRASES = ["pode sim", "pode mandar", "pode enviar", "quero sim", "tenho interesse", "quero saber", "com certeza", "pode ser"];
+// Sinais de dúvida/condição: aí a equipe responde, não o robô.
+const DOUBT_WORDS = new Set(["nao", "mas", "quanto", "valor", "preco", "custa", "depois", "agora", "talvez", "quando", "onde", "qual", "como"]);
+
+/** "oii" → "oi", "simmm" → "sim": letra repetida 3+ vezes (ou 2+ no fim da palavra) vira uma. */
+function squeezeRepeats(word: string): string {
+  return word.replace(/(.)\1{2,}/g, "$1").replace(/(.)\1+$/, "$1");
+}
+
 /** Classifica a resposta ao convite. `other` = a equipe responde (vira mensagem no quadro de leads). */
 export function classifyCampaignReply(raw: string): "yes" | "no" | "other" {
   if (/^\s*(👍|👍🏻|👍🏼|👍🏽|👍🏾|👍🏿|✅)+\s*$/u.test(raw)) return "yes";
@@ -182,8 +208,20 @@ export function classifyCampaignReply(raw: string): "yes" | "no" | "other" {
   if (!text) return "other";
   if (NO_EXACT.has(text)) return "no";
   if (YES_EXACT.has(text)) return "yes";
-  const words = text.split(" ");
+  const words = text.split(" ").map((w) => {
+    const squeezed = w === "ss" ? w : squeezeRepeats(w);
+    return YES_TYPOS[squeezed] ?? squeezed;
+  });
+  const cleaned = words.join(" ");
+  if (YES_EXACT.has(cleaned)) return "yes";
   if (words.length <= 6 && YES_FIRST_WORD.has(words[0]) && !words.includes("nao")) return "yes";
+  // Frase curta com SIM no meio de cumprimentos: "Oii, sim!", "Boa noite Dra pode sim".
+  if (words.length <= 8 && !words.some((w) => DOUBT_WORDS.has(w))) {
+    const hasYes = words.some((w) => YES_ANYWHERE.has(w)) || YES_PHRASES.some((p) => cleaned.includes(p));
+    // O que sobra tem que ser cumprimento, nome ou palavra de SIM — senão é conversa.
+    const leftovers = words.filter((w) => !YES_ANYWHERE.has(w) && !GREETING_WORDS.has(w) && !["pode", "mandar", "enviar", "manda", "por", "favor", "ok"].includes(w));
+    if (hasYes && leftovers.length <= 2) return "yes";
+  }
   return "other";
 }
 

@@ -26,6 +26,7 @@ import { formatTimestampBR, formatBRDateTime, formatDateOnlyBR } from "@/lib/dat
 import { formatMoneyDisplay } from "@/lib/money";
 import { DOCUMENT_STATUS_CLASS, DOCUMENT_STATUS_LABEL } from "@/lib/documentStatus";
 import { APPOINTMENT_STATUS_CLASS, APPOINTMENT_STATUS_LABEL } from "@/lib/appointments";
+import { isPatientPhoneMarkedWrong } from "@/lib/campaignsServer";
 import type {
   Anamnesis,
   Appointment,
@@ -91,6 +92,9 @@ export default async function EditPatientPage({
   const patient = data as Patient;
 
   const dentistConfigured = !!(clinic.dentist_name && clinic.dentist_cro && clinic.dentist_cro_uf);
+  // Telefone marcado como "Número errado" numa campanha: pede pra atualizar.
+  // Trocar o telefone no cadastro já resolve (a marcação é do número, não do paciente).
+  const phoneMarkedWrong = clinic.campaigns_enabled ? await isPatientPhoneMarkedWrong(supabase, clinic.id, patient.phone) : false;
   const [{ data: certificateTemplatesData }, { data: prescriptionTemplatesData }, { data: questionTemplatesData }] = await Promise.all([
     supabase.from("certificate_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
     supabase.from("prescription_templates").select("*").eq("clinic_id", clinic.id).order("name", { ascending: true }),
@@ -622,6 +626,12 @@ export default async function EditPatientPage({
       userName={userName}
       userAvatarUrl={userAvatarUrl}
     >
+      {phoneMarkedWrong && (
+        <div style={{ padding: 12, background: "var(--warn-tint)", borderRadius: 8, fontSize: 13.5, marginBottom: 14 }}>
+          ⚠️ O telefone deste paciente foi marcado como <strong>número errado</strong> numa campanha do WhatsApp. Confirme o número com o paciente e
+          atualize em Dados pessoais.
+        </div>
+      )}
       <PatientTabs
         initialTab={activeTab}
         role={role}

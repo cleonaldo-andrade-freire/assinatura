@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
-import { CAMPAIGN_MANUAL_SKIP_REASON, RECIPIENT_STATUS_LABEL } from "@/lib/campaigns";
+import { CAMPAIGN_MANUAL_SKIP_REASON, RECIPIENT_STATUS_LABEL, recipientNeedsAttention } from "@/lib/campaigns";
 import { formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
 import type { CampaignRecipientStatus, MarketingCampaignRecipient } from "@/lib/database.types";
@@ -20,7 +20,39 @@ const STATUS_CLASS: Record<CampaignRecipientStatus, string> = {
   skipped: "statusNeutral",
 };
 
-type Filter = "all" | CampaignRecipientStatus;
+type Filter = "all" | "attention" | CampaignRecipientStatus;
+type Action = "yes" | "no" | "handled" | "wrong_number" | "retry";
+
+const ACTION_LABEL: Record<Action, string> = {
+  yes: "Marcar como SIM (manda o conteúdo)",
+  no: "Marcar como NÃO",
+  handled: "Já respondi pelo WhatsApp",
+  wrong_number: "Número errado",
+  retry: "Tentar enviar de novo",
+};
+
+const ACTION_CONFIRM: Partial<Record<Action, (name: string) => string>> = {
+  yes: (name) => `Marcar ${name} como SIM? O conteúdo da campanha será enviado agora pelo WhatsApp.`,
+  no: (name) => `Marcar ${name} como NÃO? Esse número não vai mais receber campanhas.`,
+  wrong_number: (name) =>
+    `Marcar o telefone de ${name} como errado? Ele não entra mais em campanhas, e o cadastro do paciente vai pedir para atualizar o telefone.`,
+};
+
+/** Ações que fazem sentido para a situação do contato. */
+function actionsFor(r: MarketingCampaignRecipient, editable: boolean): Action[] {
+  switch (r.status) {
+    case "sent":
+      return ["yes", "no", "wrong_number"];
+    case "replied":
+      return r.handled_at ? ["yes", "no", "wrong_number"] : ["yes", "no", "handled", "wrong_number"];
+    case "failed":
+      return [...(editable ? (["retry"] as Action[]) : []), ...(r.handled_at ? [] : (["handled"] as Action[])), "wrong_number"];
+    case "interested":
+      return ["wrong_number"];
+    default:
+      return [];
+  }
+}
 
 export function RecipientsTable({
   clinicId,
@@ -31,7 +63,7 @@ export function RecipientsTable({
 }: {
   clinicId: string;
   campaignId: string;
-  /** Enviando/pausada: dá pra tirar quem ainda está na fila (ou devolver quem foi tirado). */
+  /** Enviando/pausada: dá pra tirar quem ainda está na fila (ou devolver quem foi tirado) e reenviar erros. */
   editable: boolean;
   recipients: MarketingCampaignRecipient[];
   truncated: boolean;
@@ -39,29 +71,42 @@ export function RecipientsTable({
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
   const [busy, setBusy] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const attentionCount = recipients.filter(recipientNeedsAttention).length;
+  const [filter, setFilter] = useState<Filter>(attentionCount > 0 ? "attention" : "all");
 
-  async function setRemoved(r: MarketingCampaignRecipient, removed: boolean) {
+  async function call(r: MarketingCampaignRecipient, url: string, body: unknown): Promise<{ warning?: string | null } | null> {
     setBusy(r.id);
     try {
-      const res = await fetch(`/api/clinics/${clinicId}/campaigns/${campaignId}/recipients`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: r.phone, removed }),
-      });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         push(data?.message || "Não foi possível atualizar o contato.");
-        return;
+        return null;
       }
       router.refresh();
+      return data ?? {};
     } finally {
       setBusy(null);
     }
   }
+
+  function setRemoved(r: MarketingCampaignRecipient, removed: boolean) {
+    return call(r, `/api/clinics/${clinicId}/campaigns/${campaignId}/recipients`, { phone: r.phone, removed });
+  }
+
+  async function runAction(r: MarketingCampaignRecipient, action: Action) {
+    const confirmText = ACTION_CONFIRM[action]?.(r.name || formatBRPhoneLocal(r.phone));
+    if (confirmText && !window.confirm(confirmText)) return;
+    const result = await call(r, `/api/clinics/${clinicId}/campaigns/${campaignId}/recipients/${r.id}`, { action });
+    if (result?.warning) push(result.warning);
+    else if (result && action === "yes") push("Conteúdo enviado e lead aberto no quadro.", "success");
+  }
+
   const counts = recipients.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
-  const shown = filter === "all" ? recipients : recipients.filter((r) => r.status === filter);
-  const filters: Filter[] = ["all", "interested", "replied", "sent", "declined", "pending", "failed", "skipped"];
+  const shown = filter === "all" ? recipients : filter === "attention" ? recipients.filter(recipientNeedsAttention) : recipients.filter((r) => r.status === filter);
+  const filters: Filter[] = ["attention", "all", "interested", "replied", "sent", "declined", "pending", "failed", "skipped"];
+  const filterLabel = (f: Filter) =>
+    f === "all" ? `Todos (${recipients.length})` : f === "attention" ? `Precisa de atenção (${attentionCount})` : `${RECIPIENT_STATUS_LABEL[f]} (${counts[f] ?? 0})`;
 
   return (
     <div className={styles.panel}>
@@ -70,13 +115,13 @@ export function RecipientsTable({
         <select className={styles.select} value={filter} onChange={(e) => setFilter(e.target.value as Filter)} style={{ maxWidth: 260 }}>
           {filters.map((f) => (
             <option key={f} value={f}>
-              {f === "all" ? `Todos (${recipients.length})` : `${RECIPIENT_STATUS_LABEL[f]} (${counts[f] ?? 0})`}
+              {filterLabel(f)}
             </option>
           ))}
         </select>
       </div>
       {shown.length === 0 ? (
-        <div className={styles.emptyState}>Nenhum contato aqui.</div>
+        <div className={styles.emptyState}>{filter === "attention" ? "Nada pendente — todos os contatos estão resolvidos." : "Nenhum contato aqui."}</div>
       ) : (
         <table className={styles.table}>
           <thead>
@@ -85,44 +130,76 @@ export function RecipientsTable({
               <th>Situação</th>
               <th>Convite</th>
               <th>Resposta</th>
-              {editable && <th aria-label="Ações" />}
+              <th aria-label="Ações" />
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
-              <tr key={r.id}>
-                <td data-label="Contato">
-                  <div style={{ fontWeight: 600 }}>{r.name || "Sem nome"}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
-                    {formatBRPhoneLocal(r.phone)} · {r.patient_id ? "paciente" : "lead"}
-                  </div>
-                </td>
-                <td data-label="Situação">
-                  <span className={`${styles.statusBadge} ${styles[STATUS_CLASS[r.status]]}`}>{RECIPIENT_STATUS_LABEL[r.status]}</span>
-                  {r.skip_reason && <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>{r.skip_reason}</div>}
-                </td>
-                <td data-label="Convite" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
-                  {r.sent_at ? formatBRDateTime(r.sent_at) : "—"}
-                </td>
-                <td data-label="Resposta" style={{ fontSize: 13 }}>
-                  {r.reply_text ? <span title={r.replied_at ? formatBRDateTime(r.replied_at) : undefined}>&ldquo;{r.reply_text}&rdquo;</span> : "—"}
-                </td>
-                {editable && (
+            {shown.map((r) => {
+              const actions = actionsFor(r, editable);
+              return (
+                <tr key={r.id}>
+                  <td data-label="Contato">
+                    <div style={{ fontWeight: 600 }}>
+                      {r.patient_id ? (
+                        <a href={`/dashboard/pacientes/${r.patient_id}`} style={{ color: "inherit" }}>
+                          {r.name || "Sem nome"}
+                        </a>
+                      ) : (
+                        r.name || "Sem nome"
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+                      {formatBRPhoneLocal(r.phone)} · {r.patient_id ? "paciente" : "lead"}
+                    </div>
+                  </td>
+                  <td data-label="Situação">
+                    <span className={`${styles.statusBadge} ${styles[STATUS_CLASS[r.status]]}`}>{RECIPIENT_STATUS_LABEL[r.status]}</span>
+                    {r.skip_reason && <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>{r.skip_reason}</div>}
+                    {r.handled_at && (r.status === "replied" || r.status === "failed") && (
+                      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>Resolvido em {formatBRDateTime(r.handled_at)}</div>
+                    )}
+                  </td>
+                  <td data-label="Convite" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+                    {r.sent_at ? formatBRDateTime(r.sent_at) : "—"}
+                  </td>
+                  <td data-label="Resposta" style={{ fontSize: 13 }}>
+                    {r.reply_text ? <span title={r.replied_at ? formatBRDateTime(r.replied_at) : undefined}>&ldquo;{r.reply_text}&rdquo;</span> : "—"}
+                  </td>
                   <td data-label="" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    {r.status === "pending" && (
+                    {editable && r.status === "pending" && (
                       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} disabled={busy === r.id} onClick={() => setRemoved(r, true)}>
                         Tirar da fila
                       </button>
                     )}
-                    {r.status === "skipped" && r.skip_reason === CAMPAIGN_MANUAL_SKIP_REASON && (
+                    {editable && r.status === "skipped" && r.skip_reason === CAMPAIGN_MANUAL_SKIP_REASON && (
                       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} disabled={busy === r.id} onClick={() => setRemoved(r, false)}>
                         Devolver à fila
                       </button>
                     )}
+                    {actions.length > 0 && (
+                      <select
+                        className={styles.select}
+                        aria-label={`Ações para ${r.name || r.phone}`}
+                        value=""
+                        disabled={busy === r.id}
+                        onChange={(e) => {
+                          const action = e.target.value as Action;
+                          if (action) void runAction(r, action);
+                        }}
+                        style={{ maxWidth: 200 }}
+                      >
+                        <option value="">{busy === r.id ? "Salvando…" : "Ações…"}</option>
+                        {actions.map((a) => (
+                          <option key={a} value={a}>
+                            {ACTION_LABEL[a]}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
-                )}
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
