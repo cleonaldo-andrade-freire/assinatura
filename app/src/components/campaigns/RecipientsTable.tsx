@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastStack, useToasts } from "@/components/ui/Toast";
+import { ActionMenu } from "@/components/ui/ActionMenu";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CAMPAIGN_MANUAL_SKIP_REASON, RECIPIENT_STATUS_LABEL, recipientNeedsAttention } from "@/lib/campaigns";
 import { formatBRDateTime } from "@/lib/date";
 import { formatBRPhoneLocal } from "@/lib/validation";
@@ -24,18 +26,41 @@ type Filter = "all" | "attention" | CampaignRecipientStatus;
 type Action = "yes" | "no" | "handled" | "wrong_number" | "retry";
 
 const ACTION_LABEL: Record<Action, string> = {
-  yes: "Marcar como SIM (manda o conteúdo)",
+  yes: "Marcar como SIM",
   no: "Marcar como NÃO",
   handled: "Já respondi pelo WhatsApp",
   wrong_number: "Número errado",
   retry: "Tentar enviar de novo",
 };
 
-const ACTION_CONFIRM: Partial<Record<Action, (name: string) => string>> = {
-  yes: (name) => `Marcar ${name} como SIM? O conteúdo da campanha será enviado agora pelo WhatsApp.`,
-  no: (name) => `Marcar ${name} como NÃO? Esse número não vai mais receber campanhas.`,
-  wrong_number: (name) =>
-    `Marcar o telefone de ${name} como errado? Ele não entra mais em campanhas, e o cadastro do paciente vai pedir para atualizar o telefone.`,
+/** Ações que pedem confirmação antes (as outras rodam direto). */
+const ACTION_CONFIRM: Partial<Record<Action, { title: string; message: (name: string) => string; label: string; danger?: boolean }>> = {
+  yes: {
+    title: "Marcar como SIM",
+    message: (name) => `O conteúdo da campanha (texto e mídia) será enviado agora para ${name} pelo WhatsApp, e um lead será aberto no quadro para acompanhar o agendamento.`,
+    label: "Enviar conteúdo",
+  },
+  no: {
+    title: "Marcar como NÃO",
+    message: (name) => `${name} sai desta campanha e não entra mais nas próximas. Nenhuma mensagem é enviada.`,
+    label: "Marcar como NÃO",
+    danger: true,
+  },
+  wrong_number: {
+    title: "Número errado",
+    message: (name) =>
+      `O telefone de ${name} não entra mais em campanhas, e o cadastro do paciente vai mostrar um aviso para confirmar e atualizar o número.`,
+    label: "Marcar número errado",
+    danger: true,
+  },
+};
+
+const SUCCESS_MESSAGE: Record<Action, string> = {
+  yes: "Conteúdo enviado e lead aberto no quadro.",
+  no: "Contato marcado como NÃO.",
+  handled: "Contato marcado como resolvido.",
+  wrong_number: "Número marcado como errado.",
+  retry: "Contato voltou para a fila de envio.",
 };
 
 /** Ações que fazem sentido para a situação do contato. */
@@ -71,6 +96,7 @@ export function RecipientsTable({
   const router = useRouter();
   const { toasts, push, dismiss } = useToasts();
   const [busy, setBusy] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ recipient: MarketingCampaignRecipient; action: Action } | null>(null);
   const attentionCount = recipients.filter(recipientNeedsAttention).length;
   const [filter, setFilter] = useState<Filter>(attentionCount > 0 ? "attention" : "all");
 
@@ -95,12 +121,18 @@ export function RecipientsTable({
   }
 
   async function runAction(r: MarketingCampaignRecipient, action: Action) {
-    const confirmText = ACTION_CONFIRM[action]?.(r.name || formatBRPhoneLocal(r.phone));
-    if (confirmText && !window.confirm(confirmText)) return;
     const result = await call(r, `/api/clinics/${clinicId}/campaigns/${campaignId}/recipients/${r.id}`, { action });
+    setPending(null);
     if (result?.warning) push(result.warning);
-    else if (result && action === "yes") push("Conteúdo enviado e lead aberto no quadro.", "success");
+    else if (result) push(SUCCESS_MESSAGE[action], "success");
   }
+
+  function requestAction(r: MarketingCampaignRecipient, action: Action) {
+    if (ACTION_CONFIRM[action]) setPending({ recipient: r, action });
+    else void runAction(r, action);
+  }
+
+  const pendingConfirm = pending ? ACTION_CONFIRM[pending.action] : undefined;
 
   const counts = recipients.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
   const shown = filter === "all" ? recipients : filter === "attention" ? recipients.filter(recipientNeedsAttention) : recipients.filter((r) => r.status === filter);
@@ -176,26 +208,11 @@ export function RecipientsTable({
                         Devolver à fila
                       </button>
                     )}
-                    {actions.length > 0 && (
-                      <select
-                        className={styles.select}
-                        aria-label={`Ações para ${r.name || r.phone}`}
-                        value=""
-                        disabled={busy === r.id}
-                        onChange={(e) => {
-                          const action = e.target.value as Action;
-                          if (action) void runAction(r, action);
-                        }}
-                        style={{ maxWidth: 200 }}
-                      >
-                        <option value="">{busy === r.id ? "Salvando…" : "Ações…"}</option>
-                        {actions.map((a) => (
-                          <option key={a} value={a}>
-                            {ACTION_LABEL[a]}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <ActionMenu
+                      label={`Ações para ${r.name || formatBRPhoneLocal(r.phone)}`}
+                      disabled={busy === r.id}
+                      items={actions.map((a) => ({ label: ACTION_LABEL[a], danger: !!ACTION_CONFIRM[a]?.danger, onClick: () => requestAction(r, a) }))}
+                    />
                   </td>
                 </tr>
               );
@@ -203,6 +220,16 @@ export function RecipientsTable({
           </tbody>
         </table>
       )}
+      <ConfirmDialog
+        open={pending !== null}
+        title={pendingConfirm?.title ?? ""}
+        message={pending && pendingConfirm ? pendingConfirm.message(pending.recipient.name || formatBRPhoneLocal(pending.recipient.phone)) : ""}
+        confirmLabel={pendingConfirm?.label}
+        danger={pendingConfirm?.danger}
+        loading={pending !== null && busy === pending.recipient.id}
+        onConfirm={() => pending && runAction(pending.recipient, pending.action)}
+        onCancel={() => setPending(null)}
+      />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
       {truncated && <p style={{ margin: 0, padding: "10px 24px", fontSize: 12.5, color: "var(--ink-faint)" }}>Mostrando os primeiros 1000 contatos.</p>}
     </div>
