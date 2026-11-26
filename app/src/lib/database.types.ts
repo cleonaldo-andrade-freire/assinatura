@@ -92,6 +92,8 @@ export interface Anamnesis {
   created_at: string;
   /** Último reenvio manual do link/PDF assinado por WhatsApp — ver migration 051. */
   sent_whatsapp_at: string | null;
+  /** Quando o paciente respondeu as perguntas (rascunho ou envio final) — ver migration 078. */
+  filled_at: string | null;
 }
 
 export interface Signature {

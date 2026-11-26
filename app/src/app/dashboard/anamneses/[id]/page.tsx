@@ -72,7 +72,16 @@ export default async function AnamnesisDetailPage({ params }: { params: { id: st
           <p className={styles.panelHeaderTitle}>Respostas da anamnese</p>
         </div>
         <div className={styles.panelBody}>
-          {typedAnamnesis.answers.map((a, i) => (
+          {!typedSignature && typedAnamnesis.filled_at && (
+            <p style={{ background: "var(--warn-tint)", border: "1px solid var(--warn)", borderRadius: 8, padding: "10px 12px", fontSize: 13.5, margin: "0 0 8px" }}>
+              O paciente respondeu em {formatTimestampBR(typedAnamnesis.filled_at)}, mas <strong>ainda não assinou</strong>.
+              As respostas servem para o atendimento, mas este registro não tem valor de documento assinado.
+            </p>
+          )}
+          {!typedSignature && !typedAnamnesis.filled_at && (
+            <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: 0 }}>O paciente ainda não respondeu esta anamnese.</p>
+          )}
+          {(typedSignature || typedAnamnesis.filled_at) && typedAnamnesis.answers.map((a, i) => (
             <div key={i} style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
               <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 2 }}>{a.question}</div>
               <div style={{ fontSize: 14.5, fontWeight: 700, color: answerColor(a.answer) }}>{a.answer}</div>

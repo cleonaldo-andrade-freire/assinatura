@@ -91,7 +91,7 @@ export default async function AnamnesesPage({
 
   let query = supabase
     .from("anamneses")
-    .select("id, token, patient_name, patient_cpf, patient_phone, created_at", { count: "exact" })
+    .select("id, token, patient_name, patient_cpf, patient_phone, created_at, filled_at", { count: "exact" })
     .eq("clinic_id", clinic.id);
   if (q) query = query.ilike("patient_name", `%${q}%`);
   if (status === "signed") {
@@ -302,6 +302,8 @@ export default async function AnamnesesPage({
                       <td data-label="Status">
                         {signatureId ? (
                           <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinado</span>
+                        ) : a.filled_at ? (
+                          <span className={`${styles.statusDot} ${styles.statusInfo}`} title="O paciente respondeu, mas ainda não assinou">Preenchida, sem assinatura</span>
                         ) : (
                           <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                         )}

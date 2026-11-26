@@ -23,6 +23,10 @@ interface AnamnesisData {
   already_signed: boolean;
 }
 
+const MAIN_COMPLAINT_QUESTION = "Queixa Principal e Evolução";
+const NO_COMPLAINT = "Nenhuma queixa descrita.";
+const NO_OBSERVATION = "Nenhuma observação.";
+
 type Step = "loading" | "error" | "identificacao" | "saude" | "assinatura" | "submitting" | "success" | "already-signed";
 
 export function AnamneseClient({ token }: { token: string }) {
@@ -123,11 +127,28 @@ export function AnamneseClient({ token }: { token: string }) {
         }
 
         // Populamos as perguntas originais que vieram do banco
-        if (data.answers && data.answers.length > 0) {
-          setQuestions(data.answers);
-          const initialH: Record<number, { text: string }> = {};
-          data.answers.forEach((q, i) => {
-            initialH[i] = { text: "" };
+        // Se já houver rascunho salvo (paciente reabriu o link), a 1ª linha
+        // é a queixa principal e as demais vêm como "Sim\nObs: ..." / "Não"
+        // — ver buildAnswers(). Desmonta de volta pro estado do formulário.
+        let saved = data.answers ?? [];
+        if (saved[0]?.question === MAIN_COMPLAINT_QUESTION) {
+          const complaint = saved[0].answer;
+          setMainComplaint(complaint === NO_COMPLAINT ? "" : complaint);
+          saved = saved.slice(1);
+        }
+        if (saved.length > 0) {
+          setQuestions(saved.map((q) => ({ question: q.question, answer: "" })));
+          const initialH: Record<number, { yesNo?: "Sim" | "Não"; text: string }> = {};
+          saved.forEach((q, i) => {
+            const ans = q.answer ?? "";
+            if (/^Sim\b/.test(ans)) {
+              const obs = ans.replace(/^Sim\s*(?:Obs:\s*)?/, "");
+              initialH[i] = { yesNo: "Sim", text: obs === NO_OBSERVATION ? "" : obs };
+            } else if (ans === "Não") {
+              initialH[i] = { yesNo: "Não", text: "" };
+            } else {
+              initialH[i] = { text: ans === "-" ? "" : ans };
+            }
           });
           setHealthAnswers(initialH);
         }
@@ -147,6 +168,7 @@ export function AnamneseClient({ token }: { token: string }) {
       if (cpf && !isValidCPF(cpf)) return setFormError("CPF inválido. Verifique se a numeração está correta.");
 
       // Se não houver perguntas, pula a etapa de saúde direto pra assinatura
+      saveDraft(questions.length === 0);
       if (questions.length === 0) {
         setStep("assinatura");
       } else {
@@ -155,6 +177,7 @@ export function AnamneseClient({ token }: { token: string }) {
     } else if (step === "saude") {
       const unanswered = questions.some((_, i) => !healthAnswers[i]?.yesNo);
       if (unanswered) return setFormError("Por favor, responda todas as perguntas antes de continuar.");
+      saveDraft(true);
       setStep("assinatura");
     }
   }
@@ -168,6 +191,63 @@ export function AnamneseClient({ token }: { token: string }) {
     }
   }
 
+  function buildAnswers() {
+    const answers = [
+      { question: MAIN_COMPLAINT_QUESTION, answer: mainComplaint || NO_COMPLAINT }
+    ];
+    questions.forEach((q, i) => {
+      const ans = healthAnswers[i];
+      if (ans?.yesNo) {
+        if (ans.yesNo === "Sim") {
+          answers.push({ question: q.question, answer: `Sim\nObs: ${ans.text || NO_OBSERVATION}` });
+        } else {
+          answers.push({ question: q.question, answer: "Não" });
+        }
+      } else {
+        answers.push({ question: q.question, answer: ans?.text || "-" });
+      }
+    });
+    return answers;
+  }
+
+  function buildAddress() {
+    const parts = [];
+    if (street) parts.push(street);
+    if (addressNumber) parts.push(addressNumber);
+    if (complement) parts.push(`- ${complement}`);
+    if (neighborhood) parts.push(neighborhood);
+    if (city) parts.push(`${city} - ${uf}`);
+    return parts.length > 0 ? `${cep ? cep + ' - ' : ''}${parts.join(", ")}` : undefined;
+  }
+
+  /** Dados do formulário, sem assinatura. `withAnswers` = paciente já passou pela etapa de saúde. */
+  function formPayload(withAnswers: boolean) {
+    return {
+      patient_name: name.trim(),
+      patient_cpf: cpf.replace(/\D/g, "") || undefined,
+      patient_phone: phone ? toE164BR(phone) : undefined,
+      birth_date: birthDate || undefined,
+      rg: rg.trim() || undefined,
+      occupation: occupation.trim() || undefined,
+      address: buildAddress(),
+      ...(withAnswers ? { answers: buildAnswers() } : {}),
+    };
+  }
+
+  /**
+   * Grava o que já foi preenchido, pra clínica ter os dados mesmo que o
+   * paciente não chegue a assinar. Em segundo plano: uma falha aqui não
+   * trava o formulário — o envio final grava tudo de novo.
+   */
+  function saveDraft(withAnswers: boolean) {
+    fetch(`/api/anamnesis/${token}/draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formPayload(withAnswers)),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   async function handleSubmit() {
     if (!signature) {
       setSignError("Por favor, assine o documento.");
@@ -177,46 +257,12 @@ export function AnamneseClient({ token }: { token: string }) {
     setStep("submitting");
     setSignError("");
 
-    const answers = [
-      { question: "Queixa Principal e Evolução", answer: mainComplaint || "Nenhuma queixa descrita." }
-    ];
-
-    questions.forEach((q, i) => {
-      const ans = healthAnswers[i];
-      if (ans?.yesNo) {
-        if (ans.yesNo === "Sim") {
-          answers.push({ question: q.question, answer: `Sim\nObs: ${ans.text || "Nenhuma observação."}` });
-        } else {
-          answers.push({ question: q.question, answer: "Não" });
-        }
-      } else {
-        answers.push({ question: q.question, answer: ans?.text || "-" });
-      }
-    });
-
-    // Monta o endereço final
-    const parts = [];
-    if (street) parts.push(street);
-    if (addressNumber) parts.push(addressNumber);
-    if (complement) parts.push(`- ${complement}`);
-    if (neighborhood) parts.push(neighborhood);
-    if (city) parts.push(`${city} - ${uf}`);
-    
-    const finalAddress = parts.length > 0 ? `${cep ? cep + ' - ' : ''}${parts.join(", ")}` : undefined;
-
     try {
       const res = await fetch(`/api/anamnesis/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient_name: name.trim(),
-          patient_cpf: cpf.replace(/\D/g, "") || undefined,
-          patient_phone: phone ? toE164BR(phone) : undefined,
-          birth_date: birthDate || undefined,
-          rg: rg.trim() || undefined,
-          occupation: occupation.trim() || undefined,
-          address: finalAddress,
-          answers,
+          ...formPayload(true),
           signature: {
             signerName: name.trim(),
             signerCpf: cpf.replace(/\D/g, "") || "",

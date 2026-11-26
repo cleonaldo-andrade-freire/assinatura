@@ -347,6 +347,8 @@ export default async function EditPatientPage({
                     <td>
                       {signatureInfo ? (
                         <span className={`${styles.statusDot} ${styles.statusOk}`}>Assinada</span>
+                      ) : a.filled_at ? (
+                        <span className={`${styles.statusDot} ${styles.statusInfo}`} title="O paciente respondeu, mas ainda não assinou">Preenchida, sem assinatura</span>
                       ) : (
                         <span className={`${styles.statusDot} ${styles.statusWarn}`}>Pendente</span>
                       )}

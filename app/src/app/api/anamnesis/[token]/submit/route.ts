@@ -8,11 +8,7 @@ import { notifyClinicSigned } from "@/lib/evolution"; // Pode ser ajustado para 
 // Importe a função de geração de PDF depois que criarmos
 import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf";
 import { ensureUniqueAnamnesisSignatureCode } from "@/lib/validationCode";
-
-const answerSchema = z.object({
-  question: z.string(),
-  answer: z.string(),
-});
+import { anamnesisFormSchema, saveAnamnesisForm } from "@/lib/anamnesisForm";
 
 const strokeSchema = z.object({ 
   index: z.number(), 
@@ -21,7 +17,7 @@ const strokeSchema = z.object({
 
 const signatureSchema = z.object({
   signerName: z.string().min(1),
-  signerCpf: z.string().min(1),
+  signerCpf: z.string(), // CPF é opcional no formulário ("CPF (opcional)") — vazio é válido
   dataUrl: z.string().min(1),
   strokeData: z.object({
     schema: z.literal("tracado/v1"),
@@ -36,18 +32,6 @@ const signatureSchema = z.object({
       bbox: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }),
     }),
   }),
-});
-
-const bodySchema = z.object({
-  patient_name: z.string().min(1),
-  patient_cpf: z.string().optional().nullable(),
-  patient_phone: z.string().optional().nullable(),
-  birth_date: z.string().optional().nullable(),
-  rg: z.string().optional().nullable(),
-  occupation: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  answers: z.array(answerSchema),
-  signature: signatureSchema,
 });
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
@@ -79,99 +63,36 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "already_signed", message: "Esta anamnese já foi assinada anteriormente." }, { status: 409 });
   }
 
-  // 3. Valida o payload
-  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    console.error("Payload inválido no submit da anamnese:", parsed.error.flatten());
-    return NextResponse.json({ error: "invalid_body", message: "Dados do formulário inválidos.", details: parsed.error.flatten() }, { status: 400 });
+  // 3. Grava os dados do formulário ANTES de olhar a assinatura — se a
+  // assinatura vier inválida ou algo falhar depois (PDF, storage), a clínica
+  // já fica com as respostas e o cadastro do paciente pra atender.
+  const raw = await req.json().catch(() => null);
+  const formParsed = anamnesisFormSchema.required({ answers: true }).safeParse(raw);
+  if (!formParsed.success) {
+    console.error("Payload inválido no submit da anamnese:", formParsed.error.flatten());
+    return NextResponse.json({ error: "invalid_body", message: "Dados do formulário inválidos.", details: formParsed.error.flatten() }, { status: 400 });
+  }
+  const form = formParsed.data;
+
+  const { error: saveError } = await saveAnamnesisForm(supabase, anamnesis, form);
+  if (saveError) {
+    return NextResponse.json({ error: "update_anamnesis_failed", message: saveError }, { status: 500 });
   }
 
-  const payload = parsed.data;
+  // 4. Agora sim a assinatura
+  const signatureParsed = signatureSchema.safeParse(raw?.signature);
+  if (!signatureParsed.success) {
+    console.error("Assinatura inválida no submit da anamnese (dados já gravados):", signatureParsed.error.flatten());
+    return NextResponse.json(
+      { error: "invalid_signature", message: "Suas respostas foram salvas, mas a assinatura não pôde ser registrada. Assine novamente.", details: signatureParsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const payload = { ...form, answers: form.answers!, signature: signatureParsed.data };
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const userAgent = req.headers.get("user-agent") || "unknown";
   const signedAtServer = new Date().toISOString();
-
-  // 4. Atualiza os dados da Anamnese (Answers)
-  const { error: updateError } = await supabase
-    .from("anamneses")
-    .update({ 
-      patient_name: payload.patient_name,
-      patient_cpf: payload.patient_cpf || anamnesis.patient_cpf,
-      patient_phone: payload.patient_phone || anamnesis.patient_phone,
-      answers: payload.answers 
-    })
-    .eq("id", anamnesis.id);
-
-  if (updateError) {
-    console.error("Falha ao atualizar a anamnese no submit:", updateError);
-    return NextResponse.json({ error: "update_anamnesis_failed", message: updateError.message }, { status: 500 });
-  }
-
-  // 5. Enriquecimento do Paciente (Patients) — acha ou cria (find-or-create,
-  // não só update): sem isso, uma anamnese de paciente que nunca existiu no
-  // sistema não deixava nenhum registro em `patients`, e o aceite do Termo
-  // de Adesão (passo 6b abaixo) precisa de um patient_id pra existir.
-  const cleanPhone = payload.patient_phone?.replace(/\D/g, "") || anamnesis.patient_phone?.replace(/\D/g, "");
-  const cleanCpf = payload.patient_cpf || null;
-
-  let patientId: string | null = null;
-
-  // Tenta achar pelo telefone (que é como o send-link cadastra inicialmente)
-  if (cleanPhone) {
-    const { data: byPhone } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("clinic_id", anamnesis.clinic_id)
-      .eq("phone", cleanPhone)
-      .limit(1)
-      .maybeSingle();
-    if (byPhone) patientId = byPhone.id;
-  }
-
-  // Se não achou pelo telefone, tenta pelo CPF (caso o paciente tenha mudado de celular mas preencheu o CPF correto)
-  if (!patientId && cleanCpf) {
-    const { data: byCpf } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("clinic_id", anamnesis.clinic_id)
-      .eq("cpf", cleanCpf)
-      .limit(1)
-      .maybeSingle();
-    if (byCpf) patientId = byCpf.id;
-  }
-
-  if (patientId) {
-    await supabase.from("patients").update({
-      name: payload.patient_name,
-      cpf: cleanCpf,
-      phone: cleanPhone,
-      birth_date: payload.birth_date,
-      rg: payload.rg,
-      occupation: payload.occupation,
-      address: payload.address,
-      updated_at: new Date().toISOString()
-    }).eq("id", patientId);
-  } else {
-    const { data: newPatient, error: createError } = await supabase
-      .from("patients")
-      .insert({
-        clinic_id: anamnesis.clinic_id,
-        name: payload.patient_name,
-        cpf: cleanCpf,
-        phone: cleanPhone || anamnesis.patient_phone,
-        birth_date: payload.birth_date,
-        rg: payload.rg,
-        occupation: payload.occupation,
-        address: payload.address,
-      })
-      .select("id")
-      .single();
-    if (createError) {
-      console.error("Falha ao criar paciente a partir da anamnese:", createError);
-    } else {
-      patientId = newPatient.id;
-    }
-  }
 
   // 6. Busca dados da clínica para o PDF
   const { data: clinic } = await supabase
@@ -232,17 +153,6 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     console.error("Falha ao salvar o PDF/gerar código de verificação da anamnese:", err);
     return NextResponse.json({ error: "pdf_save_failed", message: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
-
-  // 8.5 Atualizar a anamnese original com os dados preenchidos no formulário
-  // para garantir que tenhamos o celular atualizado para o disparo do WhatsApp
-  await supabase
-    .from("anamneses")
-    .update({
-      patient_phone: payload.patient_phone || anamnesis.patient_phone || null,
-      patient_cpf: payload.patient_cpf || anamnesis.patient_cpf || null,
-      patient_name: payload.patient_name,
-    })
-    .eq("id", anamnesis.id);
 
   // 9. Registrar Assinatura
   const { data: signatureData, error: signatureError } = await supabase

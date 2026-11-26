@@ -185,7 +185,7 @@ export async function buildAnamnesisSignedPdf(data: AnamnesisPdfData): Promise<U
     page.drawText(value, { x: MARGIN + 150, y: currentY, size: 9, font });
   };
 
-  drawAuditField("Assinado por (Paciente):", `${data.signature.signerName} (CPF: ${formatCPF(data.signature.signerCpf)})`, y);
+  drawAuditField("Assinado por (Paciente):", `${data.signature.signerName} (${data.signature.signerCpf ? `CPF: ${formatCPF(data.signature.signerCpf)}` : "CPF não informado"})`, y);
   y -= 20;
   drawAuditField("Data/hora (servidor):", formatTimestampBR(data.signature.signedAt), y);
   y -= 20;
