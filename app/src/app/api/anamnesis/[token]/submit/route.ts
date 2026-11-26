@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isValidToken } from "@/lib/validation";
 import { savePdf } from "@/lib/pdfStorage";
-import { notifyClinicSigned } from "@/lib/evolution"; // Pode ser ajustado para anamnese
+import { notifyClinicSigned } from "@/lib/evolution";
 // Importe a função de geração de PDF depois que criarmos
 import { buildAnamnesisSignedPdf } from "@/lib/anamnesisSignaturePdf";
 import { ensureUniqueAnamnesisSignatureCode } from "@/lib/validationCode";
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // 6. Busca dados da clínica para o PDF
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("name, logo_url, clinic_address, cnpj, dentist_name, dentist_cro, dentist_cro_uf")
+    .select("name, logo_url, clinic_address, cnpj, dentist_name, dentist_cro, dentist_cro_uf, notify_phone, evolution_base_url, evolution_instance_name, evolution_api_key")
     .eq("id", anamnesis.clinic_id)
     .single();
   const dentist =
@@ -177,6 +177,16 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   if (signatureError) {
     console.error("Falha ao gravar a assinatura da anamnese:", signatureError);
     return NextResponse.json({ error: "signature_failed", message: signatureError.message }, { status: 500 });
+  }
+
+  // 10. Avisa a dentista no WhatsApp (número de avisos em Configurações).
+  // Best-effort: sendText nunca lança, e falha aqui não desfaz a assinatura.
+  if (clinic) {
+    await notifyClinicSigned(
+      clinic,
+      payload.patient_name,
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/anamneses/${anamnesis.id}`
+    );
   }
 
   return NextResponse.json({ ok: true, signature_id: signatureData.id });

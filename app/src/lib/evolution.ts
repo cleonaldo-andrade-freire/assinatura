@@ -129,10 +129,14 @@ export async function sendMedia(
  */
 export async function notifyClinicSigned(
   clinic: EvolutionCreds & Pick<Clinic, "notify_phone">,
-  patientName: string
+  patientName: string,
+  panelLink?: string
 ): Promise<void> {
   if (!clinic.notify_phone) return;
-  await sendText(clinic, clinic.notify_phone, `✅ Anamnese assinada com sucesso por ${patientName}.`);
+  const text = panelLink
+    ? `✅ ${patientName} preencheu e assinou a anamnese.\n\nVer no painel:\n${panelLink}`
+    : `✅ Anamnese assinada com sucesso por ${patientName}.`;
+  await sendText(clinic, clinic.notify_phone, text);
 }
 
 /** Avisa a clínica que uma evolução clínica foi assinada — best-effort,
